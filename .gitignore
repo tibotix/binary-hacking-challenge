@@ -1,0 +1,14 @@
+
+
+# nano swp files
+**/*.swp
+
+# gdb history files
+**/.gdb_history
+
+
+# tutorial/:
+tutorial/stack
+tutorial/stack1
+tutorial/stack2
+tutorial/stack3
