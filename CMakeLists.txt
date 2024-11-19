@@ -34,7 +34,6 @@ if(BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
     include(Catch)
 
     file(GLOB test_sources "tests/**/*_test.cpp")
-    file(GLOB test_sources "tests/*_test.cpp") # TODO: reiterate this
     add_executable(CPUE_TEST ${test_sources})
     target_include_directories(CPUE_TEST PUBLIC src)
 
