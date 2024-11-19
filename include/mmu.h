@@ -18,7 +18,7 @@ public:
     void init() {
         m_physmem = (u8*)mmap(NULL, m_physmem_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
         if (m_physmem == (u8*)-1) {
-                        fail("mmap");
+            fail("mmap");
         }
     }
 
