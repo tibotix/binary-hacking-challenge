@@ -8,7 +8,7 @@
 
 #define CODE "\x55\x48\x8b\x05\xb8\x13\x00\x00"
 
-int main(int argc, char** argv) {
+int test(int argc, char** argv) {
     CPUE::MMU mmu{4 * 1024 * 1024};
     mmu.init();
     csh handle;

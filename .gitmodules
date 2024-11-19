@@ -4,3 +4,6 @@
 [submodule "deps/ELFIO"]
 	path = deps/ELFIO
 	url = https://github.com/serge1/ELFIO.git
+[submodule "deps/catch2"]
+	path = deps/catch2
+	url = https://github.com/catchorg/Catch2.git
