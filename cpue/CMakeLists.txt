@@ -22,7 +22,7 @@ target_link_libraries(cpue PRIVATE capstone elfio)
 target_link_options(cpue PUBLIC -Wl,-z,relro,-z,now)
 
 
-file(GLOB cpue_main_sources "./main.cpp") # TODO: reiterate this
+set(cpue_main_sources "./main.cpp")
 add_executable(cpue_main ${cpue_main_sources})
 target_link_libraries(cpue_main cpue)
 set_target_properties(cpue_main PROPERTIES OUTPUT_NAME "cpue")
