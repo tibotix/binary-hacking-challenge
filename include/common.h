@@ -19,7 +19,7 @@ typedef int64_t i64;
 
 void fail(char const* msg) {
     if (msg != NULL) {
-        printf("%s\n");
+        printf("%s\n", msg);
     }
     exit(1);
 }
