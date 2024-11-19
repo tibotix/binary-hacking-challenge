@@ -1,5 +1,8 @@
 
 
+# build files
+build/
+
 # nano swp files
 **/*.swp
 
