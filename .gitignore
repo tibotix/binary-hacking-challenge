@@ -1,7 +1,9 @@
 
+# vscode
+**/.vscode/
 
 # build files
-build/
+**/build/
 
 # nano swp files
 **/*.swp
