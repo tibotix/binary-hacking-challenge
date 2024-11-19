@@ -1,9 +1,9 @@
 [submodule "deps/capstone"]
-	path = deps/capstone
+	path = cpue/deps/capstone
 	url = https://github.com/capstone-engine/capstone.git
 [submodule "deps/ELFIO"]
-	path = deps/ELFIO
+	path = cpue/deps/ELFIO
 	url = https://github.com/serge1/ELFIO.git
 [submodule "deps/catch2"]
-	path = deps/catch2
+	path = cpue/deps/catch2
 	url = https://github.com/catchorg/Catch2.git

@@ -26,14 +26,14 @@ make -j8
         - hierarchy
         - API's:
             mapping memory space (mmap)
-            virtual adress (segmentation)
-            
+            virtual address (segmentation)
+
         - Need to add i/o-Instructions:
             1 byte, 2 byte, 4 byte, 8byte
 
 # Optional
     swapping as array or directory
-    
+
 
 # Useful Links
 

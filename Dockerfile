@@ -8,7 +8,7 @@ RUN chmod +x /usr/local/bin/repro-sources-list.sh && \
     /usr/local/bin/repro-sources-list.sh && \
     apt-get update && \
     DOCKER_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        socat 
+        socat
 
 RUN useradd -UM chall
 COPY flag /flag
