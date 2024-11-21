@@ -250,9 +250,6 @@ InterruptRaisedOr<void> CPU::handle_CMPSB() {
 } //	Compare String Operands
 InterruptRaisedOr<void> CPU::handle_CMPSD() {
     TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSD() {
-    TODO();
 } // (1)	Compare Scalar Double Precision Floating-Point Value
 InterruptRaisedOr<void> CPU::handle_CMPSQ() {
     TODO();
@@ -1055,12 +1052,6 @@ InterruptRaisedOr<void> CPU::handle_MONITOR() {
 InterruptRaisedOr<void> CPU::handle_MOV() {
     TODO();
 } //	Move
-InterruptRaisedOr<void> CPU::handle_MOV() {
-    TODO();
-} // (1)	Move to/from Control Registers
-InterruptRaisedOr<void> CPU::handle_MOV() {
-    TODO();
-} // (2)	Move to/from Debug Registers
 InterruptRaisedOr<void> CPU::handle_MOVAPD() {
     TODO();
 } //	Move Aligned Packed Double Precision Floating-Point Values
@@ -1136,9 +1127,6 @@ InterruptRaisedOr<void> CPU::handle_MOVNTQ() {
 InterruptRaisedOr<void> CPU::handle_MOVQ() {
     TODO();
 } //	Move Doubleword/Move Quadword
-InterruptRaisedOr<void> CPU::handle_MOVQ() {
-    TODO();
-} // (1)	Move Quadword
 InterruptRaisedOr<void> CPU::handle_MOVQ2DQ() {
     TODO();
 } //	Move Quadword from MMX Technology to XMM Register
@@ -1151,9 +1139,6 @@ InterruptRaisedOr<void> CPU::handle_MOVSB() {
 InterruptRaisedOr<void> CPU::handle_MOVSD() {
     TODO();
 } //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSD() {
-    TODO();
-} // (1)	Move or Merge Scalar Double Precision Floating-Point Value
 InterruptRaisedOr<void> CPU::handle_MOVSHDUP() {
     TODO();
 } //	Replicate Single Precision Floating-Point Values

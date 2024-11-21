@@ -133,7 +133,6 @@ private:
     InterruptRaisedOr<void> handle_CMPS();
     InterruptRaisedOr<void> handle_CMPSB();
     InterruptRaisedOr<void> handle_CMPSD();
-    InterruptRaisedOr<void> handle_CMPSD();
     InterruptRaisedOr<void> handle_CMPSQ();
     InterruptRaisedOr<void> handle_CMPSS();
     InterruptRaisedOr<void> handle_CMPSW();
@@ -401,8 +400,6 @@ private:
     InterruptRaisedOr<void> handle_MINSS();
     InterruptRaisedOr<void> handle_MONITOR();
     InterruptRaisedOr<void> handle_MOV();
-    InterruptRaisedOr<void> handle_MOV();
-    InterruptRaisedOr<void> handle_MOV();
     InterruptRaisedOr<void> handle_MOVAPD();
     InterruptRaisedOr<void> handle_MOVAPS();
     InterruptRaisedOr<void> handle_MOVBE();
@@ -428,11 +425,9 @@ private:
     InterruptRaisedOr<void> handle_MOVNTPS();
     InterruptRaisedOr<void> handle_MOVNTQ();
     InterruptRaisedOr<void> handle_MOVQ();
-    InterruptRaisedOr<void> handle_MOVQ();
     InterruptRaisedOr<void> handle_MOVQ2DQ();
     InterruptRaisedOr<void> handle_MOVS();
     InterruptRaisedOr<void> handle_MOVSB();
-    InterruptRaisedOr<void> handle_MOVSD();
     InterruptRaisedOr<void> handle_MOVSD();
     InterruptRaisedOr<void> handle_MOVSHDUP();
     InterruptRaisedOr<void> handle_MOVSLDUP();
