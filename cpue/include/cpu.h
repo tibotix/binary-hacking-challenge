@@ -830,7 +830,6 @@ private:
             } NO_PCIDE;
             u64 PCIDE : 11;
         } pcid;
-        // _PCID pcid : 11;
         u64 pml4_base_paddr : 52; // Physical Base Address of the PML4
         u8 LAM_U57 : 1; // When set, enables LAM57 (masking of linear-address bits 62:57) for user pointers and overrides CR3.LAM_U48.
         u8 LAM_U48 : 1; // When set and CR3.LAM_U57 is clear, enables LAM48 (masking of linear-address bits 62:48) for user pointers.
@@ -939,7 +938,7 @@ private:
     struct TR {
         VirtualAddress base = 0_va; // The base address specifies the linear address of byte 0 of the TSS
         u16 limit = 0x0FFFF; // The segment limit specifies the number of bytes in the TSS
-        u16 segment_selector;
+        u16 segment_selector; // TODO: use SegmentSelector
     };
     TR m_tr;
 };

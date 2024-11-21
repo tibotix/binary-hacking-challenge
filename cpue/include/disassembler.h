@@ -1,13 +1,10 @@
 #pragma once
 
 #include <capstone/capstone.h>
+#include "forward.h"
 
 
 namespace CPUE {
-
-
-// Forward Declaration
-class CPU;
 
 
 class Disassembler {

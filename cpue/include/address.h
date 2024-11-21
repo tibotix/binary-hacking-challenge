@@ -4,8 +4,6 @@
 
 namespace CPUE {
 
-struct Segment {};
-
 
 struct SegmentSelector {
     constexpr SegmentSelector(u16 value) : rpl(bits(value, 1, 0)), table(bits(value, 2, 2)), index(bits(value, 15, 3)) {}

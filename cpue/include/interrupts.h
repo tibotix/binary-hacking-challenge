@@ -12,7 +12,6 @@
     })
 
 
-
 namespace CPUE {
 
 // See Section 7.0 or Intel Manual page 3280
@@ -28,7 +27,7 @@ constexpr _InterruptRaised INTERRUPT_RAISED;
 template<typename T>
 class InterruptRaisedOr {
 public:
-    InterruptRaisedOr(_InterruptRaised) : InterruptRaisedOr<T>(true, {}) {};
+    InterruptRaisedOr(_InterruptRaised) : InterruptRaisedOr<T>(true, {}){};
     template<typename U = T>
     InterruptRaisedOr(U&& value) : InterruptRaisedOr<T>(false, std::move(value)){};
     static InterruptRaisedOr<T> InterruptRaised() { return {true, {}}; }
@@ -45,8 +44,8 @@ private:
 template<>
 class InterruptRaisedOr<void> {
 public:
-    InterruptRaisedOr(_InterruptRaised) : InterruptRaisedOr<void>(true) {};
-    InterruptRaisedOr() : InterruptRaisedOr<void>(false) {};
+    InterruptRaisedOr(_InterruptRaised) : InterruptRaisedOr<void>(true){};
+    InterruptRaisedOr() : InterruptRaisedOr<void>(false){};
     static InterruptRaisedOr<void> InterruptRaised() { return {true}; }
 
     bool raised() const { return m_raised; }

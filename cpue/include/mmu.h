@@ -17,7 +17,7 @@ namespace CPUE {
 
 // We only support one fixed PAGE_SIZE. We don't support huge pages such as 2MB Pages (referenced directly from PDE).
 constexpr size_t PAGE_SIZE = 4_kb;
-constexpr u8 VIRTUAL_ADDR_BITS = 48; // 4-Level paging enables up to 47bit VirtualAddress Space
+constexpr u8 VIRTUAL_ADDR_BITS = 48; // 4-Level paging enables up to 48bit VirtualAddress Space
 constexpr u64 VIRTUAL_ADDR_MASK = ((u64)1 << VIRTUAL_ADDR_BITS) - 1;
 
 
@@ -125,6 +125,7 @@ struct PTE {
 class MMU {
 public:
     friend class CPU;
+    friend class Disassembler;
     MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_physmem_size{available_pages * PAGE_SIZE} { CPUE_ASSERT(cpu != NULL, "cpu != NULL"); }
     MMU(MMU const&) = delete;
 

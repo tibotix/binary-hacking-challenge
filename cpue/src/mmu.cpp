@@ -106,8 +106,6 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
 InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, ByteWidth width) {
     m_cpu->assert_in_long_mode();
 
-
-
     // To translate a logical address into a linear address, the processor does the following:
 
     // 1.   Uses the offset in the segment selector to locate the segment descriptor for the segment in the GDT or LDT and

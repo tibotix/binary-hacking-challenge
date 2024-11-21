@@ -33,6 +33,7 @@ constexpr T bits(T val, u8 high, u8 low) {
     return val & bitmask64(high, low);
 }
 
+
 enum ByteWidth : u8 {
     BYTE = 1,
     WORD = 2,
