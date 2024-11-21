@@ -35,6 +35,10 @@ make -j8
     swapping as array or directory
 
 
+# Testing Framework
+https://github.com/catchorg/Catch2
+
+
 # Useful Links
 
 https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
