@@ -2,8 +2,12 @@
 # vscode
 **/.vscode/
 
+#intellij
+**/.idea/
+
 # build files
 **/build/
+**/cmake-build-*
 
 # nano swp files
 **/*.swp

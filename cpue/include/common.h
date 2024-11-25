@@ -1,8 +1,10 @@
 #pragma once
 
-
+#include <type_traits>
+#include <cstring>
 #include <cstdio>
-#include <stdlib.h>
+#include <initializer_list>
+#include <algorithm>
 #include <cstdint>
 #include <cassert>
 
@@ -23,6 +25,8 @@ typedef int32_t i32;
 typedef int64_t i64;
 
 
+typedef u16 PCID;
+
 
 constexpr u64 bitmask64(u8 high, u8 low) {
     return ((1 << high + 1) - 1) & ~((1 << low + 1) - 1);
@@ -34,12 +38,52 @@ constexpr T bits(T val, u8 high, u8 low) {
 }
 
 
+template<class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
+template<typename T, typename I>
+concept SameSize = (sizeof(T) == sizeof(I));
+
+template<typename T, typename I>
+requires SameSize<T, I>
+static constexpr T instance(I initializer) {
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type storage;
+    std::memcpy(&storage, &initializer, sizeof(storage));
+    return *reinterpret_cast<T*>(&storage);
+}
+
+
+template<typename T>
+concept HasReservedBits = requires(T t) {
+    { t.reserved_bits_ored() } -> std::convertible_to<u64>;
+};
+
+template<typename T, typename... Ts>
+concept AllSame = (std::is_same_v<T, Ts> && ...);
+
+
+
+template<typename T>
+bool one_of(T value, std::initializer_list<T> validValues) {
+    return std::find(validValues.begin(), validValues.end(), value) != validValues.end();
+}
+
+enum MemoryOp {
+    OP_READ,
+    OP_WRITE,
+};
+
+
 enum ByteWidth : u8 {
-    BYTE = 1,
-    WORD = 2,
-    DWORD = 4,
-    QWORD = 8,
-    DQWORD = 16,
+    WIDTH_BYTE = 1,
+    WIDTH_WORD = 2,
+    WIDTH_DWORD = 4,
+    WIDTH_QWORD = 8,
+    WIDTH_DQWORD = 16,
 };
 
 

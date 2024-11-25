@@ -6,7 +6,8 @@ namespace CPUE {
 
 
 cs_insn const* Disassembler::next_insn_or_null() const {
-    InterruptRaisedOr<u8*> code_ptr = m_cpu->mmu().va_to_pa(VirtualAddress(m_cpu->m_rip));
+#if 0
+    InterruptRaisedOr<PhysicalAddress> code_ptr = m_cpu->mmu().va_to_pa(VirtualAddress(m_cpu->m_rip));
     size_t code_size = 3;
     u64 address = m_cpu->m_rip;
 
@@ -18,6 +19,7 @@ cs_insn const* Disassembler::next_insn_or_null() const {
     if (cs_disasm_iter(handle, &code, &code_size, &address, m_insn)) {
         return m_insn;
     }
+#endif
     return NULL;
 }
 
