@@ -145,6 +145,7 @@ public:
 
     [[nodiscard]] u8 cpl() const { return m_cs.visible.segment_selector.rpl; }
     [[nodiscard]] PrivilegeMode cpm() const { return cpl() == 3 ? USER_MODE : SUPERVISOR_MODE; }
+    void set_cpl(u8 cpl) { m_cs.visible.segment_selector.rpl = cpl; }
 
     /**
      * Process-Context Identifiers (PCIDs) (See page 3230)
@@ -159,30 +160,41 @@ public:
     }
 
 
+    LogicalAddress stack_pointer() const { return {m_ss, m_rsp}; }
+    InterruptRaisedOr<void> stack_push(u64 value);
+    InterruptRaisedOr<u64> stack_pop();
+
+
     InterruptRaisedOr<void> load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector);
+    InterruptRaisedOr<void> load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector, GDTLDTDescriptor const& descriptor);
 
     MMU& mmu() { return m_mmu; }
     PIC& pic() { return m_pic; }
     ICU& icu() { return m_icu; }
 
 private:
-    InterruptRaisedOr<void> do_canonicality_check(VirtualAddress const& vaddr);
-
     /**
      * Use this function only for sending interrupts that are processor-generated like exceptions
      * or software-generated interrupts (f.e. INT n instruction, etc.)
+     * The error_code.standard.ext field will be updated if it was previously 0, to...
+     *  - 1, if we are currently handling an interrupt i and i.source.is_external() == 1,
+     *  - 0, otherwise
      */
     template<typename... Args>
     _InterruptRaised raise_interrupt(Interrupt i, Args&&... args);
     _InterruptRaised raise_integral_interrupt(Interrupt i) { return m_icu.raise_integral_interrupt(i); }
-
-
-    InterruptRaisedOr<void> handle_interrupt(Interrupt i);
     InterruptRaisedOr<void> handle_nested_interrupt(Interrupt i);
+    InterruptRaisedOr<void> handle_interrupt(Interrupt i);
+    // NOTE: as InterruptGateDescriptor and TrapGateDescriptor have the same layout, we simply choose one to receive
+    InterruptRaisedOr<void> enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor);
+    InterruptRaisedOr<void> enter_task_gate(Interrupt const& i, TaskGateDescriptor const& task_gate_descriptor);
+    InterruptRaisedOr<void> enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn);
+    InterruptRaisedOr<std::pair<SegmentSelector, u64>> do_stack_switch(u8 target_pl);
 
     [[nodiscard]] bool alignment_check_enabled() const { return m_cr0.AM && m_rflags.AC && cpl() == 3; }
+    InterruptRaisedOr<void> do_canonicality_check(VirtualAddress const& vaddr);
 
-
+    DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
 
 private:
     InterruptRaisedOr<void> handle_AAA();
@@ -1073,17 +1085,9 @@ private:
      * Protected Mode Registers
      * As with segments, the limit value is added to the base address to get the address of the last valid byte.
      */
-    struct GDTR {
-        VirtualAddress base = 0_va; // The base address specifies the linear address of byte 0 of the GDT
-        u16 limit = 0x0FFFF; // The table limit specifies the number of bytes in the table.
-    };
-    GDTR m_gdtr;
+    DescriptorTable m_gdtr;
     SystemSegmentRegister m_ldtr;
-    struct IDTR {
-        VirtualAddress base = 0_va; // The base address specifies the linear address of byte 0 of the IDT
-        u16 limit = 0x0FFFF; // The table limit specifies the numberof bytes in the table
-    };
-    IDTR m_idtr;
+    DescriptorTable m_idtr;
     SystemSegmentRegister m_tr;
 
     SystemSegmentRegister* m_system_segment_register_map[8] = {

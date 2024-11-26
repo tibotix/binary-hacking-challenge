@@ -35,7 +35,7 @@ static_assert(sizeof(CallGateDescriptor) == 16);
 struct TaskGateDescriptor {
     // size: 64 bits
     u64 : 16;
-    SegmentSelector tss_segment_selector;
+    SegmentSelector segment_selector; // TSS Segment Selector
     u64 : 8;
     Descriptor::AccessByte access;
     u64 : 16;
@@ -53,6 +53,13 @@ struct InterruptGateDescriptor {
     u64 offset2 : 16;
     u64 offset3 : 32;
     u64 : 32;
+
+    u64 offset() const { return (u64)offset3 << 32 || offset2 << 16 || offset1; };
+    void set_offset(u64 offset) {
+        offset1 = bits(offset, 15, 0);
+        offset2 = bits(offset, 31, 16);
+        offset3 = bits(offset, 63, 32);
+    }
 };
 static_assert(sizeof(InterruptGateDescriptor) == 16);
 
@@ -66,6 +73,13 @@ struct TrapGateDescriptor {
     u64 offset2 : 16;
     u64 offset3 : 32;
     u64 : 32;
+
+    u64 offset() const { return (u64)offset3 << 32 || offset2 << 16 || offset1; };
+    void set_offset(u64 offset) {
+        offset1 = bits(offset, 15, 0);
+        offset2 = bits(offset, 31, 16);
+        offset3 = bits(offset, 63, 32);
+    }
 };
 static_assert(sizeof(TrapGateDescriptor) == 16);
 

@@ -1,5 +1,6 @@
 
 #include "cpu.h"
+#include "tss.h"
 
 
 namespace CPUE {
@@ -145,27 +146,242 @@ InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
 }
 
 InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
+    assert_in_long_mode();
+
     // See chapter 7.12 or page 3290
     m_interrupt_to_be_handled = interrupt;
 
-    // TODO: If a vector references a descriptor beyond the limit of the IDT, a general-protection exception (#GP) is generated.
+
+    /**
+     * The processor handles calls to exception- and interrupt-handlers similar to the way it handles calls with a CALL
+     * instruction to a procedure or a task. When responding to an exception or interrupt, the processor uses the exception
+     * or interrupt vector as an index to a descriptor in the IDT. If the index points to an interrupt gate or trap gate,
+     * the processor calls the exception or interrupt handler in a manner similar to a CALL to a call gate (see Section
+     * 6.8.2, “Gate Descriptors,” through Section 6.8.6, “Returning from a Called Procedure”). If index points to a task
+     * gate, the processor executes a task switch to the exception- or interrupt-handler task in a manner similar to a CALL
+     * to a task gate (see Section 9.3, “Task Switching”).
+     */
+
+
+    auto idt_descriptor = MAY_HAVE_RAISED(m_mmu.interrupt_vector_to_descriptor(interrupt.vector));
+    switch (idt_descriptor.access.descriptor_type()) {
+        case DescriptorType::TASK_GATE: MAY_HAVE_RAISED(enter_task_gate(interrupt, *idt_descriptor.to_task_gate_descriptor())); break;
+        case DescriptorType::INTERRUPT_GATE:
+        case DescriptorType::TRAP_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_trap_gate_descriptor())); break;
+        // TODO: maybe raise exception here instead of fail
+        default: fail("Invalid segment type for interrupt.");
+    }
 
     // Only real exceptions push an error_code
     if (interrupt.type.category() == InterruptCategory::EXCEPTION) {
         if (interrupt.error_code.has_value()) {
             auto error_code = interrupt.error_code.value();
-            TODO_NOFAIL("push error code onto stack");
+            stack_push(error_code.value);
         }
     }
 
     m_interrupt_to_be_handled.reset();
-    TODO_NOFAIL("jump to interrupt handler");
     return {};
+}
+
+
+InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor) {
+    ErrorCode error_code = {.standard = {
+                                .tbl = 1,
+                                .selector_index = i.vector,
+                            }};
+    // protection checks
+    // rpl is not checked as vectors have none (only segment-selectors)
+    // The processor checks the DPL of the interrupt or trap gate only if an exception or interrupt is generated with an
+    // INT n, INT3, or INTO instruction (INT1 would not check). Here, the CPL must be less than or equal to the DPL of the gate.
+    if (i.source == InterruptSource::INTN_INT3_INTO_INSN && cpl() > descriptor.access.dpl)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(descriptor.segment_selector));
+
+    // Check if target code segment is executable code segment
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+        return raise_interrupt(Exceptions::GP(error_code));
+    auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
+    // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
+    if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.dpl;
+
+    TODO_NOFAIL("Privilege Checks");
+
+    /**
+     * If a call is made to a more privileged (numerically lower privilege level) nonconforming destination code segment,
+     * the CPL is lowered to the DPL of the destination code segment and a stack switch occurs (see Section 6.8.5, “Stack
+     * Switching”). If a call or jump is made to a more privileged conforming destination code segment, the CPL is not
+     * changed and no stack switch occurs.
+     */
+    auto old_ss = m_ss.visible.segment_selector;
+    auto old_sp = m_rsp;
+    if (dest_is_conforming && dest_dpl < cpl()) {
+        std::tie(old_ss, old_sp) = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
+    }
+
+    // In 64-bit mode:
+    // The stack pointer (SS:RSP) is pushed unconditionally on interrupts. In legacy modes, this push is conditional
+    // and based on a change in current privilege level(CPL).
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+    MAY_HAVE_RAISED(stack_push(old_sp));
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u64>(&m_rflags)));
+
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
+    MAY_HAVE_RAISED(stack_push(m_rip));
+    // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
+    // the CS and RIP registers, respectively, and begin execution of the called procedure.
+    load_segment_register(SegmentRegisterAlias::CS, descriptor.segment_selector, dest_segment_descriptor);
+    m_rip = dest_segment_descriptor.base() + descriptor.offset();
+
+    /**
+     * When accessing an exception or interrupt handler through either an interrupt gate or a trap gate, the processor
+     * clears the TF flag in the EFLAGS register after it saves the contents of the EFLAGS register on the stack. (On calls
+     * to exception and interrupt handlers, the processor also clears the VM, RF, and NT flags in the EFLAGS register, after
+     * they are saved on the stack.) Clearing the TF flag prevents instruction tracing from affecting interrupt response and
+     * ensures that no single-step exception will be delivered after delivery to the handler. A subsequent IRET instruction
+     * restores the TF (and VM, RF, and NT) flags to the values in the saved contents of the EFLAGS register on the stack
+     */
+    m_rflags.TF = m_rflags.VM = m_rflags.RF = m_rflags.NT = 0;
+
+    /**
+     * The only difference between an interrupt gate and a trap gate is the way the processor handles the IF flag in the
+     * EFLAGS register. When accessing an exception- or interrupt-handling procedure through an interrupt gate, the
+     * processor clears the IF flag to prevent other interrupts from interfering with the current interrupt handler. A subse-
+     * quent IRET instruction restores the IF flag to its value in the saved contents of the EFLAGS register on the stack.
+     * Accessing a handler procedure through a trap gate does not affect the IF flag.
+     */
+    if (descriptor.access.descriptor_type() == DescriptorType::INTERRUPT_GATE) {
+        m_rflags.IF = 0;
+    }
+
+    return {};
+}
+
+
+InterruptRaisedOr<void> CPU::enter_task_gate(Interrupt const& i, TaskGateDescriptor const& task_gate_descriptor) {
+    TODO("enter_task_gate");
+    // The processor issues a general-protection exception (#GP) if the following is attempted in 64-bit mode:
+    // Control transfer to a TSS or a task gate using JMP, CALL, INT n, INT3, INTO, INT1, or interrupt.
+}
+
+InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn) {
+    assert_in_long_mode();
+
+    ErrorCode error_code = {.standard = {
+                                .tbl = (u8)(selector.table << 1),
+                                .selector_index = selector.index,
+                            }};
+    // CPL ≤ call gate DPL; RPL ≤ call gate DPL
+    if (cpl() > call_gate_descriptor.access.dpl || selector.rpl > call_gate_descriptor.access.dpl)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(call_gate_descriptor.segment_selector));
+
+    // Check if target code segment is executable code segment
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+        return raise_interrupt(Exceptions::GP(error_code));
+    auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
+    // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
+    if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.dpl;
+    // Destination conforming code segment DPL ≤ CPL
+    if (dest_is_conforming && dest_dpl > cpl())
+        return raise_interrupt(Exceptions::GP(error_code));
+    if (!dest_is_conforming) {
+        // CALL: Destination nonconforming code segment DPL ≤ CPL
+        if (through_call_insn && dest_dpl > cpl())
+            return raise_interrupt(Exceptions::GP(error_code));
+        // JMP: Destination nonconforming code segment DPL = CPL
+        if (!through_call_insn && dest_dpl != cpl())
+            return raise_interrupt(Exceptions::GP(error_code));
+    }
+
+    /**
+     * If a call is made to a more privileged (numerically lower privilege level) nonconforming destination code segment,
+     * the CPL is lowered to the DPL of the destination code segment and a stack switch occurs (see Section 6.8.5, “Stack
+     * Switching”). If a call or jump is made to a more privileged conforming destination code segment, the CPL is not
+     * changed and no stack switch occurs.
+     */
+    if (dest_is_conforming && dest_dpl < cpl()) {
+        auto [old_ss, old_sp] = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
+        MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+        MAY_HAVE_RAISED(stack_push(old_sp));
+    }
+
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
+    MAY_HAVE_RAISED(stack_push(m_rip));
+    // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
+    // the CS and RIP registers, respectively, and begin execution of the called procedure.
+    load_segment_register(SegmentRegisterAlias::CS, call_gate_descriptor.segment_selector, dest_segment_descriptor);
+    m_rip = dest_segment_descriptor.base() + call_gate_descriptor.offset();
+    return {};
+}
+
+
+InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 target_pl) {
+    // Check TSS limits
+    if (m_tr.hidden.cached_descriptor.limit() < sizeof(TSS) - 1) {
+        ErrorCode error_code = {.standard = {.tbl = 0, .selector_index = m_tr.visible.segment_selector.index}};
+        return raise_interrupt(Exceptions::TS(error_code));
+    }
+    // Stack switch
+    // When a procedure call through a call gate results in a change in privilege level, the processor performs the following
+    // steps to switch stacks and begin execution of the called procedure at a new privilege level :
+    //  1. Uses the DPL of the destination code segment (the new CPL) to select a pointer to the new stack (segment
+    //     selector and stack pointer) from the TSS.
+    auto tss_sp_byte_offset = [&] -> u16 {
+        switch (target_pl) {
+            case 0: return offsetof(TSS, TSS::rsp0_1);
+            case 1: return offsetof(TSS, TSS::rsp1_1);
+            case 2: return offsetof(TSS, TSS::rsp2_1);
+            default: fail("cpl>2 but TSS has only rsp0-2.");
+        }
+    }();
+    //  2. Reads the segment selector and stack pointer for the stack to be switched to from the current TSS. Any limit
+    //     violations detected while reading the stack-segment selector, stack pointer, or stack-segment descriptor cause
+    //     an invalid TSS (#TS) exception to be generated.
+    // -> When stacks are switched as part of a 64-bit mode privilege-level change through a call gate, a new SS (stack
+    //    segment) descriptor is not loaded; 64-bit mode only loads an inner-level RSP from the TSS.
+    auto new_sp_addr = VirtualAddress(m_tr.hidden.cached_descriptor.base() + (tss_sp_byte_offset * 8));
+    TODO_NOFAIL("Check limit");
+    auto new_sp = MAY_HAVE_RAISED(mmu().mem_read64(new_sp_addr, INTENTION_LOAD_TSS));
+    new_sp = (new_sp << 32) || new_sp & 0xFFFFFFFF; // switch endianness
+    //  3. Checks the stack-segment descriptor for the proper privileges and type and generates an invalid TSS (#TS)
+    //     exception if violations are detected.
+    // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
+    //  4. Temporarily saves the current values of the SS and RSP registers.
+    auto old_ss = m_ss;
+    auto old_sp = m_rsp;
+    // The new SS is forced to NULL and the SS selector’s RPL field is forced to the new CPL.
+    // we can do this cause in 64-bit mode the processor does not perform runtime NULL-selector checks
+    m_ss.visible.segment_selector.index = 0x0;
+    m_ss.visible.segment_selector.rpl = target_pl;
+    m_rsp = new_sp;
+    //  6. Pushes the temporarily saved values for the SS and RSP registers (for the calling procedure) onto the new stack
+    //  7. Copies the number of parameter specified in the parameter count field of the call gate from the calling
+    //     procedure’s stack to the new stack. If the count is 0, no parameters are copied.
+    // -> in 64-bit mode, this count is always 0.
+    //  8. Pushes the return instruction pointer (the current contents of the CS and RIP registers) onto the new stack.
+    return std::make_pair(old_ss.visible.segment_selector, old_sp);
 }
 
 
 template<typename... Args>
 _InterruptRaised CPU::raise_interrupt(Interrupt i, Args&&... args) {
+    // #PF and #CP use custom error_code format
+    if (i.vector != Exceptions::VEC_PF && i.vector != Exceptions::VEC_CP && i.error_code.has_value()) {
+        // don't clear already set ext bit, but otherwise use value of source (or 0, if we're currently not handling an interrupt)
+        i.error_code->standard.ext |= m_interrupt_to_be_handled.has_value() ? m_interrupt_to_be_handled->source.is_external() : 0;
+    }
+
     // If we are handling the instruction, the interrupt is always integral part of instruction execution
     if (m_state == STATE_HANDLE_INSTRUCTION)
         return m_icu.raise_integral_interrupt(i);
@@ -190,10 +406,13 @@ _InterruptRaised CPU::raise_interrupt(Interrupt i, Args&&... args) {
     }
 }
 
-
 InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector) {
+    GDTLDTDescriptor descriptor = MAY_HAVE_RAISED(mmu().segment_selector_to_descriptor(selector));
+    return load_segment_register(alias, selector, descriptor);
+}
+
+InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector, GDTLDTDescriptor const& descriptor) {
     ErrorCode error_code = {.standard = {
-                                .ext = 1,
                                 .tbl = static_cast<u8>(selector.table << 1),
                                 .selector_index = selector.index,
                             }};
@@ -204,21 +423,24 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
 
-
-    GDTLDTDescriptor descriptor = MAY_HAVE_RAISED(mmu().segment_selector_to_descriptor(selector));
-
-    TODO_NOFAIL("set accessed bit");
-
-
+    // The accessed bit indicates whether the segment has been accessed since the last time the operating-system or
+    // executive cleared the bit. The processor sets this bit whenever it loads a segment selector for the segment into a
+    // segment register, assuming that the type of memory that contains the segment descriptor supports processor
+    // writes. (Can also be used for example to track number of accesses to a descriptor).
+    auto [base, limit] = descriptor_table_of_selector(selector);
+    auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, Descriptor::access);
+    auto new_access_byte = descriptor.access;
+    new_access_byte.accessed = 1;
+    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
 
     // The Segment Not Present exception occurs when trying to load a segment or gate which has its `Present` bit set to 0.
-    // However when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
-    if (alias.type() == SegmentRegisterType::STACK) {
-        return raise_integral_interrupt(Exceptions::SS(error_code));
+    // However, when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
+    if (descriptor.access.present == 0) {
+        if (alias.type() == SegmentRegisterType::STACK) {
+            return raise_integral_interrupt(Exceptions::SS(error_code));
+        }
+        return raise_integral_interrupt(Exceptions::NP(error_code));
     }
-    return raise_integral_interrupt(Exceptions::NP(error_code));
-
-
 
     // Type Checking (page 3250)
     // — The LDTR can only be loaded with a selector for an LDT.
@@ -238,9 +460,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Segment selectors for system segments cannot be loaded into data-segment registers (DS, ES, FS, and GS).
-    // I think they mean:
-    //  Segment selectors for system segments cannot be loaded into system-segment registers (DS, ES, FS, and GS).
-    if (descriptor.access.is_system_descriptor() && alias.type() != SegmentRegisterType::SYSTEM) {
+    if (descriptor.access.is_system_descriptor() && alias.type() != SegmentRegisterType::DATA) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Only segment selectors of writable data segments can be loaded into the SS register.
@@ -248,14 +468,12 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
 
-
     /**
      * Privilege Level Checking (chapter 6.5 or page 3252)
      * Privilege levels are checked when the segment selector of a segment descriptor is loaded into a segment register.
      * The checks used for data access differ from those used for transfers of program control among code segments;
      * therefore, the two kinds of accesses are considered separately in the following sections.
      */
-    TODO_NOFAIL("Privilege Level Checking");
     if (descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT) {
         // PRIVILEGE LEVEL CHECKING WHEN ACCESSING DATA SEGMENTS
         // The processor loads the segment selector into the segment register if the DPL is numerically greater
@@ -278,7 +496,9 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
             // Accessing Nonconforming Code Segments
             // When accessing nonconforming code segments, the CPL of the calling procedure must be equal to the DPL of the
             // destination code segment; otherwise, the processor generates a general-protection exception (#GP).
-            if (!(descriptor.access.dpl == cpl())) {
+            // A transfer into a nonconforming segment at a different privilege level results in a general-protection exception (#GP),
+            // unless a gate is used to access it.
+            if (descriptor.access.dpl != cpl() && !descriptor.is_gate_descriptor()) {
                 return raise_integral_interrupt(Exceptions::GP(error_code));
             }
         } else {
@@ -304,7 +524,24 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
             .hidden = *descriptor.to_application_segment_descriptor(),
         };
     }
+    return {};
 }
+
+
+
+InterruptRaisedOr<void> CPU::stack_push(u64 value) {
+    TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
+    if (m_rsp < 8)
+        return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
+    m_rsp -= 8;
+    MAY_HAVE_RAISED(mmu().mem_write64(stack_pointer(), value));
+    return {};
+}
+
+InterruptRaisedOr<u64> CPU::stack_pop() {
+    TODO("stack_pop");
+}
+
 
 InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) {
     auto high_bits = vaddr.addr & ~VIRTUAL_ADDR_MASK;
@@ -319,4 +556,14 @@ InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) 
     }
     return {};
 }
+
+DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) const {
+    switch (selector.table) {
+        case 0: return m_gdtr;
+        case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
+        default: fail();
+    }
+}
+
+
 }

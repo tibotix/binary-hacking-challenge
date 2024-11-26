@@ -15,6 +15,25 @@
 namespace CPUE {
 
 
+
+[[noreturn]] inline void fail(char const* msg = NULL) {
+    if (msg != NULL)
+        printf("%s\n", msg);
+    exit(1);
+}
+
+inline void TODO_NOFAIL(char const* msg = NULL) {
+    if (msg != NULL)
+        printf("TODO: %s\n", msg);
+}
+
+[[noreturn]] inline void TODO(char const* msg = NULL) {
+    fail(msg);
+}
+
+
+
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -23,6 +42,16 @@ typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+
+constexpr unsigned long long operator""_kb(unsigned long long bytes) {
+    return bytes * 1024;
+}
+constexpr unsigned long long operator""_mb(unsigned long long bytes) {
+    return bytes * 1024_kb;
+}
+constexpr unsigned long long operator""_gb(unsigned long long bytes) {
+    return bytes * 1024_mb;
+}
 
 
 typedef u16 PCID;
@@ -45,6 +74,7 @@ struct overloaded : Ts... {
 template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
+
 template<typename T, typename I>
 concept SameSize = (sizeof(T) == sizeof(I));
 
@@ -55,15 +85,17 @@ static constexpr T instance(I initializer) {
     std::memcpy(&storage, &initializer, sizeof(storage));
     return *reinterpret_cast<T*>(&storage);
 }
+template<typename R, typename T>
+requires std::is_integral_v<R> && SameSize<R, T>
+static constexpr R raw_bytes(T* instance) {
+    return *((R*)instance);
+}
 
 
 template<typename T>
 concept HasReservedBits = requires(T t) {
     { t.reserved_bits_ored() } -> std::convertible_to<u64>;
 };
-
-template<typename T, typename... Ts>
-concept AllSame = (std::is_same_v<T, Ts> && ...);
 
 
 
@@ -77,7 +109,6 @@ enum MemoryOp {
     OP_WRITE,
 };
 
-
 enum ByteWidth : u8 {
     WIDTH_BYTE = 1,
     WIDTH_WORD = 2,
@@ -86,32 +117,20 @@ enum ByteWidth : u8 {
     WIDTH_DQWORD = 16,
 };
 
-
-constexpr unsigned long long operator""_kb(unsigned long long bytes) {
-    return bytes * 1024;
-}
-constexpr unsigned long long operator""_mb(unsigned long long bytes) {
-    return bytes * 1024_kb;
-}
-constexpr unsigned long long operator""_gb(unsigned long long bytes) {
-    return bytes * 1024_mb;
-}
-
-
-[[noreturn]] inline void fail(char const* msg = NULL) {
-    if (msg != NULL)
-        printf("%s\n", msg);
-    exit(1);
+template<typename T>
+requires std::is_integral_v<T>
+constexpr ByteWidth get_byte_width() {
+    switch (sizeof(T)) {
+        case 1: return WIDTH_BYTE;
+        case 2: return WIDTH_WORD;
+        case 4: return WIDTH_DWORD;
+        case 8: return WIDTH_QWORD;
+        case 16: return WIDTH_DQWORD;
+        default: fail("Unsupported byte width");
+    }
 }
 
-inline void TODO_NOFAIL(char const* msg = NULL) {
-    if (msg != NULL)
-        printf("TODO: %s\n", msg);
-}
 
-[[noreturn]] inline void TODO(char const* msg = NULL) {
-    fail(msg);
-}
 
 
 }

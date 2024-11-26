@@ -748,6 +748,7 @@ InterruptRaisedOr<void> CPU::handle_INT() {
         .vector = 0, // TODO: use actual vector
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
+        .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
     return handle_interrupt(i);
 } // 	Call to Interrupt Procedure
@@ -756,6 +757,7 @@ InterruptRaisedOr<void> CPU::handle_INT1() {
         .vector = 1,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
+        .source = InterruptSource::INT1_INSN,
     };
     return handle_interrupt(i);
 } //	Call to Interrupt Procedure
@@ -765,6 +767,7 @@ InterruptRaisedOr<void> CPU::handle_INT3() {
         .vector = 3,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
+        .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
     return handle_interrupt(i);
 } //	Call to Interrupt Procedure
@@ -774,6 +777,7 @@ InterruptRaisedOr<void> CPU::handle_INTO() {
         .vector = 4,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
+        .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
     if (m_rflags.OF) {
         return handle_interrupt(i);

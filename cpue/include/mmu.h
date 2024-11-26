@@ -20,7 +20,8 @@ namespace CPUE {
 enum TranslationIntention {
     INTENTION_FETCH_INSTRUCTION,
     INTENTION_HANDLE_INSTRUCTION,
-    INTENTION_LOAD_SEGMENT,
+    INTENTION_LOAD_DESCRIPTOR,
+    INTENTION_LOAD_TSS,
     INTENTION_UNKNOWN,
 };
 struct TranslationContext {
@@ -46,32 +47,60 @@ public:
 
 public:
     bool mem_map();
-    InterruptRaisedOr<PhysicalAddress> la_to_pa(LogicalAddress const& laddr, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<PhysicalAddress> la_to_pa(LogicalAddress const& laddr, TranslationContext const& ctx);
 
-    InterruptRaisedOr<GDTLDTDescriptor> segment_selector_to_descriptor(SegmentSelector selector);
-    InterruptRaisedOr<IDTDescriptor> interrupt_vector_to_descriptor(InterruptVector vector);
+    [[nodiscard]] InterruptRaisedOr<GDTLDTDescriptor> segment_selector_to_descriptor(SegmentSelector selector);
+    [[nodiscard]] InterruptRaisedOr<IDTDescriptor> interrupt_vector_to_descriptor(InterruptVector vector);
 
-    u32 mem_read32(LogicalAddress const& laddr);
-    void mem_write32(LogicalAddress const& laddr, u32 value);
-    u32 mem_read(LogicalAddress const& laddr, size_t width);
+    [[nodiscard]] InterruptRaisedOr<u64> mem_read64(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u64> mem_read64(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u32> mem_read32(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u32> mem_read32(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u16> mem_read16(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u16> mem_read16(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u8> mem_read8(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u8> mem_read8(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+
+
+    [[nodiscard]] InterruptRaisedOr<void> mem_write64(LogicalAddress const& laddr, u64 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write64(VirtualAddress const& vaddr, u64 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write32(LogicalAddress const& laddr, u32 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write32(VirtualAddress const& vaddr, u32 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write16(LogicalAddress const& laddr, u16 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write16(VirtualAddress const& vaddr, u16 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write8(LogicalAddress const& laddr, u8 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<void> mem_write8(VirtualAddress const& vaddr, u8 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
 
 private:
-    InterruptRaisedOr<PhysicalAddress> va_to_pa(VirtualAddress const& vaddr, TranslationContext const& ctx);
-    InterruptRaisedOr<VirtualAddress> la_to_va(LogicalAddress const& laddr, TranslationContext const& ctx);
-    InterruptRaisedOr<PTE> va_to_pte(VirtualAddress const& vaddr, TranslationContext const& ctx);
-    InterruptRaisedOr<void> check_page_structure(PageStructureEntry auto* entry, TranslationContext const& ctx) {
+    [[nodiscard]] InterruptRaisedOr<PhysicalAddress> va_to_pa(VirtualAddress const& vaddr, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<VirtualAddress> la_to_va(LogicalAddress const& laddr, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<PTE> va_to_pte(VirtualAddress const& vaddr, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure(PageStructureEntry auto* entry, TranslationContext const& ctx) {
         MAY_HAVE_RAISED(check_page_structure_reserved_bits(entry, ctx));
         MAY_HAVE_RAISED(check_page_structure_present(entry, ctx));
         MAY_HAVE_RAISED(check_page_structure_access_rights(entry, ctx));
         MAY_HAVE_RAISED(check_page_structure_protection_key(entry, ctx));
         return {};
     }
-    InterruptRaisedOr<void> check_page_structure_reserved_bits(HasReservedBits auto* entry, TranslationContext const& ctx);
-    InterruptRaisedOr<void> check_page_structure_present(PageStructureEntry auto* entry, TranslationContext const& ctx);
-    InterruptRaisedOr<void> check_page_structure_access_rights(PageStructureEntry auto* entry, TranslationContext const& ctx);
-    InterruptRaisedOr<void> check_page_structure_protection_key(PageStructureEntry auto* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_reserved_bits(HasReservedBits auto* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_present(PageStructureEntry auto* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_access_rights(PageStructureEntry auto* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_protection_key(PageStructureEntry auto* entry, TranslationContext const& ctx);
     _InterruptRaised raise_page_fault(VirtualAddress const& vaddr, ErrorCode const& error_code);
     _InterruptRaised raise_page_fault(ErrorCode const& error_code);
+
+    template<typename D, u16 index_scale>
+    [[nodiscard]] InterruptRaisedOr<D> get_descriptor_from_descriptor_table(VirtualAddress const& table_base, u16 table_limit, u16 descriptor_index, ErrorCode error_code);
+
+    template<typename T>
+    [[nodiscard]] InterruptRaisedOr<T> mem_read(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    template<typename T>
+    [[nodiscard]] InterruptRaisedOr<T> mem_read(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    template<typename T>
+    [[nodiscard]] InterruptRaisedOr<void> mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    template<typename T>
+    [[nodiscard]] InterruptRaisedOr<void> mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+
     template<typename T = u8>
     T* paddr_ptr(PhysicalAddress const& paddr) {
         CPUE_ASSERT(m_physmem != NULL, "m_physmem == NULL");

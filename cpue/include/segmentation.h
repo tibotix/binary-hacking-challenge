@@ -21,6 +21,8 @@ namespace CPUE {
 
 struct SegmentSelector {
     // size: 16 bits
+    constexpr SegmentSelector() = default;
+    constexpr SegmentSelector(const SegmentSelector&) = default;
     constexpr SegmentSelector(u16 value) : rpl(bits(value, 1, 0)), table(bits(value, 2, 2)), index(bits(value, 15, 3)) {}
     constexpr SegmentSelector(u16 rpl, u8 table, u8 index) : rpl(rpl), table(table), index(index) {}
     u16 rpl : 2; // Requested Privilege Level

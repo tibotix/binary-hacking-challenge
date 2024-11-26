@@ -28,6 +28,12 @@ concept DescriptorWithOffset = requires(T t) {
 };
 template<typename T>
 concept DescriptorWithNoOffset = !DescriptorWithOffset<T>;
+template<typename T>
+concept DescriptorWithSegmentSelector = requires(T t) {
+    { t.segment_selector } -> std::same_as<SegmentSelector>;
+};
+template<typename T>
+concept DescriptorWithNoSegmentSelector = !DescriptorWithSegmentSelector<T>;
 
 
 enum DescriptorType {
@@ -85,6 +91,12 @@ constexpr DescriptorType _system_descriptor_type_map[16] = {
 };
 
 
+struct DescriptorTable {
+    u64 base; // The base address specifies the linear address of byte 0 of the IDT
+    u32 limit; // The table limit specifies the number of bytes in the table
+};
+
+
 struct Descriptor {
     // size: 64 bits
 
@@ -103,7 +115,7 @@ struct Descriptor {
         u8 accessed : 1; // The processor sets this bit whenever it loads a segment selector for the segment into a segment register, assuming that the type of memory that contains the segment descriptor supports processor writes. The bit remains set until explicitly cleared. This bit can be used both for virtual memory management and for debugging.
         u8 wr : 1; // Data: Write, Code: Read
         /**
-         * Code segments can be either conforming or nonconforming. A transfer of execution into a more-privileged
+         * Code segments can be either conforming (bit set) or nonconforming (bit clear). A transfer of execution into a more-privileged
          * conforming segment allows execution to continue at the current privilege level. A transfer into a nonconforming
          * segment at a different privilege level results in a general-protection exception (#GP), unless a call gate or task gate
          * is used (see Section 6.8.1, “Direct Calls or Jumps to Code Segments,” for more information on conforming and
