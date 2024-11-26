@@ -1,2011 +1,569 @@
 
 #include "cpu.h"
+#include "tss.h"
 
 
 namespace CPUE {
 
 
-InterruptRaisedOr<void> CPU::handle_AAA() {
-    TODO();
-} //	ASCII Adjust After Addition
-InterruptRaisedOr<void> CPU::handle_AAD() {
-    TODO();
-} //	ASCII Adjust AX Before Division
-InterruptRaisedOr<void> CPU::handle_AAM() {
-    TODO();
-} //	ASCII Adjust AX After Multiply
-InterruptRaisedOr<void> CPU::handle_AAS() {
-    TODO();
-} //	ASCII Adjust AL After Subtraction
-InterruptRaisedOr<void> CPU::handle_ADC() {
-    TODO();
-} //	Add With Carry
-InterruptRaisedOr<void> CPU::handle_ADCX() {
-    TODO();
-} //	Unsigned Integer Addition of Two Operands With Carry Flag
-InterruptRaisedOr<void> CPU::handle_ADD() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_ADDPD() {
-    TODO();
-} //	Add Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDPS() {
-    TODO();
-} //	Add Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDSD() {
-    TODO();
-} //	Add Scalar Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDSS() {
-    TODO();
-} //	Add Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDSUBPD() {
-    TODO();
-} //	Packed Double Precision Floating-Point Add/Subtract
-InterruptRaisedOr<void> CPU::handle_ADDSUBPS() {
-    TODO();
-} //	Packed Single Precision Floating-Point Add/Subtract
-InterruptRaisedOr<void> CPU::handle_ADOX() {
-    TODO();
-} //	Unsigned Integer Addition of Two Operands With Overflow Flag
-InterruptRaisedOr<void> CPU::handle_AESDEC() {
-    TODO();
-} //	Perform One Round of an AES Decryption Flow
-InterruptRaisedOr<void> CPU::handle_AESDEC128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Decryption Flow With Key Locker Using 128-BitKey
-InterruptRaisedOr<void> CPU::handle_AESDEC256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Decryption Flow With Key Locker Using 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESDECLAST() {
-    TODO();
-} //	Perform Last Round of an AES Decryption Flow
-InterruptRaisedOr<void> CPU::handle_AESDECWIDE128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Decryption Flow With Key Locker on 8 BlocksUsing 128-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESDECWIDE256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Decryption Flow With Key Locker on 8 BlocksUsing 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENC() {
-    TODO();
-} //	Perform One Round of an AES Encryption Flow
-InterruptRaisedOr<void> CPU::handle_AESENC128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Encryption Flow With Key Locker Using 128-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENC256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Encryption Flow With Key Locker Using 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENCLAST() {
-    TODO();
-} //	Perform Last Round of an AES Encryption Flow
-InterruptRaisedOr<void> CPU::handle_AESENCWIDE128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Encryption Flow With Key Locker on 8 BlocksUsing 128-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENCWIDE256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Encryption Flow With Key Locker on 8 BlocksUsing 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESIMC() {
-    TODO();
-} //	Perform the AES InvMixColumn Transformation
-InterruptRaisedOr<void> CPU::handle_AESKEYGENASSIST() {
-    TODO();
-} //	AES Round Key Generation Assist
-InterruptRaisedOr<void> CPU::handle_AND() {
-    TODO();
-} //	Logical AND
-InterruptRaisedOr<void> CPU::handle_ANDN() {
-    TODO();
-} //	Logical AND NOT
-InterruptRaisedOr<void> CPU::handle_ANDNPD() {
-    TODO();
-} //	Bitwise Logical AND NOT of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ANDNPS() {
-    TODO();
-} //	Bitwise Logical AND NOT of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ANDPD() {
-    TODO();
-} //	Bitwise Logical AND of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ANDPS() {
-    TODO();
-} //	Bitwise Logical AND of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ARPL() {
-    TODO();
-} //	Adjust RPL Field of Segment Selector
-InterruptRaisedOr<void> CPU::handle_BEXTR() {
-    TODO();
-} //	Bit Field Extract
-InterruptRaisedOr<void> CPU::handle_BLENDPD() {
-    TODO();
-} //	Blend Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLENDPS() {
-    TODO();
-} //	Blend Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLENDVPD() {
-    TODO();
-} //	Variable Blend Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLENDVPS() {
-    TODO();
-} //	Variable Blend Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLSI() {
-    TODO();
-} //	Extract Lowest Set Isolated Bit
-InterruptRaisedOr<void> CPU::handle_BLSMSK() {
-    TODO();
-} //	Get Mask Up to Lowest Set Bit
-InterruptRaisedOr<void> CPU::handle_BLSR() {
-    TODO();
-} //	Reset Lowest Set Bit
-InterruptRaisedOr<void> CPU::handle_BNDCL() {
-    TODO();
-} //	Check Lower Bound
-InterruptRaisedOr<void> CPU::handle_BNDCN() {
-    TODO();
-} //	Check Upper Bound
-InterruptRaisedOr<void> CPU::handle_BNDCU() {
-    TODO();
-} //	Check Upper Bound
-InterruptRaisedOr<void> CPU::handle_BNDLDX() {
-    TODO();
-} //	Load Extended Bounds Using Address Translation
-InterruptRaisedOr<void> CPU::handle_BNDMK() {
-    TODO();
-} //	Make Bounds
-InterruptRaisedOr<void> CPU::handle_BNDMOV() {
-    TODO();
-} //	Move Bounds
-InterruptRaisedOr<void> CPU::handle_BNDSTX() {
-    TODO();
-} //	Store Extended Bounds Using Address Translation
-InterruptRaisedOr<void> CPU::handle_BOUND() {
-    TODO();
-} //	Check Array Index Against Bounds
-InterruptRaisedOr<void> CPU::handle_BSF() {
-    TODO();
-} //	Bit Scan Forward
-InterruptRaisedOr<void> CPU::handle_BSR() {
-    TODO();
-} //	Bit Scan Reverse
-InterruptRaisedOr<void> CPU::handle_BSWAP() {
-    TODO();
-} //	Byte Swap
-InterruptRaisedOr<void> CPU::handle_BT() {
-    TODO();
-} //	Bit Test
-InterruptRaisedOr<void> CPU::handle_BTC() {
-    TODO();
-} //	Bit Test and Complement
-InterruptRaisedOr<void> CPU::handle_BTR() {
-    TODO();
-} //	Bit Test and Reset
-InterruptRaisedOr<void> CPU::handle_BTS() {
-    TODO();
-} //	Bit Test and Set
-InterruptRaisedOr<void> CPU::handle_BZHI() {
-    TODO();
-} //	Zero High Bits Starting with Specified Bit Position
-InterruptRaisedOr<void> CPU::handle_CALL() {
-    TODO();
-} //	Call Procedure
-InterruptRaisedOr<void> CPU::handle_CBW() {
-    TODO();
-} //	Convert Byte to Word/Convert Word to Doubleword/Convert Doubleword toQuadword
-InterruptRaisedOr<void> CPU::handle_CDQ() {
-    TODO();
-} //	Convert Word to Doubleword/Convert Doubleword to Quadword
-InterruptRaisedOr<void> CPU::handle_CDQE() {
-    TODO();
-} //	Convert Byte to Word/Convert Word to Doubleword/Convert Doubleword toQuadword
-InterruptRaisedOr<void> CPU::handle_CLAC() {
-    TODO();
-} //	Clear AC Flag in EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_CLC() {
-    TODO();
-} //	Clear Carry Flag
-InterruptRaisedOr<void> CPU::handle_CLD() {
-    TODO();
-} //	Clear Direction Flag
-InterruptRaisedOr<void> CPU::handle_CLDEMOTE() {
-    TODO();
-} //	Cache Line Demote
-InterruptRaisedOr<void> CPU::handle_CLFLUSH() {
-    TODO();
-} //	Flush Cache Line
-InterruptRaisedOr<void> CPU::handle_CLFLUSHOPT() {
-    TODO();
-} //	Flush Cache Line Optimized
-InterruptRaisedOr<void> CPU::handle_CLI() {
-    TODO();
-} //	Clear Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_CLRSSBSY() {
-    TODO();
-} //	Clear Busy Flag in a Supervisor Shadow Stack Token
-InterruptRaisedOr<void> CPU::handle_CLTS() {
-    TODO();
-} //	Clear Task-Switched Flag in CR0
-InterruptRaisedOr<void> CPU::handle_CLUI() {
-    TODO();
-} //	Clear User Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_CLWB() {
-    TODO();
-} //	Cache Line Write Back
-InterruptRaisedOr<void> CPU::handle_CMC() {
-    TODO();
-} //	Complement Carry Flag
-InterruptRaisedOr<void> CPU::handle_CMOVcc() {
-    TODO();
-} //	Conditional Move
-InterruptRaisedOr<void> CPU::handle_CMP() {
-    TODO();
-} //	Compare Two Operands
-InterruptRaisedOr<void> CPU::handle_CMPPD() {
-    TODO();
-} //	Compare Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CMPPS() {
-    TODO();
-} //	Compare Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CMPS() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSB() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSD() {
-    TODO();
-} // (1)	Compare Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CMPSQ() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSS() {
-    TODO();
-} //	Compare Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CMPSW() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPXCHG() {
-    TODO();
-} //	Compare and Exchange
-InterruptRaisedOr<void> CPU::handle_CMPXCHG16B() {
-    TODO();
-} //	Compare and Exchange Bytes
-InterruptRaisedOr<void> CPU::handle_CMPXCHG8B() {
-    TODO();
-} //	Compare and Exchange Bytes
-InterruptRaisedOr<void> CPU::handle_COMISD() {
-    TODO();
-} //	Compare Scalar Ordered Double Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_COMISS() {
-    TODO();
-} //	Compare Scalar Ordered Single Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_CPUID() {
-    TODO();
-} //	CPU Identification
-InterruptRaisedOr<void> CPU::handle_CQO() {
-    TODO();
-} //	Convert Word to Doubleword/Convert Doubleword to Quadword
-InterruptRaisedOr<void> CPU::handle_CRC32() {
-    TODO();
-} //	Accumulate CRC32 Value
-InterruptRaisedOr<void> CPU::handle_CVTDQ2PD() {
-    TODO();
-} //	Convert Packed Doubleword Integers to Packed Double Precision Floating-PointValues
-InterruptRaisedOr<void> CPU::handle_CVTDQ2PS() {
-    TODO();
-} //	Convert Packed Doubleword Integers to Packed Single Precision Floating-PointValues
-InterruptRaisedOr<void> CPU::handle_CVTPD2DQ() {
-    TODO();
-} //	Convert Packed Double Precision Floating-Point Values to Packed DoublewordIntegers
-InterruptRaisedOr<void> CPU::handle_CVTPD2PI() {
-    TODO();
-} //	Convert Packed Double Precision Floating-Point Values to Packed Dword Integers
-InterruptRaisedOr<void> CPU::handle_CVTPD2PS() {
-    TODO();
-} //	Convert Packed Double Precision Floating-Point Values to Packed Single PrecisionFloating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPI2PD() {
-    TODO();
-} //	Convert Packed Dword Integers to Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPI2PS() {
-    TODO();
-} //	Convert Packed Dword Integers to Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPS2DQ() {
-    TODO();
-} //	Convert Packed Single Precision Floating-Point Values to Packed SignedDoubleword Integer Values
-InterruptRaisedOr<void> CPU::handle_CVTPS2PD() {
-    TODO();
-} //	Convert Packed Single Precision Floating-Point Values to Packed Double PrecisionFloating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPS2PI() {
-    TODO();
-} //	Convert Packed Single Precision Floating-Point Values to Packed Dword Integers
-InterruptRaisedOr<void> CPU::handle_CVTSD2SI() {
-    TODO();
-} //	Convert Scalar Double Precision Floating-Point Value to Doubleword Integer
-InterruptRaisedOr<void> CPU::handle_CVTSD2SS() {
-    TODO();
-} //	Convert Scalar Double Precision Floating-Point Value to Scalar Single PrecisionFloating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSI2SD() {
-    TODO();
-} //	Convert Doubleword Integer to Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSI2SS() {
-    TODO();
-} //	Convert Doubleword Integer to Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSS2SD() {
-    TODO();
-} //	Convert Scalar Single Precision Floating-Point Value to Scalar Double PrecisionFloating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSS2SI() {
-    TODO();
-} //	Convert Scalar Single Precision Floating-Point Value to Doubleword Integer
-InterruptRaisedOr<void> CPU::handle_CVTTPD2DQ() {
-    TODO();
-} //	Convert with Truncation Packed Double Precision Floating-Point Values toPacked Doubleword Integers
-InterruptRaisedOr<void> CPU::handle_CVTTPD2PI() {
-    TODO();
-} //	Convert With Truncation Packed Double Precision Floating-Point Values to PackedDword Integers
-InterruptRaisedOr<void> CPU::handle_CVTTPS2DQ() {
-    TODO();
-} //	Convert With Truncation Packed Single Precision Floating-Point Values to PackedSigned Doubleword Integer Values
-InterruptRaisedOr<void> CPU::handle_CVTTPS2PI() {
-    TODO();
-} //	Convert With Truncation Packed Single Precision Floating-Point Values to PackedDword Integers
-InterruptRaisedOr<void> CPU::handle_CVTTSD2SI() {
-    TODO();
-} //	Convert With Truncation Scalar Double Precision Floating-Point Value to SignedInteger
-InterruptRaisedOr<void> CPU::handle_CVTTSS2SI() {
-    TODO();
-} //	Convert With Truncation Scalar Single Precision Floating-Point Value to Integer
-InterruptRaisedOr<void> CPU::handle_CWD() {
-    TODO();
-} //	Convert Word to Doubleword/Convert Doubleword to Quadword
-InterruptRaisedOr<void> CPU::handle_CWDE() {
-    TODO();
-} //	Convert Byte to Word/Convert Word to Doubleword/Convert Doubleword toQuadword
-InterruptRaisedOr<void> CPU::handle_DAA() {
-    TODO();
-} //	Decimal Adjust AL After Addition
-InterruptRaisedOr<void> CPU::handle_DAS() {
-    TODO();
-} //	Decimal Adjust AL After Subtraction
-InterruptRaisedOr<void> CPU::handle_DEC() {
-    TODO();
-} //	Decrement by 1
-InterruptRaisedOr<void> CPU::handle_DIV() {
-    TODO();
-} //	Unsigned Divide
-InterruptRaisedOr<void> CPU::handle_DIVPD() {
-    TODO();
-} //	Divide Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DIVPS() {
-    TODO();
-} //	Divide Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DIVSD() {
-    TODO();
-} //	Divide Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_DIVSS() {
-    TODO();
-} //	Divide Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DPPD() {
-    TODO();
-} //	Dot Product of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DPPS() {
-    TODO();
-} //	Dot Product of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_EMMS() {
-    TODO();
-} //	Empty MMX Technology State
-InterruptRaisedOr<void> CPU::handle_ENCODEKEY128() {
-    TODO();
-} //	Encode 128-Bit Key With Key Locker
-InterruptRaisedOr<void> CPU::handle_ENCODEKEY256() {
-    TODO();
-} //	Encode 256-Bit Key With Key Locker
-InterruptRaisedOr<void> CPU::handle_ENDBR32() {
-    TODO();
-} //	Terminate an Indirect Branch in 32-bit and Compatibility Mode
-InterruptRaisedOr<void> CPU::handle_ENDBR64() {
-    TODO();
-} //	Terminate an Indirect Branch in 64-bit Mode
-InterruptRaisedOr<void> CPU::handle_ENQCMD() {
-    TODO();
-} //	Enqueue Command
-InterruptRaisedOr<void> CPU::handle_ENQCMDS() {
-    TODO();
-} //	Enqueue Command Supervisor
-InterruptRaisedOr<void> CPU::handle_ENTER() {
-    TODO();
-} //	Make Stack Frame for Procedure Parameters
-InterruptRaisedOr<void> CPU::handle_EXTRACTPS() {
-    TODO();
-} //	Extract Packed Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_F2XM1() {
-    TODO();
-} //	Compute 2x–1
-InterruptRaisedOr<void> CPU::handle_FABS() {
-    TODO();
-} //	Absolute Value
-InterruptRaisedOr<void> CPU::handle_FADD() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_FADDP() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_FBLD() {
-    TODO();
-} //	Load Binary Coded Decimal
-InterruptRaisedOr<void> CPU::handle_FBSTP() {
-    TODO();
-} //	Store BCD Integer and Pop
-InterruptRaisedOr<void> CPU::handle_FCHS() {
-    TODO();
-} //	Change Sign
-InterruptRaisedOr<void> CPU::handle_FCLEX() {
-    TODO();
-} //	Clear Exceptions
-InterruptRaisedOr<void> CPU::handle_FCMOVcc() {
-    TODO();
-} //	Floating-Point Conditional Move
-InterruptRaisedOr<void> CPU::handle_FCOM() {
-    TODO();
-} //	Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FCOMI() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FCOMIP() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FCOMP() {
-    TODO();
-} //	Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FCOMPP() {
-    TODO();
-} //	Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FCOS() {
-    TODO();
-} //	Cosine
-InterruptRaisedOr<void> CPU::handle_FDECSTP() {
-    TODO();
-} //	Decrement Stack-Top Pointer
-InterruptRaisedOr<void> CPU::handle_FDIV() {
-    TODO();
-} //	Divide
-InterruptRaisedOr<void> CPU::handle_FDIVP() {
-    TODO();
-} //	Divide
-InterruptRaisedOr<void> CPU::handle_FDIVR() {
-    TODO();
-} //	Reverse Divide
-InterruptRaisedOr<void> CPU::handle_FDIVRP() {
-    TODO();
-} //	Reverse Divide
-InterruptRaisedOr<void> CPU::handle_FFREE() {
-    TODO();
-} //	Free Floating-Point Register
-InterruptRaisedOr<void> CPU::handle_FIADD() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_FICOM() {
-    TODO();
-} //	Compare Integer
-InterruptRaisedOr<void> CPU::handle_FICOMP() {
-    TODO();
-} //	Compare Integer
-InterruptRaisedOr<void> CPU::handle_FIDIV() {
-    TODO();
-} //	Divide
-InterruptRaisedOr<void> CPU::handle_FIDIVR() {
-    TODO();
-} //	Reverse Divide
-InterruptRaisedOr<void> CPU::handle_FILD() {
-    TODO();
-} //	Load Integer
-InterruptRaisedOr<void> CPU::handle_FIMUL() {
-    TODO();
-} //	Multiply
-InterruptRaisedOr<void> CPU::handle_FINCSTP() {
-    TODO();
-} //	Increment Stack-Top Pointer
-InterruptRaisedOr<void> CPU::handle_FINIT() {
-    TODO();
-} //	Initialize Floating-Point Unit
-InterruptRaisedOr<void> CPU::handle_FIST() {
-    TODO();
-} //	Store Integer
-InterruptRaisedOr<void> CPU::handle_FISTP() {
-    TODO();
-} //	Store Integer
-InterruptRaisedOr<void> CPU::handle_FISTTP() {
-    TODO();
-} //	Store Integer With Truncation
-InterruptRaisedOr<void> CPU::handle_FISUB() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_FISUBR() {
-    TODO();
-} //	Reverse Subtract
-InterruptRaisedOr<void> CPU::handle_FLD() {
-    TODO();
-} //	Load Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_FLD1() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDCW() {
-    TODO();
-} //	Load x87 FPU Control Word
-InterruptRaisedOr<void> CPU::handle_FLDENV() {
-    TODO();
-} //	Load x87 FPU Environment
-InterruptRaisedOr<void> CPU::handle_FLDL2E() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDL2T() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDLG2() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDLN2() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDPI() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDZ() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FMUL() {
-    TODO();
-} //	Multiply
-InterruptRaisedOr<void> CPU::handle_FMULP() {
-    TODO();
-} //	Multiply
-InterruptRaisedOr<void> CPU::handle_FNCLEX() {
-    TODO();
-} //	Clear Exceptions
-InterruptRaisedOr<void> CPU::handle_FNINIT() {
-    TODO();
-} //	Initialize Floating-Point Unit
-InterruptRaisedOr<void> CPU::handle_FNOP() {
-    TODO();
-} //	No Operation
-InterruptRaisedOr<void> CPU::handle_FNSAVE() {
-    TODO();
-} //	Store x87 FPU State
-InterruptRaisedOr<void> CPU::handle_FNSTCW() {
-    TODO();
-} //	Store x87 FPU Control Word
-InterruptRaisedOr<void> CPU::handle_FNSTENV() {
-    TODO();
-} //	Store x87 FPU Environment
-InterruptRaisedOr<void> CPU::handle_FNSTSW() {
-    TODO();
-} //	Store x87 FPU Status Word
-InterruptRaisedOr<void> CPU::handle_FPATAN() {
-    TODO();
-} //	Partial Arctangent
-InterruptRaisedOr<void> CPU::handle_FPREM() {
-    TODO();
-} //	Partial Remainder
-InterruptRaisedOr<void> CPU::handle_FPREM1() {
-    TODO();
-} //	Partial Remainder
-InterruptRaisedOr<void> CPU::handle_FPTAN() {
-    TODO();
-} //	Partial Tangent
-InterruptRaisedOr<void> CPU::handle_FRNDINT() {
-    TODO();
-} //	Round to Integer
-InterruptRaisedOr<void> CPU::handle_FRSTOR() {
-    TODO();
-} //	Restore x87 FPU State
-InterruptRaisedOr<void> CPU::handle_FSAVE() {
-    TODO();
-} //	Store x87 FPU State
-InterruptRaisedOr<void> CPU::handle_FSCALE() {
-    TODO();
-} //	Scale
-InterruptRaisedOr<void> CPU::handle_FSIN() {
-    TODO();
-} //	Sine
-InterruptRaisedOr<void> CPU::handle_FSINCOS() {
-    TODO();
-} //	Sine and Cosine
-InterruptRaisedOr<void> CPU::handle_FSQRT() {
-    TODO();
-} //	Square Root
-InterruptRaisedOr<void> CPU::handle_FST() {
-    TODO();
-} //	Store Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_FSTCW() {
-    TODO();
-} //	Store x87 FPU Control Word
-InterruptRaisedOr<void> CPU::handle_FSTENV() {
-    TODO();
-} //	Store x87 FPU Environment
-InterruptRaisedOr<void> CPU::handle_FSTP() {
-    TODO();
-} //	Store Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_FSTSW() {
-    TODO();
-} //	Store x87 FPU Status Word
-InterruptRaisedOr<void> CPU::handle_FSUB() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_FSUBP() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_FSUBR() {
-    TODO();
-} //	Reverse Subtract
-InterruptRaisedOr<void> CPU::handle_FSUBRP() {
-    TODO();
-} //	Reverse Subtract
-InterruptRaisedOr<void> CPU::handle_FTST() {
-    TODO();
-} //	TEST
-InterruptRaisedOr<void> CPU::handle_FUCOM() {
-    TODO();
-} //	Unordered Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FUCOMI() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FUCOMIP() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FUCOMP() {
-    TODO();
-} //	Unordered Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FUCOMPP() {
-    TODO();
-} //	Unordered Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FWAIT() {
-    TODO();
-} //	Wait
-InterruptRaisedOr<void> CPU::handle_FXAM() {
-    TODO();
-} //	Examine Floating-Point
-InterruptRaisedOr<void> CPU::handle_FXCH() {
-    TODO();
-} //	Exchange Register Contents
-InterruptRaisedOr<void> CPU::handle_FXRSTOR() {
-    TODO();
-} //	Restore x87 FPU, MMX, XMM, and MXCSR State
-InterruptRaisedOr<void> CPU::handle_FXSAVE() {
-    TODO();
-} //	Save x87 FPU, MMX Technology, and SSE State
-InterruptRaisedOr<void> CPU::handle_FXTRACT() {
-    TODO();
-} //	Extract Exponent and Significand
-InterruptRaisedOr<void> CPU::handle_FYL2X() {
-    TODO();
-} //	Compute y ∗ log2x
-InterruptRaisedOr<void> CPU::handle_FYL2XP1() {
-    TODO();
-} //	Compute y ∗ log2(x +1)
-InterruptRaisedOr<void> CPU::handle_GF2P8AFFINEINVQB() {
-    TODO();
-} //	Galois Field Affine Transformation Inverse
-InterruptRaisedOr<void> CPU::handle_GF2P8AFFINEQB() {
-    TODO();
-} //	Galois Field Affine Transformation
-InterruptRaisedOr<void> CPU::handle_GF2P8MULB() {
-    TODO();
-} //	Galois Field Multiply Bytes
-InterruptRaisedOr<void> CPU::handle_HADDPD() {
-    TODO();
-} //	Packed Double Precision Floating-Point Horizontal Add
-InterruptRaisedOr<void> CPU::handle_HADDPS() {
-    TODO();
-} //	Packed Single Precision Floating-Point Horizontal Add
-InterruptRaisedOr<void> CPU::handle_HLT() {
-    TODO();
-} //	Halt
-InterruptRaisedOr<void> CPU::handle_HRESET() {
-    TODO();
-} //	History Reset
-InterruptRaisedOr<void> CPU::handle_HSUBPD() {
-    TODO();
-} //	Packed Double Precision Floating-Point Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_HSUBPS() {
-    TODO();
-} //	Packed Single Precision Floating-Point Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_IDIV() {
-    TODO();
-} //	Signed Divide
-InterruptRaisedOr<void> CPU::handle_IMUL() {
-    TODO();
-} //	Signed Multiply
-InterruptRaisedOr<void> CPU::handle_IN() {
-    TODO();
-} //	Input From Port
-InterruptRaisedOr<void> CPU::handle_INC() {
-    TODO();
-} //	Increment by 1
-InterruptRaisedOr<void> CPU::handle_INCSSPD() {
-    TODO();
-} //	Increment Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_INCSSPQ() {
-    TODO();
-} //	Increment Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_INS() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INSB() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INSD() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INSERTPS() {
-    TODO();
-} //	Insert Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_INSW() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INT() {
-    TODO();
-} // n	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INT1() {
-    TODO();
-} //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INT3() {
-    TODO();
-} //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INTO() {
-    TODO();
-} //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INVD() {
-    TODO();
-} //	Invalidate Internal Caches
-InterruptRaisedOr<void> CPU::handle_INVLPG() {
-    TODO();
-} //	Invalidate TLB Entries
-InterruptRaisedOr<void> CPU::handle_INVPCID() {
-    TODO();
-} //	Invalidate Process-Context Identifier
-InterruptRaisedOr<void> CPU::handle_IRET() {
-    TODO();
-} //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_IRETD() {
-    TODO();
-} //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_IRETQ() {
-    TODO();
-} //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_JMP() {
-    TODO();
-} //	Jump
-InterruptRaisedOr<void> CPU::handle_Jcc() {
-    TODO();
-} //	Jump if Condition Is Met
-InterruptRaisedOr<void> CPU::handle_KADDB() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KADDD() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KADDQ() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KADDW() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KANDB() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KANDD() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KANDNB() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDND() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDNQ() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDNW() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDQ() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KANDW() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KMOVB() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KMOVD() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KMOVQ() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KMOVW() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KNOTB() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KNOTD() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KNOTQ() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KNOTW() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KORB() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KORD() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KORQ() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KORTESTB() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORTESTD() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORTESTQ() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORTESTW() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORW() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KSHIFTLB() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTLD() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTLQ() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTLW() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRB() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRD() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRQ() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRW() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KTESTB() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KTESTD() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KTESTQ() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KTESTW() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KUNPCKBW() {
-    TODO();
-} //	Unpack for Mask Registers
-InterruptRaisedOr<void> CPU::handle_KUNPCKDQ() {
-    TODO();
-} //	Unpack for Mask Registers
-InterruptRaisedOr<void> CPU::handle_KUNPCKWD() {
-    TODO();
-} //	Unpack for Mask Registers
-InterruptRaisedOr<void> CPU::handle_KXNORB() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXNORD() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXNORQ() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXNORW() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORB() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORD() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORQ() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORW() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_LAHF() {
-    TODO();
-} //	Load Status Flags Into AH Register
-InterruptRaisedOr<void> CPU::handle_LAR() {
-    TODO();
-} //	Load Access Rights Byte
-InterruptRaisedOr<void> CPU::handle_LDDQU() {
-    TODO();
-} //	Load Unaligned Integer 128 Bits
-InterruptRaisedOr<void> CPU::handle_LDMXCSR() {
-    TODO();
-} //	Load MXCSR Register
-InterruptRaisedOr<void> CPU::handle_LDS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LDTILECFG() {
-    TODO();
-} //	Load Tile Configuration
-InterruptRaisedOr<void> CPU::handle_LEA() {
-    TODO();
-} //	Load Effective Address
-InterruptRaisedOr<void> CPU::handle_LEAVE() {
-    TODO();
-} //	High Level Procedure Exit
-InterruptRaisedOr<void> CPU::handle_LES() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LFENCE() {
-    TODO();
-} //	Load Fence
-InterruptRaisedOr<void> CPU::handle_LFS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LGDT() {
-    TODO();
-} //	Load Global/Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LGS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LIDT() {
-    TODO();
-} //	Load Global/Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LLDT() {
-    TODO();
-} //	Load Local Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LMSW() {
-    TODO();
-} //	Load Machine Status Word
-InterruptRaisedOr<void> CPU::handle_LOADIWKEY() {
-    TODO();
-} //	Load Internal Wrapping Key With Key Locker
-InterruptRaisedOr<void> CPU::handle_LOCK() {
-    TODO();
-} //	Assert LOCK# Signal Prefix
-InterruptRaisedOr<void> CPU::handle_LODS() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSB() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSD() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSQ() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSW() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LOOP() {
-    TODO();
-} //	Loop According to ECX Counter
-InterruptRaisedOr<void> CPU::handle_LOOPcc() {
-    TODO();
-} //	Loop According to ECX Counter
-InterruptRaisedOr<void> CPU::handle_LSL() {
-    TODO();
-} //	Load Segment Limit
-InterruptRaisedOr<void> CPU::handle_LSS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LTR() {
-    TODO();
-} //	Load Task Register
-InterruptRaisedOr<void> CPU::handle_LZCNT() {
-    TODO();
-} //	Count the Number of Leading Zero Bits
-InterruptRaisedOr<void> CPU::handle_MASKMOVDQU() {
-    TODO();
-} //	Store Selected Bytes of Double Quadword
-InterruptRaisedOr<void> CPU::handle_MASKMOVQ() {
-    TODO();
-} //	Store Selected Bytes of Quadword
-InterruptRaisedOr<void> CPU::handle_MAXPD() {
-    TODO();
-} //	Maximum of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MAXPS() {
-    TODO();
-} //	Maximum of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MAXSD() {
-    TODO();
-} //	Return Maximum Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MAXSS() {
-    TODO();
-} //	Return Maximum Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MFENCE() {
-    TODO();
-} //	Memory Fence
-InterruptRaisedOr<void> CPU::handle_MINPD() {
-    TODO();
-} //	Minimum of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MINPS() {
-    TODO();
-} //	Minimum of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MINSD() {
-    TODO();
-} //	Return Minimum Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MINSS() {
-    TODO();
-} //	Return Minimum Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MONITOR() {
-    TODO();
-} //	Set Up Monitor Address
-InterruptRaisedOr<void> CPU::handle_MOV() {
-    TODO();
-} //	Move
-InterruptRaisedOr<void> CPU::handle_MOVAPD() {
-    TODO();
-} //	Move Aligned Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVAPS() {
-    TODO();
-} //	Move Aligned Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVBE() {
-    TODO();
-} //	Move Data After Swapping Bytes
-InterruptRaisedOr<void> CPU::handle_MOVD() {
-    TODO();
-} //	Move Doubleword/Move Quadword
-InterruptRaisedOr<void> CPU::handle_MOVDDUP() {
-    TODO();
-} //	Replicate Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVDIR64B() {
-    TODO();
-} //	Move 64 Bytes as Direct Store
-InterruptRaisedOr<void> CPU::handle_MOVDIRI() {
-    TODO();
-} //	Move Doubleword as Direct Store
-InterruptRaisedOr<void> CPU::handle_MOVDQ2Q() {
-    TODO();
-} //	Move Quadword from XMM to MMX Technology Register
-InterruptRaisedOr<void> CPU::handle_MOVDQA() {
-    TODO();
-} //	Move Aligned Packed Integer Values
-InterruptRaisedOr<void> CPU::handle_MOVDQU() {
-    TODO();
-} //	Move Unaligned Packed Integer Values
-InterruptRaisedOr<void> CPU::handle_MOVHLPS() {
-    TODO();
-} //	Move Packed Single Precision Floating-Point Values High to Low
-InterruptRaisedOr<void> CPU::handle_MOVHPD() {
-    TODO();
-} //	Move High Packed Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MOVHPS() {
-    TODO();
-} //	Move High Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVLHPS() {
-    TODO();
-} //	Move Packed Single Precision Floating-Point Values Low to High
-InterruptRaisedOr<void> CPU::handle_MOVLPD() {
-    TODO();
-} //	Move Low Packed Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MOVLPS() {
-    TODO();
-} //	Move Low Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVMSKPD() {
-    TODO();
-} //	Extract Packed Double Precision Floating-Point Sign Mask
-InterruptRaisedOr<void> CPU::handle_MOVMSKPS() {
-    TODO();
-} //	Extract Packed Single Precision Floating-Point Sign Mask
-InterruptRaisedOr<void> CPU::handle_MOVNTDQ() {
-    TODO();
-} //	Store Packed Integers Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTDQA() {
-    TODO();
-} //	Load Double Quadword Non-Temporal Aligned Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTI() {
-    TODO();
-} //	Store Doubleword Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTPD() {
-    TODO();
-} //	Store Packed Double Precision Floating-Point Values Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTPS() {
-    TODO();
-} //	Store Packed Single Precision Floating-Point Values Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTQ() {
-    TODO();
-} //	Store of Quadword Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVQ() {
-    TODO();
-} //	Move Doubleword/Move Quadword
-InterruptRaisedOr<void> CPU::handle_MOVQ2DQ() {
-    TODO();
-} //	Move Quadword from MMX Technology to XMM Register
-InterruptRaisedOr<void> CPU::handle_MOVS() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSB() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSD() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSHDUP() {
-    TODO();
-} //	Replicate Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVSLDUP() {
-    TODO();
-} //	Replicate Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVSQ() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSS() {
-    TODO();
-} //	Move or Merge Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MOVSW() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSX() {
-    TODO();
-} //	Move With Sign-Extension
-InterruptRaisedOr<void> CPU::handle_MOVSXD() {
-    TODO();
-} //	Move With Sign-Extension
-InterruptRaisedOr<void> CPU::handle_MOVUPD() {
-    TODO();
-} //	Move Unaligned Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVUPS() {
-    TODO();
-} //	Move Unaligned Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVZX() {
-    TODO();
-} //	Move With Zero-Extend
-InterruptRaisedOr<void> CPU::handle_MPSADBW() {
-    TODO();
-} //	Compute Multiple Packed Sums of Absolute Difference
-InterruptRaisedOr<void> CPU::handle_MUL() {
-    TODO();
-} //	Unsigned Multiply
-InterruptRaisedOr<void> CPU::handle_MULPD() {
-    TODO();
-} //	Multiply Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MULPS() {
-    TODO();
-} //	Multiply Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MULSD() {
-    TODO();
-} //	Multiply Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MULSS() {
-    TODO();
-} //	Multiply Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MULX() {
-    TODO();
-} //	Unsigned Multiply Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_MWAIT() {
-    TODO();
-} //	Monitor Wait
-InterruptRaisedOr<void> CPU::handle_NEG() {
-    TODO();
-} //	Two's Complement Negation
-InterruptRaisedOr<void> CPU::handle_NOP() {
-    TODO();
-} //	No Operation
-InterruptRaisedOr<void> CPU::handle_NOT() {
-    TODO();
-} //	One's Complement Negation
-InterruptRaisedOr<void> CPU::handle_OR() {
-    TODO();
-} //	Logical Inclusive OR
-InterruptRaisedOr<void> CPU::handle_ORPD() {
-    TODO();
-} //	Bitwise Logical OR of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ORPS() {
-    TODO();
-} //	Bitwise Logical OR of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_OUT() {
-    TODO();
-} //	Output to Port
-InterruptRaisedOr<void> CPU::handle_OUTS() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_OUTSB() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_OUTSD() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_OUTSW() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_PABSB() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PABSD() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PABSQ() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PABSW() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PACKSSDW() {
-    TODO();
-} //	Pack With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PACKSSWB() {
-    TODO();
-} //	Pack With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PACKUSDW() {
-    TODO();
-} //	Pack With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PACKUSWB() {
-    TODO();
-} //	Pack With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PADDB() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PADDD() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PADDQ() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PADDSB() {
-    TODO();
-} //	Add Packed Signed Integers with Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PADDSW() {
-    TODO();
-} //	Add Packed Signed Integers with Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PADDUSB() {
-    TODO();
-} //	Add Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PADDUSW() {
-    TODO();
-} //	Add Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PADDW() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PALIGNR() {
-    TODO();
-} //	Packed Align Right
-InterruptRaisedOr<void> CPU::handle_PAND() {
-    TODO();
-} //	Logical AND
-InterruptRaisedOr<void> CPU::handle_PANDN() {
-    TODO();
-} //	Logical AND NOT
-InterruptRaisedOr<void> CPU::handle_PAUSE() {
-    TODO();
-} //	Spin Loop Hint
-InterruptRaisedOr<void> CPU::handle_PAVGB() {
-    TODO();
-} //	Average Packed Integers
-InterruptRaisedOr<void> CPU::handle_PAVGW() {
-    TODO();
-} //	Average Packed Integers
-InterruptRaisedOr<void> CPU::handle_PBLENDVB() {
-    TODO();
-} //	Variable Blend Packed Bytes
-InterruptRaisedOr<void> CPU::handle_PBLENDW() {
-    TODO();
-} //	Blend Packed Words
-InterruptRaisedOr<void> CPU::handle_PCLMULQDQ() {
-    TODO();
-} //	Carry-Less Multiplication Quadword
-InterruptRaisedOr<void> CPU::handle_PCMPEQB() {
-    TODO();
-} //	Compare Packed Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPEQD() {
-    TODO();
-} //	Compare Packed Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPEQQ() {
-    TODO();
-} //	Compare Packed Qword Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPEQW() {
-    TODO();
-} //	Compare Packed Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPESTRI() {
-    TODO();
-} //	Packed Compare Explicit Length Strings, Return Index
-InterruptRaisedOr<void> CPU::handle_PCMPESTRM() {
-    TODO();
-} //	Packed Compare Explicit Length Strings, Return Mask
-InterruptRaisedOr<void> CPU::handle_PCMPGTB() {
-    TODO();
-} //	Compare Packed Signed Integers for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPGTD() {
-    TODO();
-} //	Compare Packed Signed Integers for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPGTQ() {
-    TODO();
-} //	Compare Packed Data for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPGTW() {
-    TODO();
-} //	Compare Packed Signed Integers for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPISTRI() {
-    TODO();
-} //	Packed Compare Implicit Length Strings, Return Index
-InterruptRaisedOr<void> CPU::handle_PCMPISTRM() {
-    TODO();
-} //	Packed Compare Implicit Length Strings, Return Mask
-InterruptRaisedOr<void> CPU::handle_PCONFIG() {
-    TODO();
-} //	Platform Configuration
-InterruptRaisedOr<void> CPU::handle_PDEP() {
-    TODO();
-} //	Parallel Bits Deposit
-InterruptRaisedOr<void> CPU::handle_PEXT() {
-    TODO();
-} //	Parallel Bits Extract
-InterruptRaisedOr<void> CPU::handle_PEXTRB() {
-    TODO();
-} //	Extract Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PEXTRD() {
-    TODO();
-} //	Extract Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PEXTRQ() {
-    TODO();
-} //	Extract Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PEXTRW() {
-    TODO();
-} //	Extract Word
-InterruptRaisedOr<void> CPU::handle_PHADDD() {
-    TODO();
-} //	Packed Horizontal Add
-InterruptRaisedOr<void> CPU::handle_PHADDSW() {
-    TODO();
-} //	Packed Horizontal Add and Saturate
-InterruptRaisedOr<void> CPU::handle_PHADDW() {
-    TODO();
-} //	Packed Horizontal Add
-InterruptRaisedOr<void> CPU::handle_PHMINPOSUW() {
-    TODO();
-} //	Packed Horizontal Word Minimum
-InterruptRaisedOr<void> CPU::handle_PHSUBD() {
-    TODO();
-} //	Packed Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_PHSUBSW() {
-    TODO();
-} //	Packed Horizontal Subtract and Saturate
-InterruptRaisedOr<void> CPU::handle_PHSUBW() {
-    TODO();
-} //	Packed Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_PINSRB() {
-    TODO();
-} //	Insert Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PINSRD() {
-    TODO();
-} //	Insert Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PINSRQ() {
-    TODO();
-} //	Insert Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PINSRW() {
-    TODO();
-} //	Insert Word
-InterruptRaisedOr<void> CPU::handle_PMADDUBSW() {
-    TODO();
-} //	Multiply and Add Packed Signed and Unsigned Bytes
-InterruptRaisedOr<void> CPU::handle_PMADDWD() {
-    TODO();
-} //	Multiply and Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSB() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSD() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSQ() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSW() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUB() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUD() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUQ() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUW() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINSB() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINSD() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINSQ() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINSW() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINUB() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINUD() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINUQ() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINUW() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMOVMSKB() {
-    TODO();
-} //	Move Byte Mask
-InterruptRaisedOr<void> CPU::handle_PMOVSX() {
-    TODO();
-} //	Packed Move With Sign Extend
-InterruptRaisedOr<void> CPU::handle_PMOVZX() {
-    TODO();
-} //	Packed Move With Zero Extend
-InterruptRaisedOr<void> CPU::handle_PMULDQ() {
-    TODO();
-} //	Multiply Packed Doubleword Integers
-InterruptRaisedOr<void> CPU::handle_PMULHRSW() {
-    TODO();
-} //	Packed Multiply High With Round and Scale
-InterruptRaisedOr<void> CPU::handle_PMULHUW() {
-    TODO();
-} //	Multiply Packed Unsigned Integers and Store High Result
-InterruptRaisedOr<void> CPU::handle_PMULHW() {
-    TODO();
-} //	Multiply Packed Signed Integers and Store High Result
-InterruptRaisedOr<void> CPU::handle_PMULLD() {
-    TODO();
-} //	Multiply Packed Integers and Store Low Result
-InterruptRaisedOr<void> CPU::handle_PMULLQ() {
-    TODO();
-} //	Multiply Packed Integers and Store Low Result
-InterruptRaisedOr<void> CPU::handle_PMULLW() {
-    TODO();
-} //	Multiply Packed Signed Integers and Store Low Result
-InterruptRaisedOr<void> CPU::handle_PMULUDQ() {
-    TODO();
-} //	Multiply Packed Unsigned Doubleword Integers
-InterruptRaisedOr<void> CPU::handle_POP() {
-    TODO();
-} //	Pop a Value From the Stack
-InterruptRaisedOr<void> CPU::handle_POPA() {
-    TODO();
-} //	Pop All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_POPAD() {
-    TODO();
-} //	Pop All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_POPCNT() {
-    TODO();
-} //	Return the Count of Number of Bits Set to 1
-InterruptRaisedOr<void> CPU::handle_POPF() {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POPFD() {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POPFQ() {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POR() {
-    TODO();
-} //	Bitwise Logical OR
-InterruptRaisedOr<void> CPU::handle_PREFETCHW() {
-    TODO();
-} //	Prefetch Data Into Caches in Anticipation of a Write
-InterruptRaisedOr<void> CPU::handle_PREFETCHh() {
-    TODO();
-} //	Prefetch Data Into Caches
-InterruptRaisedOr<void> CPU::handle_PSADBW() {
-    TODO();
-} //	Compute Sum of Absolute Differences
-InterruptRaisedOr<void> CPU::handle_PSHUFB() {
-    TODO();
-} //	Packed Shuffle Bytes
-InterruptRaisedOr<void> CPU::handle_PSHUFD() {
-    TODO();
-} //	Shuffle Packed Doublewords
-InterruptRaisedOr<void> CPU::handle_PSHUFHW() {
-    TODO();
-} //	Shuffle Packed High Words
-InterruptRaisedOr<void> CPU::handle_PSHUFLW() {
-    TODO();
-} //	Shuffle Packed Low Words
-InterruptRaisedOr<void> CPU::handle_PSHUFW() {
-    TODO();
-} //	Shuffle Packed Words
-InterruptRaisedOr<void> CPU::handle_PSIGNB() {
-    TODO();
-} //	Packed SIGN
-InterruptRaisedOr<void> CPU::handle_PSIGND() {
-    TODO();
-} //	Packed SIGN
-InterruptRaisedOr<void> CPU::handle_PSIGNW() {
-    TODO();
-} //	Packed SIGN
-InterruptRaisedOr<void> CPU::handle_PSLLD() {
-    TODO();
-} //	Shift Packed Data Left Logical
-InterruptRaisedOr<void> CPU::handle_PSLLDQ() {
-    TODO();
-} //	Shift Double Quadword Left Logical
-InterruptRaisedOr<void> CPU::handle_PSLLQ() {
-    TODO();
-} //	Shift Packed Data Left Logical
-InterruptRaisedOr<void> CPU::handle_PSLLW() {
-    TODO();
-} //	Shift Packed Data Left Logical
-InterruptRaisedOr<void> CPU::handle_PSRAD() {
-    TODO();
-} //	Shift Packed Data Right Arithmetic
-InterruptRaisedOr<void> CPU::handle_PSRAQ() {
-    TODO();
-} //	Shift Packed Data Right Arithmetic
-InterruptRaisedOr<void> CPU::handle_PSRAW() {
-    TODO();
-} //	Shift Packed Data Right Arithmetic
-InterruptRaisedOr<void> CPU::handle_PSRLD() {
-    TODO();
-} //	Shift Packed Data Right Logical
-InterruptRaisedOr<void> CPU::handle_PSRLDQ() {
-    TODO();
-} //	Shift Double Quadword Right Logical
-InterruptRaisedOr<void> CPU::handle_PSRLQ() {
-    TODO();
-} //	Shift Packed Data Right Logical
-InterruptRaisedOr<void> CPU::handle_PSRLW() {
-    TODO();
-} //	Shift Packed Data Right Logical
-InterruptRaisedOr<void> CPU::handle_PSUBB() {
-    TODO();
-} //	Subtract Packed Integers
-InterruptRaisedOr<void> CPU::handle_PSUBD() {
-    TODO();
-} //	Subtract Packed Integers
-InterruptRaisedOr<void> CPU::handle_PSUBQ() {
-    TODO();
-} //	Subtract Packed Quadword Integers
-InterruptRaisedOr<void> CPU::handle_PSUBSB() {
-    TODO();
-} //	Subtract Packed Signed Integers With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBSW() {
-    TODO();
-} //	Subtract Packed Signed Integers With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBUSB() {
-    TODO();
-} //	Subtract Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBUSW() {
-    TODO();
-} //	Subtract Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBW() {
-    TODO();
-} //	Subtract Packed Integers
-InterruptRaisedOr<void> CPU::handle_PTEST() {
-    TODO();
-} //	Logical Compare
-InterruptRaisedOr<void> CPU::handle_PTWRITE() {
-    TODO();
-} //	Write Data to a Processor Trace Packet
-InterruptRaisedOr<void> CPU::handle_PUNPCKHBW() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKHDQ() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKHQDQ() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKHWD() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLBW() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLDQ() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLQDQ() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLWD() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUSH() {
-    TODO();
-} //	Push Word, Doubleword, or Quadword Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHA() {
-    TODO();
-} //	Push All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_PUSHAD() {
-    TODO();
-} //	Push All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_PUSHF() {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHFD() {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHFQ() {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PXOR() {
-    TODO();
-} //	Logical Exclusive OR
-InterruptRaisedOr<void> CPU::handle_RCL() {
-    TODO();
-} //	Rotate
-InterruptRaisedOr<void> CPU::handle_RCPPS() {
-    TODO();
-} //	Compute Reciprocals of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_RCPSS() {
-    TODO();
-} //	Compute Reciprocal of Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_RCR() {
-    TODO();
-} //	Rotate
-InterruptRaisedOr<void> CPU::handle_RDFSBASE() {
-    TODO();
-} //	Read FS/GS Segment Base
-InterruptRaisedOr<void> CPU::handle_RDGSBASE() {
-    TODO();
-} //	Read FS/GS Segment Base
-InterruptRaisedOr<void> CPU::handle_RDMSR() {
-    TODO();
-} //	Read From Model Specific Register
-InterruptRaisedOr<void> CPU::handle_RDPID() {
-    TODO();
-} //	Read Processor ID
-InterruptRaisedOr<void> CPU::handle_RDPKRU() {
-    TODO();
-} //	Read Protection Key Rights for User Pages
-InterruptRaisedOr<void> CPU::handle_RDPMC() {
-    TODO();
-} //	Read Performance-Monitoring Counters
-InterruptRaisedOr<void> CPU::handle_RDRAND() {
-    TODO();
-} //	Read Random Number
-InterruptRaisedOr<void> CPU::handle_RDSEED() {
-    TODO();
-} //	Read Random SEED
-InterruptRaisedOr<void> CPU::handle_RDSSPD() {
-    TODO();
-} //	Read Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_RDSSPQ() {
-    TODO();
-} //	Read Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_RDTSC() {
-    TODO();
-} //	Read Time-Stamp Counter
-InterruptRaisedOr<void> CPU::handle_RDTSCP() {
-    TODO();
-} //	Read Time-Stamp Counter and Processor ID
-InterruptRaisedOr<void> CPU::handle_REP() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPE() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPNE() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPNZ() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPZ() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_RET() {
-    TODO();
-} //	Return From Procedure
-InterruptRaisedOr<void> CPU::handle_ROL() {
-    TODO();
-} //	Rotate
-InterruptRaisedOr<void> CPU::handle_ROR() {
-    TODO();
-} //	Rotate
-InterruptRaisedOr<void> CPU::handle_RORX() {
-    TODO();
-} //	Rotate Right Logical Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_ROUNDPD() {
-    TODO();
-} //	Round Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ROUNDPS() {
-    TODO();
-} //	Round Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ROUNDSD() {
-    TODO();
-} //	Round Scalar Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ROUNDSS() {
-    TODO();
-} //	Round Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_RSM() {
-    TODO();
-} //	Resume From System Management Mode
-InterruptRaisedOr<void> CPU::handle_RSQRTPS() {
-    TODO();
-} //	Compute Reciprocals of Square Roots of Packed Single Precision Floating-PointValues
-InterruptRaisedOr<void> CPU::handle_RSQRTSS() {
-    TODO();
-} //	Compute Reciprocal of Square Root of Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_RSTORSSP() {
-    TODO();
-} //	Restore Saved Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_SAHF() {
-    TODO();
-} //	Store AH Into Flags
-InterruptRaisedOr<void> CPU::handle_SAL() {
-    TODO();
-} //	Shift
-InterruptRaisedOr<void> CPU::handle_SAR() {
-    TODO();
-} //	Shift
-InterruptRaisedOr<void> CPU::handle_SARX() {
-    TODO();
-} //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SAVEPREVSSP() {
-    TODO();
-} //	Save Previous Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_SBB() {
-    TODO();
-} //	Integer Subtraction With Borrow
-InterruptRaisedOr<void> CPU::handle_SCAS() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SCASB() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SCASD() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SCASW() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SENDUIPI() {
-    TODO();
-} //	Send User Interprocessor Interrupt
-InterruptRaisedOr<void> CPU::handle_SERIALIZE() {
-    TODO();
-} //	Serialize Instruction Execution
-InterruptRaisedOr<void> CPU::handle_SETSSBSY() {
-    TODO();
-} //	Mark Shadow Stack Busy
-InterruptRaisedOr<void> CPU::handle_SETcc() {
-    TODO();
-} //	Set Byte on Condition
-InterruptRaisedOr<void> CPU::handle_SFENCE() {
-    TODO();
-} //	Store Fence
-InterruptRaisedOr<void> CPU::handle_SGDT() {
-    TODO();
-} //	Store Global Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SHA1MSG1() {
-    TODO();
-} //	Perform an Intermediate Calculation for the Next Four SHA1 Message Dwords
-InterruptRaisedOr<void> CPU::handle_SHA1MSG2() {
-    TODO();
-} //	Perform a Final Calculation for the Next Four SHA1 Message Dwords
-InterruptRaisedOr<void> CPU::handle_SHA1NEXTE() {
-    TODO();
-} //	Calculate SHA1 State Variable E After Four Rounds
-InterruptRaisedOr<void> CPU::handle_SHA1RNDS4() {
-    TODO();
-} //	Perform Four Rounds of SHA1 Operation
-InterruptRaisedOr<void> CPU::handle_SHA256MSG1() {
-    TODO();
-} //	Perform an Intermediate Calculation for the Next Four SHA256 MessageDwords
-InterruptRaisedOr<void> CPU::handle_SHA256MSG2() {
-    TODO();
-} //	Perform a Final Calculation for the Next Four SHA256 Message Dwords
-InterruptRaisedOr<void> CPU::handle_SHA256RNDS2() {
-    TODO();
-} //	Perform Two Rounds of SHA256 Operation
-InterruptRaisedOr<void> CPU::handle_SHL() {
-    TODO();
-} //	Shift
-InterruptRaisedOr<void> CPU::handle_SHLD() {
-    TODO();
-} //	Double Precision Shift Left
-InterruptRaisedOr<void> CPU::handle_SHLX() {
-    TODO();
-} //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SHR() {
-    TODO();
-} //	Shift
-InterruptRaisedOr<void> CPU::handle_SHRD() {
-    TODO();
-} //	Double Precision Shift Right
-InterruptRaisedOr<void> CPU::handle_SHRX() {
-    TODO();
-} //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SHUFPD() {
-    TODO();
-} //	Packed Interleave Shuffle of Pairs of Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SHUFPS() {
-    TODO();
-} //	Packed Interleave Shuffle of Quadruplets of Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SIDT() {
-    TODO();
-} //	Store Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SLDT() {
-    TODO();
-} //	Store Local Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SMSW() {
-    TODO();
-} //	Store Machine Status Word
-InterruptRaisedOr<void> CPU::handle_SQRTPD() {
-    TODO();
-} //	Square Root of Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SQRTPS() {
-    TODO();
-} //	Square Root of Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SQRTSD() {
-    TODO();
-} //	Compute Square Root of Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_SQRTSS() {
-    TODO();
-} //	Compute Square Root of Scalar Single Precision Value
-InterruptRaisedOr<void> CPU::handle_STAC() {
-    TODO();
-} //	Set AC Flag in EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_STC() {
-    TODO();
-} //	Set Carry Flag
-InterruptRaisedOr<void> CPU::handle_STD() {
-    TODO();
-} //	Set Direction Flag
-InterruptRaisedOr<void> CPU::handle_STI() {
-    TODO();
-} //	Set Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_STMXCSR() {
-    TODO();
-} //	Store MXCSR Register State
-InterruptRaisedOr<void> CPU::handle_STOS() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSB() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSD() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSQ() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSW() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STR() {
-    TODO();
-} //	Store Task Register
-InterruptRaisedOr<void> CPU::handle_STTILECFG() {
-    TODO();
-} //	Store Tile Configuration
-InterruptRaisedOr<void> CPU::handle_STUI() {
-    TODO();
-} //	Set User Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_SUB() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_SUBPD() {
-    TODO();
-} //	Subtract Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SUBPS() {
-    TODO();
-} //	Subtract Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SUBSD() {
-    TODO();
-} //	Subtract Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_SUBSS() {
-    TODO();
-} //	Subtract Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_SWAPGS() {
-    TODO();
-} //	Swap GS Base Register
-InterruptRaisedOr<void> CPU::handle_SYSCALL() {
-    TODO();
-} //	Fast System Call
-InterruptRaisedOr<void> CPU::handle_SYSENTER() {
-    TODO();
-} //	Fast System Call
-InterruptRaisedOr<void> CPU::handle_SYSEXIT() {
-    TODO();
-} //	Fast Return from Fast System Call
-InterruptRaisedOr<void> CPU::handle_SYSRET() {
-    TODO();
-} //	Return From Fast System Call
-InterruptRaisedOr<void> CPU::handle_TDPBF16PS() {
-    TODO();
-} //	Dot Product of BF16 Tiles Accumulated into Packed Single Precision Tile
-InterruptRaisedOr<void> CPU::handle_TDPBSSD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TDPBSUD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TDPBUSD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TDPBUUD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TEST() {
-    TODO();
-} //	Logical Compare
-InterruptRaisedOr<void> CPU::handle_TESTUI() {
-    TODO();
-} //	Determine User Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_TILELOADD() {
-    TODO();
-} //	Load Tile
-InterruptRaisedOr<void> CPU::handle_TILERELEASE() {
-    TODO();
-} //	Release Tile
-InterruptRaisedOr<void> CPU::handle_TILESTORED() {
-    TODO();
-} //	Store Tile
-InterruptRaisedOr<void> CPU::handle_TILEZERO() {
-    TODO();
-} //	Zero Tile
-InterruptRaisedOr<void> CPU::handle_TPAUSE() {
-    TODO();
-} //	Timed PAUSE
-InterruptRaisedOr<void> CPU::handle_TZCNT() {
-    TODO();
-} //	Count the Number of Trailing Zero Bits
-InterruptRaisedOr<void> CPU::handle_UCOMISD() {
-    TODO();
-} //	Unordered Compare Scalar Double Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_UCOMISS() {
-    TODO();
-} //	Unordered Compare Scalar Single Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_UD() {
-    TODO();
-} //	Undefined Instruction
-InterruptRaisedOr<void> CPU::handle_UIRET() {
-    TODO();
-} //
+static constexpr Descriptor::AccessByte _default_access_byte = {
+    .accessed = 1,
+    .wr = 1,
+    .present = 1,
+};
+static constexpr ApplicationSegmentRegister _default_application_segment_register = {.visible = 0x0,
+    .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0}}};
+static constexpr ApplicationSegmentRegister _default_cs_segment_register = {.visible = 0x0,
+    .hidden = {.cached_descriptor = {.limit1 = 0xF000, .base1 = 0xFFFF00, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0}}};
+static constexpr SystemSegmentRegister _default_system_segment_register = {.visible = 0x0,
+    .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0, .base3 = 0x0}}};
 
 
+void CPU::reset() {
+    // See page 3425
+
+    m_rax = 0x0;
+    m_rbx = 0x0;
+    m_rcx = 0x0;
+    m_rdx = 0x00000600;
+    m_rsi = 0x0;
+    m_rsp = 0x0;
+    m_rbp = 0x0;
+    m_rip = 0x0000FFF0;
+    m_r8 = m_r9 = m_r10 = m_r11 = m_r12 = m_r13 = m_r14 = m_r15 = 0x0;
+
+    m_cs = _default_cs_segment_register;
+    m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
+
+    m_rflags = instance<RFLAGS, u64>(0x2);
+    m_cr0 = instance<CR0, u64>(0x60000010);
+    m_cr2 = 0x0_va;
+    m_cr3 = instance<CR3, u64>(0x0);
+    m_cr4 = instance<CR4, u64>(0x0);
+    m_cr8 = instance<CR8, u64>(0x0);
+
+    m_efer = instance<EFER, u64>(0x0);
+
+    m_fsbase = m_gsbase = 0x0;
+    m_kernel_gsbase = 0x0;
+
+    m_gdtr = {.base = 0x00000000, .limit = 0xFFFF};
+    m_idtr = {.base = 0x00000000, .limit = 0xFFFF};
+
+    m_ldtr = m_tr = _default_system_segment_register;
+};
 
 
 void CPU::interpreter_loop() {
     for (;;) {
+        m_state = STATE_FETCH_INSTRUCTION;
         cs_insn const* insn = m_disassembler.next_insn_or_null();
-        TODO_NOFAIL("Handle insn");
 
+        m_state = STATE_HANDLE_INSTRUCTION;
+        TODO_NOFAIL("Handle insn");
         // handle_insn()
 
-        auto interrupt = m_pic.pending_interrupt_with_highest_priority();
-        if (interrupt.has_value()) {
-            TODO_NOFAIL("Handle interrupt");
+        // Handle interrupts
+        m_state = STATE_HANDLE_INTERRUPT;
+        for (;;) {
+            auto opt_i = m_icu.pop_highest_priority_interrupt();
+            // if we don't have any interrupts left, break
+            if (!opt_i.has_value())
+                break;
+
+            Interrupt i = opt_i.value();
+
+            /**
+             * The processor first services a pending event from the class which has the highest priority,
+             * transferring execution to the first instruction of the handler.
+             * Lower priority exceptions are discarded; lower priority interrupts are held pending.
+             */
+
+            if (i.type.category() == InterruptCategory::INTERRUPT) {
+                // clear all exceptions in ICU, as they are guaranteed to be of lower priority than i
+                // (since i is not an exception)
+                TODO_NOFAIL("clear all exceptions in ICU");
+            }
+            TODO_NOFAIL("clear all exceptions having priority lower than i");
+
+            /**
+             * As we don't implement asynchronous interrupts, we know for sure, that when
+             * handle_nested_interrupt and handle_interrupt return, they finished by either
+             * succeeding or raising another interrupt.
+             */
+
+            if (m_interrupt_to_be_handled.has_value()) {
+                if (handle_nested_interrupt(i).raised()) {
+                    // we raised another exception here, go handle it.
+                    // we also know for sure, that this interrupt finished, so mark it as handled.
+                    m_interrupt_to_be_handled.reset();
+                    continue;
+                }
+            }
+
+            // It doesn't matter if this raises, because no matter what we always process all pending interrupts.
+            handle_interrupt(i);
         }
     }
 }
 
+
+namespace {
+enum _NestedInterruptAction {
+    NIA_HANDLE_SERIALLY,
+    NIA_GENERATE_DOUBLE_FAULT,
+    NIA_SHUTDOWN,
+};
+typedef _NestedInterruptAction NIA;
+static NIA _nested_interrupt_action_map[4][3] = {
+    // First: Benign
+    {NIA::NIA_HANDLE_SERIALLY, NIA::NIA_HANDLE_SERIALLY, NIA::NIA_HANDLE_SERIALLY},
+    // First: Contributory
+    {NIA::NIA_HANDLE_SERIALLY, NIA::NIA_GENERATE_DOUBLE_FAULT, NIA::NIA_HANDLE_SERIALLY},
+    // First: PageFault
+    {NIA::NIA_HANDLE_SERIALLY, NIA::NIA_GENERATE_DOUBLE_FAULT, NIA::NIA_GENERATE_DOUBLE_FAULT},
+    // First: DoubleFault
+    {NIA::NIA_HANDLE_SERIALLY, NIA::NIA_SHUTDOWN, NIA::NIA_SHUTDOWN},
+};
+}
+InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
+    // NOTE: all interrupts and exceptions can be nested once their handlers are called
+    /**
+     * For example; if the CPU tries to start a page fault handler but can't because it triggers a second page fault;
+     * then you get a double fault instead. However; if the CPU successfully starts the page fault handler then the
+     * page fault handler's code can happily be interrupted by a second page fault.
+     */
+
+    // we received an interrupt while trying to call the interrupt handler for the previous interrupt
+    // and are about to enter a nested interrupt scenario.
+    u8 action = _nested_interrupt_action_map[m_interrupt_to_be_handled.value().iclass][interrupt.iclass];
+    switch (action) {
+        case NIA_HANDLE_SERIALLY: return {};
+        case NIA_GENERATE_DOUBLE_FAULT: return raise_interrupt(Exceptions::DF(ZERO_ERROR_CODE_NOEXT));
+        case NIA_SHUTDOWN: shutdown();
+        default: fail();
+    }
+}
+
+InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
+    assert_in_long_mode();
+
+    // See chapter 7.12 or page 3290
+    m_interrupt_to_be_handled = interrupt;
+
+
+    /**
+     * The processor handles calls to exception- and interrupt-handlers similar to the way it handles calls with a CALL
+     * instruction to a procedure or a task. When responding to an exception or interrupt, the processor uses the exception
+     * or interrupt vector as an index to a descriptor in the IDT. If the index points to an interrupt gate or trap gate,
+     * the processor calls the exception or interrupt handler in a manner similar to a CALL to a call gate (see Section
+     * 6.8.2, “Gate Descriptors,” through Section 6.8.6, “Returning from a Called Procedure”). If index points to a task
+     * gate, the processor executes a task switch to the exception- or interrupt-handler task in a manner similar to a CALL
+     * to a task gate (see Section 9.3, “Task Switching”).
+     */
+
+
+    auto idt_descriptor = MAY_HAVE_RAISED(m_mmu.interrupt_vector_to_descriptor(interrupt.vector));
+    switch (idt_descriptor.access.descriptor_type()) {
+        case DescriptorType::TASK_GATE: MAY_HAVE_RAISED(enter_task_gate(interrupt, *idt_descriptor.to_task_gate_descriptor())); break;
+        case DescriptorType::INTERRUPT_GATE:
+        case DescriptorType::TRAP_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_trap_gate_descriptor())); break;
+        // TODO: maybe raise exception here instead of fail
+        default: fail("Invalid segment type for interrupt.");
+    }
+
+    // Only real exceptions push an error_code
+    if (interrupt.type.category() == InterruptCategory::EXCEPTION) {
+        if (interrupt.error_code.has_value()) {
+            auto error_code = interrupt.error_code.value();
+            stack_push(error_code.value);
+        }
+    }
+
+    m_interrupt_to_be_handled.reset();
+    return {};
+}
+
+
+InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor) {
+    ErrorCode error_code = {.standard = {
+                                .tbl = 1,
+                                .selector_index = i.vector,
+                            }};
+    // protection checks
+    // rpl is not checked as vectors have none (only segment-selectors)
+    // The processor checks the DPL of the interrupt or trap gate only if an exception or interrupt is generated with an
+    // INT n, INT3, or INTO instruction (INT1 would not check). Here, the CPL must be less than or equal to the DPL of the gate.
+    if (i.source == InterruptSource::INTN_INT3_INTO_INSN && cpl() > descriptor.access.dpl)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(descriptor.segment_selector));
+
+    // Check if target code segment is executable code segment
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+        return raise_interrupt(Exceptions::GP(error_code));
+    auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
+    // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
+    if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.dpl;
+
+    TODO_NOFAIL("Privilege Checks");
+
+    /**
+     * If a call is made to a more privileged (numerically lower privilege level) nonconforming destination code segment,
+     * the CPL is lowered to the DPL of the destination code segment and a stack switch occurs (see Section 6.8.5, “Stack
+     * Switching”). If a call or jump is made to a more privileged conforming destination code segment, the CPL is not
+     * changed and no stack switch occurs.
+     */
+    auto old_ss = m_ss.visible.segment_selector;
+    auto old_sp = m_rsp;
+    if (dest_is_conforming && dest_dpl < cpl()) {
+        std::tie(old_ss, old_sp) = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
+    }
+
+    // In 64-bit mode:
+    // The stack pointer (SS:RSP) is pushed unconditionally on interrupts. In legacy modes, this push is conditional
+    // and based on a change in current privilege level(CPL).
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+    MAY_HAVE_RAISED(stack_push(old_sp));
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u64>(&m_rflags)));
+
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
+    MAY_HAVE_RAISED(stack_push(m_rip));
+    // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
+    // the CS and RIP registers, respectively, and begin execution of the called procedure.
+    load_segment_register(SegmentRegisterAlias::CS, descriptor.segment_selector, dest_segment_descriptor);
+    m_rip = dest_segment_descriptor.base() + descriptor.offset();
+
+    /**
+     * When accessing an exception or interrupt handler through either an interrupt gate or a trap gate, the processor
+     * clears the TF flag in the EFLAGS register after it saves the contents of the EFLAGS register on the stack. (On calls
+     * to exception and interrupt handlers, the processor also clears the VM, RF, and NT flags in the EFLAGS register, after
+     * they are saved on the stack.) Clearing the TF flag prevents instruction tracing from affecting interrupt response and
+     * ensures that no single-step exception will be delivered after delivery to the handler. A subsequent IRET instruction
+     * restores the TF (and VM, RF, and NT) flags to the values in the saved contents of the EFLAGS register on the stack
+     */
+    m_rflags.TF = m_rflags.VM = m_rflags.RF = m_rflags.NT = 0;
+
+    /**
+     * The only difference between an interrupt gate and a trap gate is the way the processor handles the IF flag in the
+     * EFLAGS register. When accessing an exception- or interrupt-handling procedure through an interrupt gate, the
+     * processor clears the IF flag to prevent other interrupts from interfering with the current interrupt handler. A subse-
+     * quent IRET instruction restores the IF flag to its value in the saved contents of the EFLAGS register on the stack.
+     * Accessing a handler procedure through a trap gate does not affect the IF flag.
+     */
+    if (descriptor.access.descriptor_type() == DescriptorType::INTERRUPT_GATE) {
+        m_rflags.IF = 0;
+    }
+
+    return {};
+}
+
+
+InterruptRaisedOr<void> CPU::enter_task_gate(Interrupt const& i, TaskGateDescriptor const& task_gate_descriptor) {
+    TODO("enter_task_gate");
+    // The processor issues a general-protection exception (#GP) if the following is attempted in 64-bit mode:
+    // Control transfer to a TSS or a task gate using JMP, CALL, INT n, INT3, INTO, INT1, or interrupt.
+}
+
+InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn) {
+    assert_in_long_mode();
+
+    ErrorCode error_code = {.standard = {
+                                .tbl = (u8)(selector.table << 1),
+                                .selector_index = selector.index,
+                            }};
+    // CPL ≤ call gate DPL; RPL ≤ call gate DPL
+    if (cpl() > call_gate_descriptor.access.dpl || selector.rpl > call_gate_descriptor.access.dpl)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(call_gate_descriptor.segment_selector));
+
+    // Check if target code segment is executable code segment
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+        return raise_interrupt(Exceptions::GP(error_code));
+    auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
+    // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
+    if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
+        return raise_interrupt(Exceptions::GP(error_code));
+
+    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.dpl;
+    // Destination conforming code segment DPL ≤ CPL
+    if (dest_is_conforming && dest_dpl > cpl())
+        return raise_interrupt(Exceptions::GP(error_code));
+    if (!dest_is_conforming) {
+        // CALL: Destination nonconforming code segment DPL ≤ CPL
+        if (through_call_insn && dest_dpl > cpl())
+            return raise_interrupt(Exceptions::GP(error_code));
+        // JMP: Destination nonconforming code segment DPL = CPL
+        if (!through_call_insn && dest_dpl != cpl())
+            return raise_interrupt(Exceptions::GP(error_code));
+    }
+
+    /**
+     * If a call is made to a more privileged (numerically lower privilege level) nonconforming destination code segment,
+     * the CPL is lowered to the DPL of the destination code segment and a stack switch occurs (see Section 6.8.5, “Stack
+     * Switching”). If a call or jump is made to a more privileged conforming destination code segment, the CPL is not
+     * changed and no stack switch occurs.
+     */
+    if (dest_is_conforming && dest_dpl < cpl()) {
+        auto [old_ss, old_sp] = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
+        MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+        MAY_HAVE_RAISED(stack_push(old_sp));
+    }
+
+    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
+    MAY_HAVE_RAISED(stack_push(m_rip));
+    // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
+    // the CS and RIP registers, respectively, and begin execution of the called procedure.
+    load_segment_register(SegmentRegisterAlias::CS, call_gate_descriptor.segment_selector, dest_segment_descriptor);
+    m_rip = dest_segment_descriptor.base() + call_gate_descriptor.offset();
+    return {};
+}
+
+
+InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 target_pl) {
+    // Check TSS limits
+    if (m_tr.hidden.cached_descriptor.limit() < sizeof(TSS) - 1) {
+        ErrorCode error_code = {.standard = {.tbl = 0, .selector_index = m_tr.visible.segment_selector.index}};
+        return raise_interrupt(Exceptions::TS(error_code));
+    }
+    // Stack switch
+    // When a procedure call through a call gate results in a change in privilege level, the processor performs the following
+    // steps to switch stacks and begin execution of the called procedure at a new privilege level :
+    //  1. Uses the DPL of the destination code segment (the new CPL) to select a pointer to the new stack (segment
+    //     selector and stack pointer) from the TSS.
+    auto tss_sp_byte_offset = [&] -> u16 {
+        switch (target_pl) {
+            case 0: return offsetof(TSS, TSS::rsp0_1);
+            case 1: return offsetof(TSS, TSS::rsp1_1);
+            case 2: return offsetof(TSS, TSS::rsp2_1);
+            default: fail("cpl>2 but TSS has only rsp0-2.");
+        }
+    }();
+    //  2. Reads the segment selector and stack pointer for the stack to be switched to from the current TSS. Any limit
+    //     violations detected while reading the stack-segment selector, stack pointer, or stack-segment descriptor cause
+    //     an invalid TSS (#TS) exception to be generated.
+    // -> When stacks are switched as part of a 64-bit mode privilege-level change through a call gate, a new SS (stack
+    //    segment) descriptor is not loaded; 64-bit mode only loads an inner-level RSP from the TSS.
+    auto new_sp_addr = VirtualAddress(m_tr.hidden.cached_descriptor.base() + (tss_sp_byte_offset * 8));
+    TODO_NOFAIL("Check limit");
+    auto new_sp = MAY_HAVE_RAISED(mmu().mem_read64(new_sp_addr, INTENTION_LOAD_TSS));
+    new_sp = (new_sp << 32) || new_sp & 0xFFFFFFFF; // switch endianness
+    //  3. Checks the stack-segment descriptor for the proper privileges and type and generates an invalid TSS (#TS)
+    //     exception if violations are detected.
+    // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
+    //  4. Temporarily saves the current values of the SS and RSP registers.
+    auto old_ss = m_ss;
+    auto old_sp = m_rsp;
+    // The new SS is forced to NULL and the SS selector’s RPL field is forced to the new CPL.
+    // we can do this cause in 64-bit mode the processor does not perform runtime NULL-selector checks
+    m_ss.visible.segment_selector.index = 0x0;
+    m_ss.visible.segment_selector.rpl = target_pl;
+    m_rsp = new_sp;
+    //  6. Pushes the temporarily saved values for the SS and RSP registers (for the calling procedure) onto the new stack
+    //  7. Copies the number of parameter specified in the parameter count field of the call gate from the calling
+    //     procedure’s stack to the new stack. If the count is 0, no parameters are copied.
+    // -> in 64-bit mode, this count is always 0.
+    //  8. Pushes the return instruction pointer (the current contents of the CS and RIP registers) onto the new stack.
+    return std::make_pair(old_ss.visible.segment_selector, old_sp);
+}
+
+
+template<typename... Args>
+_InterruptRaised CPU::raise_interrupt(Interrupt i, Args&&... args) {
+    // #PF and #CP use custom error_code format
+    if (i.vector != Exceptions::VEC_PF && i.vector != Exceptions::VEC_CP && i.error_code.has_value()) {
+        // don't clear already set ext bit, but otherwise use value of source (or 0, if we're currently not handling an interrupt)
+        i.error_code->standard.ext |= m_interrupt_to_be_handled.has_value() ? m_interrupt_to_be_handled->source.is_external() : 0;
+    }
+
+    // If we are handling the instruction, the interrupt is always integral part of instruction execution
+    if (m_state == STATE_HANDLE_INSTRUCTION)
+        return m_icu.raise_integral_interrupt(i);
+    if (m_state == STATE_FETCH_INSTRUCTION && (i.vector == Exceptions::VEC_GP || i.vector == Exceptions::VEC_PF))
+        return m_icu.raise_interrupt(i, std::forward<Args>(args)...);
+
+    // Integral Exceptions are: DE, BP, OF, BR, TS, NP, SS, (GP), (PF), AC, MF, XM, VE, CP,
+    switch (i.vector) {
+        case Exceptions::VEC_DE:
+        case Exceptions::VEC_BP:
+        case Exceptions::VEC_OF:
+        case Exceptions::VEC_BR:
+        case Exceptions::VEC_TS:
+        case Exceptions::VEC_NP:
+        case Exceptions::VEC_SS:
+        case Exceptions::VEC_AC:
+        case Exceptions::VEC_MF:
+        case Exceptions::VEC_XM:
+        case Exceptions::VEC_VE:
+        case Exceptions::VEC_CP: return m_icu.raise_integral_interrupt(i);
+        default: return m_icu.raise_interrupt(i, std::forward<Args>(args)...);
+    }
+}
+
+InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector) {
+    GDTLDTDescriptor descriptor = MAY_HAVE_RAISED(mmu().segment_selector_to_descriptor(selector));
+    return load_segment_register(alias, selector, descriptor);
+}
+
+InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector, GDTLDTDescriptor const& descriptor) {
+    ErrorCode error_code = {.standard = {
+                                .tbl = static_cast<u8>(selector.table << 1),
+                                .selector_index = selector.index,
+                            }};
+
+    // 64-bit mode does not perform NULL-selector runtime checking
+    // If an attempt is made to load null selector in the SS register in CPL3 and 64-bit mode.
+    if (selector.index == 0 && alias == SegmentRegisterAlias::SS && cpl() == 3) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+
+    // The accessed bit indicates whether the segment has been accessed since the last time the operating-system or
+    // executive cleared the bit. The processor sets this bit whenever it loads a segment selector for the segment into a
+    // segment register, assuming that the type of memory that contains the segment descriptor supports processor
+    // writes. (Can also be used for example to track number of accesses to a descriptor).
+    auto [base, limit] = descriptor_table_of_selector(selector);
+    auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, Descriptor::access);
+    auto new_access_byte = descriptor.access;
+    new_access_byte.accessed = 1;
+    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
+
+    // The Segment Not Present exception occurs when trying to load a segment or gate which has its `Present` bit set to 0.
+    // However, when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
+    if (descriptor.access.present == 0) {
+        if (alias.type() == SegmentRegisterType::STACK) {
+            return raise_integral_interrupt(Exceptions::SS(error_code));
+        }
+        return raise_integral_interrupt(Exceptions::NP(error_code));
+    }
+
+    // Type Checking (page 3250)
+    // — The LDTR can only be loaded with a selector for an LDT.
+    if (alias == SegmentRegisterAlias::LDTR && descriptor.access.descriptor_type() != DescriptorType::LDT_SEGMENT) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+    // — The task register can only be loaded with a segment selector for a TSS.
+    if (alias == SegmentRegisterAlias::TR && !one_of(descriptor.access.descriptor_type(), {DescriptorType::TSS_AVAILABLE_SEGMENT, DescriptorType::TSS_BUSY_SEGMENT})) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+    // — The CS register only can be loaded with a selector for a code segment.
+    if (alias == SegmentRegisterAlias::CS && descriptor.access.descriptor_type() != DescriptorType::CODE_SEGMENT) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+    // — Segment selectors for code segments that are not readable cannot be loaded into data-segment registers (DS, ES, FS, and GS).
+    if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && !descriptor.access.wr && alias.type() == SegmentRegisterType::DATA) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+    // — Segment selectors for system segments cannot be loaded into data-segment registers (DS, ES, FS, and GS).
+    if (descriptor.access.is_system_descriptor() && alias.type() != SegmentRegisterType::DATA) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+    // — Only segment selectors of writable data segments can be loaded into the SS register.
+    if (alias == SegmentRegisterAlias::SS && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.wr) {
+        return raise_integral_interrupt(Exceptions::GP(error_code));
+    }
+
+    /**
+     * Privilege Level Checking (chapter 6.5 or page 3252)
+     * Privilege levels are checked when the segment selector of a segment descriptor is loaded into a segment register.
+     * The checks used for data access differ from those used for transfers of program control among code segments;
+     * therefore, the two kinds of accesses are considered separately in the following sections.
+     */
+    if (descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT) {
+        // PRIVILEGE LEVEL CHECKING WHEN ACCESSING DATA SEGMENTS
+        // The processor loads the segment selector into the segment register if the DPL is numerically greater
+        // than or equal to both the CPL and the RPL. Otherwise, a general-protection fault is generated and the segment
+        // register is not loaded.
+        if (!(descriptor.access.dpl <= cpl() && descriptor.access.dpl <= selector.rpl)) {
+            return raise_integral_interrupt(Exceptions::GP(error_code));
+        }
+    }
+    if (alias == SegmentRegisterAlias::SS) {
+        // PRIVILEGE LEVEL CHECKING WHEN LOADING THE SS REGISTER
+        // If the RPL and DPL are not equal to the CPL, a general-protection exception (#GP) is generated.
+        if (!(descriptor.access.dpl == cpl() == selector.rpl)) {
+            return raise_integral_interrupt(Exceptions::GP(error_code));
+        }
+    }
+    if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT) {
+        // PRIVILEGE LEVEL CHECKING WHEN TRANSFERRING PROGRAM CONTROL BETWEEN CODE SEGMENTS
+        if (!descriptor.access.ec) {
+            // Accessing Nonconforming Code Segments
+            // When accessing nonconforming code segments, the CPL of the calling procedure must be equal to the DPL of the
+            // destination code segment; otherwise, the processor generates a general-protection exception (#GP).
+            // A transfer into a nonconforming segment at a different privilege level results in a general-protection exception (#GP),
+            // unless a gate is used to access it.
+            if (descriptor.access.dpl != cpl() && !descriptor.is_gate_descriptor()) {
+                return raise_integral_interrupt(Exceptions::GP(error_code));
+            }
+        } else {
+            // Accessing Conforming Code Segments
+            // When accessing conforming code segments, the CPL of the calling procedure may be numerically equal to or
+            // greater than (less privileged) the DPL of the destination code segment; the processor generates a general-protec-
+            // tion exception (#GP) only if the CPL is less than the DPL. (The segment selector RPL for the destination code
+            // segment is not checked if the segment is a conforming code segment.)
+            if (cpl() < descriptor.access.dpl) {
+                return raise_integral_interrupt(Exceptions::GP(error_code));
+            }
+        }
+    }
+
+    if (alias.type() == SegmentRegisterType::SYSTEM) {
+        *m_system_segment_register_map[alias] = {
+            .visible = selector,
+            .hidden = *descriptor.to_system_segment_descriptor(),
+        };
+    } else {
+        *m_segment_register_map[alias] = {
+            .visible = selector,
+            .hidden = *descriptor.to_application_segment_descriptor(),
+        };
+    }
+    return {};
+}
+
+
+
+InterruptRaisedOr<void> CPU::stack_push(u64 value) {
+    TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
+    if (m_rsp < 8)
+        return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
+    m_rsp -= 8;
+    MAY_HAVE_RAISED(mmu().mem_write64(stack_pointer(), value));
+    return {};
+}
+
+InterruptRaisedOr<u64> CPU::stack_pop() {
+    TODO("stack_pop");
+}
+
+
 InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) {
     auto high_bits = vaddr.addr & ~VIRTUAL_ADDR_MASK;
     if (high_bits != 0 && high_bits != ~VIRTUAL_ADDR_MASK) {
-        // An access to memory using a linear address is allowed only if the address is paging canonical; if it is not, a canonicality violation occurs.
+        // Access to memory using a linear address is allowed only if the address is paging canonical; if it is not, a canonicality violation occurs.
         // In most cases, an access causing a canonicality violation results in a general protection exception (#GP);
         // for stack accesses (those due to stack-oriented instructions, as well as accesses that implicitly or
         // explicitly use the SS segment register), a stack fault (#SS) is generated. In either case, a null error code is
         // produced.
         TODO_NOFAIL("raise #GP or #SS");
-        return m_pic.deliver_interrupt(Exceptions::GP);
+        return raise_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
     }
     return {};
 }
+
+DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) const {
+    switch (selector.table) {
+        case 0: return m_gdtr;
+        case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
+        default: fail();
+    }
+}
+
 
 }

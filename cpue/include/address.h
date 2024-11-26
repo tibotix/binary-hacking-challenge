@@ -1,30 +1,25 @@
 #pragma once
 
 #include "common.h"
+#include "segment_register.h"
+
+#include <checked_arithmetic.h>
 
 namespace CPUE {
 
 
-struct SegmentSelector {
-    constexpr SegmentSelector(u16 value) : rpl(bits(value, 1, 0)), table(bits(value, 2, 2)), index(bits(value, 15, 3)) {}
-    constexpr SegmentSelector(u16 rpl, u8 table, u8 index) : rpl(rpl), table(table), index(index) {}
-    u16 rpl : 2; // Requested Privilege Level
-    u8 table : 1; // Table Indicator (0=GDT,1=LDT)
-    /**
-     * Selects one of 8192 descriptors in the GDT or LDT.
-     * The processor multiplies the index value by 8 (the number of bytes in a segment descriptor) and adds the result to the
-     * base address of the GDT or LDT (from the GDTR or LDTR register, respectively)
-     */
-    u16 index : 13;
-};
 
 
 /**
  * A LogicalAddress consists of a segment and an offset based on the segment.
  * It is subject to Segmentation and produces a VirtualAddress if paging enabled, otherwise a PhysicalAddress.
+ *
+ * NOTE: We store the SegmentRegister instead of the SegmentSelector, as we want to pass the cached "hidden" part
+ * of the SegmentRegister to MMU Translation as well.
+ * And as every LogicalAddress Translation can only use an already loaded segment register, this is justified.
  */
 struct LogicalAddress {
-    SegmentSelector segment_selector;
+    ApplicationSegmentRegister segment_register;
     u64 offset;
 };
 
@@ -39,6 +34,8 @@ struct VirtualAddress {
     VirtualAddress() = default;
     constexpr VirtualAddress(u64 addr) : addr(addr) {}
     u64 addr;
+
+    VirtualAddress operator+(unsigned long int const i) const { return {CPUE_checked_uadd<u64, u64>(addr, i)}; }
 };
 
 /**
