@@ -102,7 +102,7 @@ void CPU::interpreter_loop() {
             }
 
             // It doesn't matter if this raises, because no matter what we always process all pending interrupts.
-            handle_interrupt(i);
+            (void)handle_interrupt(i);
         }
     }
 }
@@ -176,7 +176,7 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
     if (interrupt.type.category() == InterruptCategory::EXCEPTION) {
         if (interrupt.error_code.has_value()) {
             auto error_code = interrupt.error_code.value();
-            stack_push(error_code.value);
+            MAY_HAVE_RAISED(stack_push(error_code.value));
         }
     }
 
@@ -235,7 +235,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     MAY_HAVE_RAISED(stack_push(m_rip));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
-    load_segment_register(SegmentRegisterAlias::CS, descriptor.segment_selector, dest_segment_descriptor);
+    MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, descriptor.segment_selector, dest_segment_descriptor));
     m_rip = dest_segment_descriptor.base() + descriptor.offset();
 
     /**
@@ -320,7 +320,7 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
     MAY_HAVE_RAISED(stack_push(m_rip));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
-    load_segment_register(SegmentRegisterAlias::CS, call_gate_descriptor.segment_selector, dest_segment_descriptor);
+    MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, call_gate_descriptor.segment_selector, dest_segment_descriptor));
     m_rip = dest_segment_descriptor.base() + call_gate_descriptor.offset();
     return {};
 }
