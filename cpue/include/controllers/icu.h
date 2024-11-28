@@ -27,7 +27,7 @@ public:
 private:
     static constexpr u8 MAX_PENDING_CAPACITY = 127;
     _InterruptRaised raise_interrupt(Interrupt i, u8 priority) {
-        CPUE_ASSERT(1 <= priority <= 9, "priority must be between 1 and 9");
+        CPUE_ASSERT(1 <= priority && priority <= 9, "priority must be between 1 and 9");
         return _raise_interrupt(i, priority);
     }
     _InterruptRaised raise_interrupt(Interrupt i) {
