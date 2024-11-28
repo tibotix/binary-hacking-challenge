@@ -12,8 +12,7 @@ add_subdirectory("deps/capstone")
 add_subdirectory("deps/ELFIO")
 
 
-file(GLOB cpue_sources "src/**/*.cpp")
-file(GLOB cpue_sources "src/*.cpp") # TODO: reiterate this
+file(GLOB cpue_sources "src/**/*.cpp" "src/*.cpp")
 # Note: To build a shared library, use -DBUILD_SHARED_LIBS=ON when configuring
 add_library(cpue STATIC ${cpue_sources})
 target_include_directories(cpue PUBLIC include)
@@ -28,18 +27,18 @@ target_link_libraries(cpue_main cpue)
 set_target_properties(cpue_main PROPERTIES OUTPUT_NAME "cpue")
 
 
-if(BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
     include(CTest)
     add_subdirectory("deps/catch2")
     list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
     include(Catch)
 
-    file(GLOB test_sources "tests/**/*_test.cpp")
+    file(GLOB test_sources "tests/**/*_test.cpp" "tests/*_test.cpp")
     add_executable(cpue_test ${test_sources})
-    target_include_directories(cpue_test PUBLIC src)
+    target_include_directories(cpue_test PUBLIC include)
 
     target_link_libraries(cpue_test PRIVATE Catch2::Catch2WithMain)
     target_link_libraries(cpue_test PRIVATE cpue)
 
     catch_discover_tests(cpue_test)
-endif()
+endif ()
