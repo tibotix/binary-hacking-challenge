@@ -9,7 +9,6 @@
 int main(int argc, char** argv) {
     CPUE::CPU cpu{};
     CPUE::MMU mmu{&cpu, 1};
-    mmu.init();
     CPUE::VT100 vt100;
     CPUE::connect_uart_devices(cpu.uart1(), vt100);
     vt100.start_loop_thread();
