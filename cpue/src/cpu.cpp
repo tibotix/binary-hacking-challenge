@@ -339,9 +339,9 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     //     selector and stack pointer) from the TSS.
     auto tss_sp_byte_offset = [&] -> u16 {
         switch (target_pl) {
-            case 0: return offsetof(TSS, TSS::rsp0_1);
-            case 1: return offsetof(TSS, TSS::rsp1_1);
-            case 2: return offsetof(TSS, TSS::rsp2_1);
+            case 0: return offsetof(TSS, rsp0_1);
+            case 1: return offsetof(TSS, rsp1_1);
+            case 2: return offsetof(TSS, rsp2_1);
             default: fail("cpl>2 but TSS has only rsp0-2.");
         }
     }();
@@ -428,7 +428,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     // segment register, assuming that the type of memory that contains the segment descriptor supports processor
     // writes. (Can also be used for example to track number of accesses to a descriptor).
     auto [base, limit] = descriptor_table_of_selector(selector);
-    auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, Descriptor::access);
+    auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, access);
     auto new_access_byte = descriptor.access;
     new_access_byte.accessed = 1;
     MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
