@@ -4,7 +4,9 @@
 #include <queue>
 #include <array>
 #include "common.h"
+#include "icu.h"
 #include "interrupts.h"
+#include <bitset>
 
 namespace CPUE {
 
@@ -69,11 +71,24 @@ namespace CPUE {
  */
 
 
+constexpr u8 PIC_NUM_IRQS = 8;
+
+struct PICConnectionHandle {};
 
 class PIC {
 public:
-    PIC() = default;
+    explicit PIC(ICU* icu) : m_icu(icu){};
     PIC(PIC const&) = delete;
+
+    void set_pin_high(PICConnectionHandle const& handle) {}
+    void set_pin_low(PICConnectionHandle const& handle);
+
+private:
+    std::bitset<PIC_NUM_IRQS> m_irqs = 0;
+    std::bitset<PIC_NUM_IRQS> m_isr = 0; // In-Service Register
+    std::bitset<PIC_NUM_IRQS> m_irr = 0; // In-Request Register
+
+    ICU* m_icu = nullptr;
 };
 
 }
