@@ -9,7 +9,7 @@
 #include "tlb.h"
 #include "paging.h"
 #include "address.h"
-#include "pic.h"
+#include "controllers/pic.h"
 #include "descriptors/gdtldt_descriptors.h"
 #include "descriptors/idt_descriptors.h"
 #include "forward.h"
@@ -33,20 +33,12 @@ struct TranslationContext {
 
 class MMU {
 public:
-    friend class CPU;
-    friend class Disassembler;
-    MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_tlb(TLB{cpu}), m_physmem(NULL), m_physmem_size(available_pages * PAGE_SIZE) { CPUE_ASSERT(cpu != NULL, "cpu != NULL"); }
+    MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_tlb(TLB{cpu}), m_physmem(NULL), m_physmem_size(available_pages * PAGE_SIZE) {
+        CPUE_ASSERT(cpu != NULL, "cpu != NULL");
+        init();
+    }
     MMU(MMU const&) = delete;
 
-    void init() {
-        m_physmem = (u8*)mmap(NULL, m_physmem_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
-        if (m_physmem == (u8*)-1) {
-            fail("mmap");
-        }
-    }
-
-public:
-    bool mem_map();
     [[nodiscard]] InterruptRaisedOr<PhysicalAddress> la_to_pa(LogicalAddress const& laddr, TranslationContext const& ctx);
 
     [[nodiscard]] InterruptRaisedOr<GDTLDTDescriptor> segment_selector_to_descriptor(SegmentSelector selector);
@@ -107,6 +99,12 @@ private:
         return (T*)(m_physmem + paddr.addr);
     }
 
+    void init() {
+        m_physmem = (u8*)mmap(NULL, m_physmem_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (m_physmem == (u8*)-1) {
+            fail("mmap");
+        }
+    }
 
 private:
     class StartVirtualAddressTranslation {

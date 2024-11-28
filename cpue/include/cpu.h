@@ -3,10 +3,11 @@
 #include <stack>
 
 #include "mmu.h"
-#include "icu.h"
+#include "controllers/icu.h"
+#include "controllers/pic.h"
+#include "controllers/uart.h"
 #include "address.h"
 #include "disassembler.h"
-#include "pic.h"
 #include "segmentation.h"
 #include "forward.h"
 
@@ -99,6 +100,7 @@ public:
     MMU& mmu() { return m_mmu; }
     PIC& pic() { return m_pic; }
     ICU& icu() { return m_icu; }
+    UARTController& uart1() { return m_uart1; };
 
 private:
     /**
@@ -788,6 +790,8 @@ private:
     PIC m_pic;
     ICU m_icu;
     Disassembler m_disassembler;
+
+    UARTController m_uart1;
 
     std::optional<Interrupt> m_interrupt_to_be_handled;
     State m_state;
