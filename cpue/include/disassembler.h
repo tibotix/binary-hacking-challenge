@@ -10,7 +10,7 @@ namespace CPUE {
 class Disassembler {
 public:
     friend class CPU;
-    Disassembler(CPU* cpu) : m_cpu{cpu} {
+    explicit Disassembler(CPU* cpu) : m_cpu{cpu} {
         cs_open(CS_ARCH_X86, CS_MODE_64, &m_handle);
         m_insn = cs_malloc(m_handle);
     };
