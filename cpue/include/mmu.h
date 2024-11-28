@@ -9,7 +9,7 @@
 #include "tlb.h"
 #include "paging.h"
 #include "address.h"
-#include "pic.h"
+#include "controllers/pic.h"
 #include "descriptors/gdtldt_descriptors.h"
 #include "descriptors/idt_descriptors.h"
 #include "forward.h"
