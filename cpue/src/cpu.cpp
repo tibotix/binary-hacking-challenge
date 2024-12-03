@@ -57,11 +57,12 @@ void CPU::reset() {
 void CPU::interpreter_loop() {
     for (;;) {
         m_state = STATE_FETCH_INSTRUCTION;
-        cs_insn const* insn = m_disassembler.next_insn_or_null();
+        if ( auto insn = m_disassembler.next_insn(); !insn.raised() ) {
+            m_state = STATE_HANDLE_INSTRUCTION;
+            TODO_NOFAIL("Handle insn");
 
-        m_state = STATE_HANDLE_INSTRUCTION;
-        TODO_NOFAIL("Handle insn");
-        // handle_insn()
+            // handle_insn()
+        }
 
         // Handle interrupts
         m_state = STATE_HANDLE_INTERRUPT;

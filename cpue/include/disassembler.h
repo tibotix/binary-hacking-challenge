@@ -2,6 +2,7 @@
 
 #include <capstone/capstone.h>
 #include "forward.h"
+#include "interrupts.h"
 
 
 namespace CPUE {
@@ -18,7 +19,7 @@ public:
     ~Disassembler() { cs_free(m_insn, 1); }
 
 public:
-    cs_insn const* next_insn_or_null() const;
+    InterruptRaisedOr<cs_insn const> next_insn();
 
 private:
     CPU* m_cpu;
