@@ -15,10 +15,26 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 
 #undef CASE
 }
+
+void CPU::handle_RFLAGS(u64 result, u64 a, u64 b) {
+   TODO(); 
+};
+
+InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
+    // Checking if opcode is pointing to registers
+    // NOTE: Should i use asser rather than if?
+    if ( insn_detail.operands[0].type == x86_op_type::X86_OP_REG ) {
+        TODO();
+        //m_reg64_table[insn_detail.operands[0].reg] = reg1 + reg2;
+    }
+
+} //	Add
+
 InterruptRaisedOr<void> CPU::handle_AAA(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust After Addition
-InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {} //	ASCII Adjust AX Before Division
+InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {
+} //	ASCII Adjust AX Before Division
 InterruptRaisedOr<void> CPU::handle_AAM(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust AX After Multiply
@@ -31,9 +47,6 @@ InterruptRaisedOr<void> CPU::handle_ADC(cs_x86 const& insn_detail) {
 InterruptRaisedOr<void> CPU::handle_ADCX(cs_x86 const& insn_detail) {
     TODO();
 } //	Unsigned Integer Addition of Two Operands With Carry Flag
-InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
-    TODO();
-} //	Add
 InterruptRaisedOr<void> CPU::handle_ADDPD(cs_x86 const& insn_detail) {
     TODO();
 } //	Add Packed Double Precision Floating-Point Values

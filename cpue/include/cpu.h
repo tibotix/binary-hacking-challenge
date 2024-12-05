@@ -27,6 +27,7 @@ public:
     CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{&m_icu}), m_disassembler(Disassembler{this}), m_uart1(UARTController{&m_pic}) {
         reset();
         init_mmio();
+        m_init_64_reg();
     }
     CPU(CPU const&) = delete;
 
@@ -50,7 +51,6 @@ public:
         USER_MODE,
         SUPERVISOR_MODE,
     };
-
 
 public:
     [[nodiscard]] bool is_paging_enabled() const {
@@ -131,6 +131,313 @@ private:
     DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
 
     void init_mmio();
+
+
+    void m_init_64_reg();
+
+
+
+
+private:
+    ICU m_icu;
+    MMU m_mmu;
+    PIC m_pic;
+    Disassembler m_disassembler;
+
+    UARTController m_uart1;
+
+    std::optional<Interrupt> m_interrupt_to_be_handled;
+    State m_state;
+
+    // Look up table for instruction handling
+    u64 *m_reg64_table[16];
+
+    // TODO: initialize all registers with sane default values
+    //       See page 3425
+
+    // General Purpose / Pointer Registers
+    u64 m_rax = 0x0;
+    u64 m_rbx = 0x0;
+    u64 m_rcx = 0x0;
+    u64 m_rdx = 0x00000600;
+    u64 m_rsi = 0x0;
+    u64 m_rsp = 0x0;
+    u64 m_rbp = 0x0;
+    u64 m_rip = 0x0000FFF0;
+    u64 m_r8 = 0x0;
+    u64 m_r9 = 0x0;
+    u64 m_r10 = 0x0;
+    u64 m_r11 = 0x0;
+    u64 m_r12 = 0x0;
+    u64 m_r13 = 0x0;
+    u64 m_r14 = 0x0;
+    u64 m_r15 = 0x0;
+
+
+    /**
+     * See page 3174
+     * Because ES, DS, and SS segment registers are not used in 64-bit mode, their fields (base, limit, and attribute) in
+     * segment descriptor registers are ignored. Some forms of segment load instructions are also invalid (for example,
+     * LDS, POP ES). Address calculations that reference the ES, DS, or SS segments are treated as if the segment base
+     * is zero.
+     *
+     * The hidden descriptor register fields for FS.base and GS.base are physically mapped to MSRs in order to load all
+     * address bits supported by a 64-bit implementation. Software with CPL = 0 (privileged software) can load all
+     * supported linear-address bits into FS.base or GS.base using WRMSR. Addresses written into the 64-bit FS.base
+     * and GS.base registers must be in canonical form. A WRMSR instruction that attempts to write a non-canonical
+     * address to those registers causes a #GP fault.
+     */
+    ApplicationSegmentRegister m_cs;
+    ApplicationSegmentRegister m_ds;
+    ApplicationSegmentRegister m_ss;
+    ApplicationSegmentRegister m_es;
+    ApplicationSegmentRegister m_fs;
+    ApplicationSegmentRegister m_gs;
+    ApplicationSegmentRegister* m_segment_register_map[8] = {
+        &m_cs, &m_ds, &m_ss, &m_es, &m_fs, &m_gs,
+        NULL, // ldtr
+        NULL, // tr
+    };
+
+
+    /**
+     * RFLAGS Registers
+     */
+    struct RFLAGS {
+        u64 CF : 1; // Carry Flag
+        u64 : 1; // Reserved
+        u64 PF : 1; // Parity Flag
+        u64 : 1; // Reserved
+        u64 AF : 1; // Auxiliary Carry Flag
+        u64 : 1; // Reserved
+        u64 ZF : 1; // Zero Flag
+        u64 SF : 1; // Sign Flag
+        u64 TF : 1; // Trap Flag
+        u64 IF : 1; // Interrupt Enable Flag
+        u64 DF : 1; // Direction Flag
+        u64 OF : 1; // Overflow Flag
+        u64 IOPL : 2; // I/O Privilege Leve
+        u64 NT : 1; // Nested Task
+        u64 : 1; // Reserved
+        u64 RF : 1; // Resume Flag
+        u64 VM : 1; // Virtual-8086 Mode
+        // Controls alignment-checking in user-mode
+        // Allows to disable SMAP for explicit accesses, can only be modified in supervisor mode
+        u64 AC : 1; // Alignment Check / Access Control
+        u64 VIF : 1; // Virtual Interrupt Flag
+        u64 VIP : 1; // Virtual Interrupt Pending
+        u64 ID : 1; // ID Flag
+    };
+    static_assert(sizeof(RFLAGS) == 8);
+    RFLAGS m_rflags;
+
+    /**
+     * Setting Flags for instructions
+     * a & b are reg/addr/imValue that where operated on
+     * a cannot be imValue!
+     */
+    // NOTE: We need to be able to check type of a and b
+    void handle_RFLAGS(u64 result, u64 a, u64 b); // Implemented in instruction_handling.cpp
+
+    /**
+     * Setter for RFLAGS
+     */
+    // NOTE: Delete and substitute with reg setter and getter
+    //NOTE: Will this mess with the reserved bits?
+    void set_cf(bool value) { this->m_rflags.CF = value; }; 
+    // pf doesn't get used anymore!
+    void set_pf(bool value) { this->m_rflags.PF = value; }; 
+    void set_af(bool value) { this->m_rflags.AF = value; };  
+    void set_zf(bool value) { this->m_rflags.ZF = value; };  
+    void set_sf(bool value) { this->m_rflags.SF = value; };  
+    void set_tf(bool value) { this->m_rflags.TF = value; };  
+    void set_if(bool value) { this->m_rflags.IF = value; };  
+    void set_df(bool value) { this->m_rflags.DF = value; };  
+    void set_of(bool value) { this->m_rflags.OF = value; };  
+    void set_iopl(bool value) { this->m_rflags.IOPL = value; };  
+    void set_nt(bool value) { this->m_rflags.NT = value; };  
+    void set_rf(bool value) { this->m_rflags.RF = value; };  
+    void set_vm(bool value) { this->m_rflags.VM = value; };  
+    void set_ac(bool value) { this->m_rflags.AC = value; };  
+    void set_vif(bool value) { this->m_rflags.VIF = value; };  
+    void set_vip(bool value) { this->m_rflags.VIP = value; };  
+    void set_id(bool value) { this->m_rflags.ID = value; };  
+
+    /**
+     * Getter for RFLAGS
+     */ 
+    bool get_cf() const { return this->m_rflags.CF; }; 
+    bool get_pf() const { return this->m_rflags.PF; }; 
+    bool get_af() const { return this->m_rflags.AF; };  
+    bool get_zf() const { return this->m_rflags.ZF; };  
+    bool get_sf() const { return this->m_rflags.SF; };  
+    bool get_tf() const { return this->m_rflags.TF; };  
+    bool get_if() const { return this->m_rflags.IF; };  
+    bool get_df() const { return this->m_rflags.DF; };  
+    bool get_of() const { return this->m_rflags.OF; };  
+    bool get_iopl() const { return this->m_rflags.IOPL; };  
+    bool get_nt() const { return this->m_rflags.NT; };  
+    bool get_rf() const { return this->m_rflags.RF; };  
+    bool get_vm() const { return this->m_rflags.VM; };  
+    bool get_ac() const { return this->m_rflags.AC; };  
+    bool get_vif() const { return this->m_rflags.VIF; };  
+    bool get_vip() const { return this->m_rflags.VIP; };  
+    bool get_id() const { return this->m_rflags.ID; };  
+
+
+    /**
+     * Control Registers
+     */
+    struct CR0 {
+        u64 PE : 1; // Protected Mode Enable
+        u64 MP : 1; // Monitor Co-Processor
+        u64 EM : 1; // Emulation
+        u64 TS : 1; // Task Switched
+        u64 ET : 1; // Extension Type
+        u64 NE : 1; // Numeric Error
+        u64 : 10; // Reserved
+        u64 WP : 1; // Write Protect
+        u64 : 1; // Reserved
+        u64 AM : 1; // Alignment Mask
+        u64 : 10; // Reserved
+        u64 NW : 1; // Not-Write Through
+        u64 CD : 1; // Cache Disable
+        u64 PG : 1; // Paging
+    };
+    static_assert(sizeof(CR0) == 8);
+    CR0 m_cr0;
+
+    // This control register contains the linear (virtual) address which triggered a page fault, available in the page fault's interrupt handler.
+    VirtualAddress m_cr2;
+    struct CR3 {
+        u64 _pcid1 : 3;
+        u64 PWT : 1;
+        u64 PCD : 1;
+        u64 _pcid2 : 7;
+        u64 pml4_base_paddr : MAXPHYADDR - 12; // Physical Base Address of the PML4
+        u64 __reserved1 : 60 - MAXPHYADDR = 0; // Reserved (must be 0)
+        u64 LAM_U57 : 1; // When set, enables LAM57 (masking of linear-address bits 62:57) for user pointers and overrides CR3.LAM_U48.
+        u64 LAM_U48 : 1; // When set and CR3.LAM_U57 is clear, enables LAM48 (masking of linear-address bits 62:48) for user pointers.
+        u64 __reserved2 : 1 = 0; // Reserved (must be 0)
+
+        u64 reserved_bits_ored() const { return __reserved1 || __reserved2; }
+
+        // // We have to do it this way cause of bit-field limitations/alignment issues
+        PCID pcid() const { return ((u16)_pcid2 << 5) || PCD << 4 || PWT << 3 || _pcid1; }
+        void set_pcid(PCID pcid) {
+            _pcid1 = bits(pcid, 2, 0);
+            PWT = bits(pcid, 3, 3);
+            PCD = bits(pcid, 4, 4);
+            _pcid2 = bits(pcid, 11, 5);
+        }
+    };
+    static_assert(sizeof(CR3) == 8);
+    CR3 m_cr3;
+
+    struct CR4 {
+        u64 VME : 1; // Virtual-8086 Mode Extensions
+        u64 PVI : 1; // Protected Mode Virtual Interrupts
+        u64 TSD : 1; // Time Stamp enabled only in ring 0
+        u64 DE : 1; // Debugging Extensions
+        u64 PSE : 1; // Page Size Extension
+        u64 PAE : 1; // Physical Address Extension
+        u64 MCE : 1; // Machine Check Exception
+        u64 PGE : 1; // Page Global Enable
+        u64 PCE : 1; // Performance Monitoring Counter Enable
+        u64 OSFXSR : 1; // OS support for fxsave and fxrstor instructions
+        u64 OSXMMEXCPT : 1; // OS Support for unmasked simd floating point exceptions
+        u64 UMIP : 1; // User-Mode Instruction Prevention (SGDT, SIDT, SLDT, SMSW, and STR are disabled in user mode)
+        u64 LA57 : 1 = 0; // 57-bit linear addresses. When set in IA-32e mode, the processor uses 5-level paging to translate 57-bit linear addresses. When clear in IA-32e mode, the processor uses 4-level paging to translate 48-bit linear addresses.
+        u64 VMXE : 1; // Virtual Machine Extensions Enable
+        u64 SMXE : 1; // Safer Mode Extensions Enable
+        u64 __reserved1 : 1 = 0; // Reserved (must be 0)
+        u64 FSGSBASE : 1; // Enables the instructions RDFSBASE, RDGSBASE, WRFSBASE, and WRGSBASE
+        u64 PCIDE : 1; // PCID Enable
+        u64 OSXSAVE : 1; // XSAVE And Processor Extended States Enable
+        u64 KL : 1 = 0; // Key-Locker-Enable Bit.
+        u64 SMEP : 1; // Supervisor Mode Executions Protection Enable
+        u64 SMAP : 1; // Supervisor Mode Access Protection Enable
+        u64 PKE : 1; // Enable protection keys for user-mode pages
+        u64 CET : 1; // Enable Control-flow Enforcement Technology
+        u64 PKS : 1; // Enable protection keys for supervisor-mode pages
+        u64 UINTR : 1; // Enables user interrupts when set, including user-interrupt delivery, user-interrupt notification identification, and the user-interrupt instructions.
+        u64 __reserved2 : 2 = 0; // Reserved (must be 0)
+        u64 LAM_SUP : 1; // When set, enables LAM (linear-address masking) for supervisor pointers.
+
+        u64 reserved_bits_ored() const { return __reserved1 || __reserved2; }
+    };
+    static_assert(sizeof(CR4) == 8);
+    CR4 m_cr4;
+
+    struct CR8 {
+        u64 TPR : 4; // This sets the threshold value corresponding to the highestpriority interrupt to be blocked. A value of 0 means all interrupts are enabled. This field is available in 64-bit mode. A value of 15 means all interrupts will be disabled.
+    };
+    static_assert(sizeof(CR8) == 8);
+    CR8 m_cr8;
+    /**
+     * CR1, CR5-7, CR9-15:
+     * Reserved, the cpu will throw a #ud exception when trying to access them.
+     */
+
+
+    /**
+     * MSRs (Model-Specific-Registers)
+     */
+    struct EFER {
+        u64 SCE : 1; // System Call Extensions
+        u64 : 7; // Reserved
+        u64 LME : 2; // Long Mode Enable
+        u64 LMA : 1; // Long Mode Active
+        u64 NXE : 1; // No-Execute Enable
+        u64 SVME : 1; // Secure Virtual Machine Enable
+        u64 LMSLE : 1; // Long Mode Segment Limit Enable
+        u64 FFXSR : 1; // Fast FXSAVE/FXRSTOR
+        u64 TCE : 1; // Translation Cache Extension u8 16 - 63 0 Reserved
+    };
+    EFER m_efer;
+    // MSRs with the addresses 0xC0000100 (for FS) and 0xC0000101 (for GS) contain the base addresses of the FS and GS segment registers.
+    // These are commonly used for thread-pointers in user code and CPU-local pointers in kernel code.
+    // Safe to contain anything, since use of a segment does not confer additional privileges to user code.
+    // In newer CPUs, these can also be written with WRFSBASE and WRGSBASE instructions at any privilege level.
+    VirtualAddress m_fsbase;
+    VirtualAddress m_gsbase;
+    // MSR with the address 0xC0000102.
+    // Is basically a buffer that gets exchanged with GS.base after a swapgs instruction.
+    // Usually used to separate kernel and user use of the GS register.
+    VirtualAddress m_kernel_gsbase;
+
+
+    /**
+     * Debug Registers:
+     * Not Implemented!
+     */
+
+
+    /**
+     * Test Registers
+     * Not Implemented!
+     */
+
+
+    /**
+     * Protected Mode Registers
+     * As with segments, the limit value is added to the base address to get the address of the last valid byte.
+     */
+    DescriptorTable m_gdtr;
+    SystemSegmentRegister m_ldtr;
+    DescriptorTable m_idtr;
+    SystemSegmentRegister m_tr;
+
+    SystemSegmentRegister* m_system_segment_register_map[8] = {
+        NULL, // cs
+        NULL, // ds
+        NULL, // ss
+        NULL, // es
+        NULL, // fs
+        NULL, // gs
+        &m_ldtr,
+        &m_tr,
+    };
 
 private:
     [[nodiscard]] InterruptRaisedOr<void> handle_insn(cs_insn const&);
@@ -791,252 +1098,6 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> handle_UCOMISS(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_UD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_UIRET(cs_x86 const&);
-
-private:
-    ICU m_icu;
-    MMU m_mmu;
-    PIC m_pic;
-    Disassembler m_disassembler;
-
-    UARTController m_uart1;
-
-    std::optional<Interrupt> m_interrupt_to_be_handled;
-    State m_state;
-
-    // TODO: initialize all registers with sane default values
-    //       See page 3425
-
-    // General Purpose / Pointer Registers
-    u64 m_rax = 0x0;
-    u64 m_rbx = 0x0;
-    u64 m_rcx = 0x0;
-    u64 m_rdx = 0x00000600;
-    u64 m_rsi = 0x0;
-    u64 m_rsp = 0x0;
-    u64 m_rbp = 0x0;
-    u64 m_rip = 0x0000FFF0;
-    u64 m_r8 = 0x0;
-    u64 m_r9 = 0x0;
-    u64 m_r10 = 0x0;
-    u64 m_r11 = 0x0;
-    u64 m_r12 = 0x0;
-    u64 m_r13 = 0x0;
-    u64 m_r14 = 0x0;
-    u64 m_r15 = 0x0;
-
-
-    /**
-     * See page 3174
-     * Because ES, DS, and SS segment registers are not used in 64-bit mode, their fields (base, limit, and attribute) in
-     * segment descriptor registers are ignored. Some forms of segment load instructions are also invalid (for example,
-     * LDS, POP ES). Address calculations that reference the ES, DS, or SS segments are treated as if the segment base
-     * is zero.
-     *
-     * The hidden descriptor register fields for FS.base and GS.base are physically mapped to MSRs in order to load all
-     * address bits supported by a 64-bit implementation. Software with CPL = 0 (privileged software) can load all
-     * supported linear-address bits into FS.base or GS.base using WRMSR. Addresses written into the 64-bit FS.base
-     * and GS.base registers must be in canonical form. A WRMSR instruction that attempts to write a non-canonical
-     * address to those registers causes a #GP fault.
-     */
-    ApplicationSegmentRegister m_cs;
-    ApplicationSegmentRegister m_ds;
-    ApplicationSegmentRegister m_ss;
-    ApplicationSegmentRegister m_es;
-    ApplicationSegmentRegister m_fs;
-    ApplicationSegmentRegister m_gs;
-    ApplicationSegmentRegister* m_segment_register_map[8] = {
-        &m_cs, &m_ds, &m_ss, &m_es, &m_fs, &m_gs,
-        NULL, // ldtr
-        NULL, // tr
-    };
-
-
-    /**
-     * RFLAGS Registers
-     */
-    struct RFLAGS {
-        u64 CF : 1; // Carry Flag
-        u64 : 1; // Reserved
-        u64 PF : 1; // Parity Flag
-        u64 : 1; // Reserved
-        u64 AF : 1; // Auxiliary Carry Flag
-        u64 : 1; // Reserved
-        u64 ZF : 1; // Zero Flag
-        u64 SF : 1; // Sign Flag
-        u64 TF : 1; // Trap Flag
-        u64 IF : 1; // Interrupt Enable Flag
-        u64 DF : 1; // Direction Flag
-        u64 OF : 1; // Overflow Flag
-        u64 IOPL : 2; // I/O Privilege Leve
-        u64 NT : 1; // Nested Task
-        u64 : 1; // Reserved
-        u64 RF : 1; // Resume Flag
-        u64 VM : 1; // Virtual-8086 Mode
-        // Controls alignment-checking in user-mode
-        // Allows to disable SMAP for explicit accesses, can only be modified in supervisor mode
-        u64 AC : 1; // Alignment Check / Access Control
-        u64 VIF : 1; // Virtual Interrupt Flag
-        u64 VIP : 1; // Virtual Interrupt Pending
-        u64 ID : 1; // ID Flag
-    };
-    static_assert(sizeof(RFLAGS) == 8);
-    RFLAGS m_rflags;
-
-
-    /**
-     * Control Registers
-     */
-    struct CR0 {
-        u64 PE : 1; // Protected Mode Enable
-        u64 MP : 1; // Monitor Co-Processor
-        u64 EM : 1; // Emulation
-        u64 TS : 1; // Task Switched
-        u64 ET : 1; // Extension Type
-        u64 NE : 1; // Numeric Error
-        u64 : 10; // Reserved
-        u64 WP : 1; // Write Protect
-        u64 : 1; // Reserved
-        u64 AM : 1; // Alignment Mask
-        u64 : 10; // Reserved
-        u64 NW : 1; // Not-Write Through
-        u64 CD : 1; // Cache Disable
-        u64 PG : 1; // Paging
-    };
-    static_assert(sizeof(CR0) == 8);
-    CR0 m_cr0;
-
-    // This control register contains the linear (virtual) address which triggered a page fault, available in the page fault's interrupt handler.
-    VirtualAddress m_cr2;
-    struct CR3 {
-        u64 _pcid1 : 3;
-        u64 PWT : 1;
-        u64 PCD : 1;
-        u64 _pcid2 : 7;
-        u64 pml4_base_paddr : MAXPHYADDR - 12; // Physical Base Address of the PML4
-        u64 __reserved1 : 60 - MAXPHYADDR = 0; // Reserved (must be 0)
-        u64 LAM_U57 : 1; // When set, enables LAM57 (masking of linear-address bits 62:57) for user pointers and overrides CR3.LAM_U48.
-        u64 LAM_U48 : 1; // When set and CR3.LAM_U57 is clear, enables LAM48 (masking of linear-address bits 62:48) for user pointers.
-        u64 __reserved2 : 1 = 0; // Reserved (must be 0)
-
-        u64 reserved_bits_ored() const { return __reserved1 || __reserved2; }
-
-        // // We have to do it this way cause of bit-field limitations/alignment issues
-        PCID pcid() const { return ((u16)_pcid2 << 5) || PCD << 4 || PWT << 3 || _pcid1; }
-        void set_pcid(PCID pcid) {
-            _pcid1 = bits(pcid, 2, 0);
-            PWT = bits(pcid, 3, 3);
-            PCD = bits(pcid, 4, 4);
-            _pcid2 = bits(pcid, 11, 5);
-        }
-    };
-    static_assert(sizeof(CR3) == 8);
-    CR3 m_cr3;
-
-    struct CR4 {
-        u64 VME : 1; // Virtual-8086 Mode Extensions
-        u64 PVI : 1; // Protected Mode Virtual Interrupts
-        u64 TSD : 1; // Time Stamp enabled only in ring 0
-        u64 DE : 1; // Debugging Extensions
-        u64 PSE : 1; // Page Size Extension
-        u64 PAE : 1; // Physical Address Extension
-        u64 MCE : 1; // Machine Check Exception
-        u64 PGE : 1; // Page Global Enable
-        u64 PCE : 1; // Performance Monitoring Counter Enable
-        u64 OSFXSR : 1; // OS support for fxsave and fxrstor instructions
-        u64 OSXMMEXCPT : 1; // OS Support for unmasked simd floating point exceptions
-        u64 UMIP : 1; // User-Mode Instruction Prevention (SGDT, SIDT, SLDT, SMSW, and STR are disabled in user mode)
-        u64 LA57 : 1 = 0; // 57-bit linear addresses. When set in IA-32e mode, the processor uses 5-level paging to translate 57-bit linear addresses. When clear in IA-32e mode, the processor uses 4-level paging to translate 48-bit linear addresses.
-        u64 VMXE : 1; // Virtual Machine Extensions Enable
-        u64 SMXE : 1; // Safer Mode Extensions Enable
-        u64 __reserved1 : 1 = 0; // Reserved (must be 0)
-        u64 FSGSBASE : 1; // Enables the instructions RDFSBASE, RDGSBASE, WRFSBASE, and WRGSBASE
-        u64 PCIDE : 1; // PCID Enable
-        u64 OSXSAVE : 1; // XSAVE And Processor Extended States Enable
-        u64 KL : 1 = 0; // Key-Locker-Enable Bit.
-        u64 SMEP : 1; // Supervisor Mode Executions Protection Enable
-        u64 SMAP : 1; // Supervisor Mode Access Protection Enable
-        u64 PKE : 1; // Enable protection keys for user-mode pages
-        u64 CET : 1; // Enable Control-flow Enforcement Technology
-        u64 PKS : 1; // Enable protection keys for supervisor-mode pages
-        u64 UINTR : 1; // Enables user interrupts when set, including user-interrupt delivery, user-interrupt notification identification, and the user-interrupt instructions.
-        u64 __reserved2 : 2 = 0; // Reserved (must be 0)
-        u64 LAM_SUP : 1; // When set, enables LAM (linear-address masking) for supervisor pointers.
-
-        u64 reserved_bits_ored() const { return __reserved1 || __reserved2; }
-    };
-    static_assert(sizeof(CR4) == 8);
-    CR4 m_cr4;
-
-    struct CR8 {
-        u64 TPR : 4; // This sets the threshold value corresponding to the highestpriority interrupt to be blocked. A value of 0 means all interrupts are enabled. This field is available in 64-bit mode. A value of 15 means all interrupts will be disabled.
-    };
-    static_assert(sizeof(CR8) == 8);
-    CR8 m_cr8;
-    /**
-     * CR1, CR5-7, CR9-15:
-     * Reserved, the cpu will throw a #ud exception when trying to access them.
-     */
-
-
-    /**
-     * MSRs (Model-Specific-Registers)
-     */
-    struct EFER {
-        u64 SCE : 1; // System Call Extensions
-        u64 : 7; // Reserved
-        u64 LME : 2; // Long Mode Enable
-        u64 LMA : 1; // Long Mode Active
-        u64 NXE : 1; // No-Execute Enable
-        u64 SVME : 1; // Secure Virtual Machine Enable
-        u64 LMSLE : 1; // Long Mode Segment Limit Enable
-        u64 FFXSR : 1; // Fast FXSAVE/FXRSTOR
-        u64 TCE : 1; // Translation Cache Extension u8 16 - 63 0 Reserved
-    };
-    EFER m_efer;
-    // MSRs with the addresses 0xC0000100 (for FS) and 0xC0000101 (for GS) contain the base addresses of the FS and GS segment registers.
-    // These are commonly used for thread-pointers in user code and CPU-local pointers in kernel code.
-    // Safe to contain anything, since use of a segment does not confer additional privileges to user code.
-    // In newer CPUs, these can also be written with WRFSBASE and WRGSBASE instructions at any privilege level.
-    VirtualAddress m_fsbase;
-    VirtualAddress m_gsbase;
-    // MSR with the address 0xC0000102.
-    // Is basically a buffer that gets exchanged with GS.base after a swapgs instruction.
-    // Usually used to separate kernel and user use of the GS register.
-    VirtualAddress m_kernel_gsbase;
-
-
-    /**
-     * Debug Registers:
-     * Not Implemented!
-     */
-
-
-    /**
-     * Test Registers
-     * Not Implemented!
-     */
-
-
-    /**
-     * Protected Mode Registers
-     * As with segments, the limit value is added to the base address to get the address of the last valid byte.
-     */
-    DescriptorTable m_gdtr;
-    SystemSegmentRegister m_ldtr;
-    DescriptorTable m_idtr;
-    SystemSegmentRegister m_tr;
-
-    SystemSegmentRegister* m_system_segment_register_map[8] = {
-        NULL, // cs
-        NULL, // ds
-        NULL, // ss
-        NULL, // es
-        NULL, // fs
-        NULL, // gs
-        &m_ldtr,
-        &m_tr,
-    };
 };
-
 
 }

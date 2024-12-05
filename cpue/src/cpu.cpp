@@ -18,6 +18,25 @@ static constexpr ApplicationSegmentRegister _default_cs_segment_register = {.vis
 static constexpr SystemSegmentRegister _default_system_segment_register = {.visible = 0x0,
     .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0, .base3 = 0x0}}};
 
+//Initializing lookup-table when costructing cpu
+void CPU::m_init_64_reg() {
+    m_reg64_table[x86_reg::X86_REG_RAX] = &m_rax;
+    m_reg64_table[x86_reg::X86_REG_RBX] = &m_rbx;
+    m_reg64_table[x86_reg::X86_REG_RCX] = &m_rcx;
+    m_reg64_table[x86_reg::X86_REG_RDX] = &m_rdx;
+    m_reg64_table[x86_reg::X86_REG_RSI] = &m_rsi;
+    m_reg64_table[x86_reg::X86_REG_RSP] = &m_rsp;
+    m_reg64_table[x86_reg::X86_REG_RBP] = &m_rbp;
+    m_reg64_table[x86_reg::X86_REG_RIP] = &m_rip;
+    m_reg64_table[x86_reg::X86_REG_R8] = &m_r8;
+    m_reg64_table[x86_reg::X86_REG_R9] = &m_r9;
+    m_reg64_table[x86_reg::X86_REG_R10] = &m_r10;
+    m_reg64_table[x86_reg::X86_REG_R11] = &m_r11;
+    m_reg64_table[x86_reg::X86_REG_R12] = &m_r12;
+    m_reg64_table[x86_reg::X86_REG_R13] = &m_r13;
+    m_reg64_table[x86_reg::X86_REG_R14] = &m_r14;
+    m_reg64_table[x86_reg::X86_REG_R15] = &m_r15;
+}
 
 void CPU::reset() {
     // See page 3425
