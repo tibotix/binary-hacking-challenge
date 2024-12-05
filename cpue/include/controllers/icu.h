@@ -4,9 +4,10 @@
 #include <optional>
 #include <queue>
 
-#include "pic.h"
 #include "common.h"
 #include "interrupts.h"
+#include "forward.h"
+
 
 namespace CPUE {
 
@@ -20,9 +21,18 @@ namespace CPUE {
  */
 class ICU {
 public:
-    friend class CPU;
-    ICU() = default;
+    friend CPU;
+    ICU(CPU* cpu) : m_cpu(cpu) {}
     ICU(ICU const&) = delete;
+
+    bool intr_pin_enabled() const;
+    _InterruptRaised nmi_raise_interrupt(Interrupt i) { fail("NMI pin is not implemented"); }
+    InterruptRaisedOr<void> intr_raise_interrupt(Interrupt i) {
+        CPUE_ASSERT(i.source == InterruptSource::INTR_PIN, "Non INTR_PIN interrupt raised through intr_raise_interrupt.");
+        if (!intr_pin_enabled())
+            return {};
+        return raise_interrupt(i);
+    }
 
 private:
     static constexpr u8 MAX_PENDING_CAPACITY = 127;
@@ -44,7 +54,6 @@ private:
         }();
         return raise_interrupt(i, priority);
     }
-    _InterruptRaised nmi_raise_interrupt(Interrupt i) { fail("NMI pin is not implemented"); }
 
     /**
      * Instruction integral interrupts are handled as an integral part of the current instruction,
@@ -81,6 +90,7 @@ private:
     } _comparator;
     std::priority_queue<_PrioritizedInterrupt, std::vector<_PrioritizedInterrupt>, decltype(_comparator)> m_pending_interrupts{_comparator};
     std::mutex m_lock;
+    CPU* m_cpu;
 };
 
 }

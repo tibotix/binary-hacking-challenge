@@ -34,7 +34,7 @@ struct TranslationContext {
 class MMU {
 public:
     MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_tlb(TLB{cpu}), m_physmem(NULL), m_physmem_size(available_pages * PAGE_SIZE) {
-        CPUE_ASSERT(cpu != NULL, "cpu != NULL");
+        CPUE_ASSERT(cpu != NULL, "cpu is NULL");
         init();
     }
     MMU(MMU const&) = delete;
@@ -43,6 +43,8 @@ public:
 
     [[nodiscard]] InterruptRaisedOr<GDTLDTDescriptor> segment_selector_to_descriptor(SegmentSelector selector);
     [[nodiscard]] InterruptRaisedOr<IDTDescriptor> interrupt_vector_to_descriptor(InterruptVector vector);
+
+    void add_mmio_register();
 
     [[nodiscard]] InterruptRaisedOr<u64> mem_read64(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
     [[nodiscard]] InterruptRaisedOr<u64> mem_read64(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
