@@ -57,7 +57,7 @@ constexpr unsigned long long operator""_gb(unsigned long long bytes) {
 typedef u16 PCID;
 
 constexpr u64 bitmask64(u8 high, u8 low) {
-    return ((1 << (high + 1)) - 1) & (-1 << low);
+    return ((1 << (high + 1)) - 1);
 }
 
 template<typename T>
