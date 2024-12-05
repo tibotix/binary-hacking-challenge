@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <optional>
 
 
 #define MAY_HAVE_RAISED(expression)                  \

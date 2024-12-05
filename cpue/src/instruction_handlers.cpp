@@ -7,22 +7,18 @@ namespace CPUE {
 //cs_x86 *x86 = &(insn[i].detail->x86);
 
 InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
-    auto *detail = &(insn.detail->x86);
-    #define CASE(name) case x86_insn::X86_INS_##name##: return handle_##name##(*detail); break; 
- 
-    switch( insn.id ) {
-        CASE(ADD)
-    }
+    auto* detail = &(insn.detail->x86);
+#define CASE(name) \
+    case x86_insn::X86_INS_##name: return handle_##name(*detail); break;
 
-    #undef CASE 
+    switch (insn.id) { CASE(ADD) }
 
+#undef CASE
 }
 InterruptRaisedOr<void> CPU::handle_AAA(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust After Addition
-InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {
-
-} //	ASCII Adjust AX Before Division
+InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {} //	ASCII Adjust AX Before Division
 InterruptRaisedOr<void> CPU::handle_AAM(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust AX After Multiply
@@ -169,7 +165,7 @@ InterruptRaisedOr<void> CPU::handle_BNDSTX(cs_x86 const& insn_detail) {
 } //	Store Extended Bounds Using Address Translation
 InterruptRaisedOr<void> CPU::handle_BOUND(cs_x86 const& insn_detail) {
     TODO("Only handle interrupt if out of bounds");
-    static Interrupt i cs_x86 const& insn= {
+    static Interrupt i = {
         .vector = 5,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
@@ -757,7 +753,7 @@ InterruptRaisedOr<void> CPU::handle_INSW(cs_x86 const& insn_detail) {
 } //	Input from Port to String
 InterruptRaisedOr<void> CPU::handle_INT(cs_x86 const& insn_detail) {
     // TODO: increment m_rip, because the return address is the next insn
-    Interrupt i cs_x86 const& insn= {
+    Interrupt i = {
         .vector = 0, // TODO: use actual vector
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
@@ -776,7 +772,7 @@ InterruptRaisedOr<void> CPU::handle_INT1(cs_x86 const& insn_detail) {
 } //	Call to Interrupt Procedure
 InterruptRaisedOr<void> CPU::handle_INT3(cs_x86 const& insn_detail) {
     TODO_NOFAIL("increment rip");
-    static Interrupt i cs_x86 const& insn= {
+    static Interrupt i = {
         .vector = 3,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
@@ -786,16 +782,16 @@ InterruptRaisedOr<void> CPU::handle_INT3(cs_x86 const& insn_detail) {
 } //	Call to Interrupt Procedure
 InterruptRaisedOr<void> CPU::handle_INTO(cs_x86 const& insn_detail) {
     TODO_NOFAIL("increment rip");
-    static Interrupt i cs_x86 const& insn= {
+    static Interrupt i = {
         .vector = 4,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    if (m_rflags.OFcs_x86 const& insn_detail) {
+    if (m_rflags.OF) {
         return handle_interrupt(i);
     }
-    returcs_x86 const& insnn {};
+    return {};
 } //	Call to Interrupt Procedure
 InterruptRaisedOr<void> CPU::handle_INVD(cs_x86 const& insn_detail) {
     TODO();

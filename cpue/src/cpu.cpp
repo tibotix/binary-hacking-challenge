@@ -566,5 +566,7 @@ DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) cons
     }
 }
 
+void CPU::init_mmio() {}
+
 
 }
