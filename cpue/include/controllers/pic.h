@@ -2,11 +2,11 @@
 
 #include <optional>
 #include <queue>
-#include <array>
-#include "common.h"
-#include "icu.h"
-#include "interrupts.h"
 #include <bitset>
+
+#include "common.h"
+#include "forward.h"
+#include "interrupts.h"
 
 namespace CPUE {
 
@@ -71,22 +71,42 @@ namespace CPUE {
  */
 
 
-constexpr u8 PIC_NUM_IRQS = 8;
+constexpr u8 PIC_NUM_IRQ_PINS = 8;
+constexpr u8 PIC_IRQ_VEC_BASE = 0xc0;
 
-struct PICConnectionHandle {};
+class PICConnectionHandle {
+public:
+    explicit PICConnectionHandle(u8 pin) : m_pin(pin) { CPUE_ASSERT(m_pin < PIC_NUM_IRQ_PINS, "Invalid pin number"); }
+    u8 pin() const { return m_pin; }
+
+private:
+    u8 m_pin;
+};
 
 class PIC {
 public:
     explicit PIC(ICU* icu) : m_icu(icu){};
     PIC(PIC const&) = delete;
 
-    void set_pin_high(PICConnectionHandle const& handle) {}
-    void set_pin_low(PICConnectionHandle const& handle);
+    std::optional<PICConnectionHandle> request_connection() {
+        if (m_next_free_pin >= PIC_NUM_IRQ_PINS)
+            return {};
+        return PICConnectionHandle(m_next_free_pin++);
+    }
+
+    void mask_pin(u8 pin);
+    void unmask_pin(u8 pin);
+    void raise_irq_pin(PICConnectionHandle const& handle);
+    void clear_irq_pin(PICConnectionHandle const& handle);
 
 private:
-    std::bitset<PIC_NUM_IRQS> m_irqs = 0;
-    std::bitset<PIC_NUM_IRQS> m_isr = 0; // In-Service Register
-    std::bitset<PIC_NUM_IRQS> m_irr = 0; // In-Request Register
+    void process_pending_irqs();
+
+private:
+    u8 m_next_free_pin = 0;
+    std::bitset<PIC_NUM_IRQ_PINS> m_imr = 0; // Interrupt-Masking Register
+    std::bitset<PIC_NUM_IRQ_PINS> m_isr = 0; // In-Service Register
+    std::bitset<PIC_NUM_IRQ_PINS> m_irr = 0; // In-Request Register
 
     ICU* m_icu = nullptr;
 };

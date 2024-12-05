@@ -23,7 +23,11 @@ public:
     friend MMU;
     friend Disassembler;
     friend TLB;
-    CPU() : m_mmu{this, 2}, m_disassembler(this) { reset(); }
+    friend ICU;
+    CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{&m_icu}), m_disassembler(Disassembler{this}), m_uart1(UARTController{&m_pic}) {
+        reset();
+        init_mmio();
+    }
     CPU(CPU const&) = delete;
 
 public:
@@ -79,8 +83,8 @@ public:
     /**
      * Process-Context Identifiers (PCIDs) (See page 3230)
      * A PCID is a 12-bit identifier. Non-zero PCIDs are enabled by setting the PCIDE flag (bit 17) of CR4. If CR4.PCIDE =
-     * 0, the current PCID is always 000H; otherwise, the current PCID is the value of bits 11:0 of CR3.1 Not all proces-
-     * sors allow CR4.PCIDE to be set to 1;
+     * 0, the current PCID is always 000H; otherwise, the current PCID is the value of bits 11:0 of CR3.1 Not all processors
+     * allow CR4.PCIDE to be set to 1;
      */
     [[nodiscard]] PCID pcid() const {
         if (m_cr4.PCIDE == 0)
@@ -125,6 +129,8 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> do_canonicality_check(VirtualAddress const& vaddr);
 
     DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
+
+    void init_mmio();
 
 private:
     [[nodiscard]] InterruptRaisedOr<void> handle_AAA();
@@ -786,9 +792,9 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> handle_UIRET();
 
 private:
+    ICU m_icu;
     MMU m_mmu;
     PIC m_pic;
-    ICU m_icu;
     Disassembler m_disassembler;
 
     UARTController m_uart1;

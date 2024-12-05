@@ -168,8 +168,15 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
         case DescriptorType::TASK_GATE: MAY_HAVE_RAISED(enter_task_gate(interrupt, *idt_descriptor.to_task_gate_descriptor())); break;
         case DescriptorType::INTERRUPT_GATE:
         case DescriptorType::TRAP_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_trap_gate_descriptor())); break;
-        // TODO: maybe raise exception here instead of fail
-        default: fail("Invalid segment type for interrupt.");
+        // The following conditions cause general-protection exceptions to be generated:
+        // Referencing an entry in the IDT (following an interrupt or exception) that is not an interrupt, trap, or task gate.
+        default: {
+            ErrorCode error_code = {.standard = {
+                                        .tbl = 1,
+                                        .selector_index = interrupt.vector,
+                                    }};
+            return raise_integral_interrupt(Exceptions::GP(error_code));
+        }
     }
 
     // Only real exceptions push an error_code
@@ -565,5 +572,10 @@ DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) cons
     }
 }
 
+
+void CPU::init_mmio() {
+    TODO_NOFAIL("init_mmio");
+    m_mmu.add_mmio_register();
+}
 
 }
