@@ -1,4 +1,7 @@
 
+# clang .cache
+**/.cache/
+
 # vscode
 **/.vscode/
 
