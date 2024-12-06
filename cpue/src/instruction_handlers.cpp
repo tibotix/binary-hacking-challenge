@@ -5,7 +5,7 @@ namespace CPUE {
 
 // Access the detailed operand information
 //cs_x86 *x86 = &(insn[i].detail->x86);
-
+// TODO: use dispatch array, and build it in constexpr, use nullptr for not implemented and pointer to member function otherwise
 InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
     auto* detail = &(insn.detail->x86);
 #define CASE(name) \
@@ -32,6 +32,7 @@ InterruptRaisedOr<void> CPU::handle_ADCX(cs_x86 const& insn_detail) {
     TODO();
 } //	Unsigned Integer Addition of Two Operands With Carry Flag
 InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
+    auto const& op = insn_detail.operands[0];
     TODO();
 } //	Add
 InterruptRaisedOr<void> CPU::handle_ADDPD(cs_x86 const& insn_detail) {

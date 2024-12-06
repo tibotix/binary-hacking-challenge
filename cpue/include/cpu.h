@@ -24,7 +24,7 @@ public:
     friend Disassembler;
     friend TLB;
     friend ICU;
-    CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{&m_icu}), m_disassembler(Disassembler{this}), m_uart1(UARTController{&m_pic}) {
+    CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{&m_icu}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
         reset();
         init_mmio();
     }
@@ -107,6 +107,7 @@ public:
     UARTController& uart1() { return m_uart1; };
 
 private:
+    void fix_interrupt_ext_bit(Interrupt& i) const;
     /**
      * Use this function only for sending interrupts that are processor-generated like exceptions
      * or software-generated interrupts (f.e. INT n instruction, etc.)
@@ -116,7 +117,7 @@ private:
      */
     template<typename... Args>
     _InterruptRaised raise_interrupt(Interrupt i, Args&&... args);
-    _InterruptRaised raise_integral_interrupt(Interrupt i) { return m_icu.raise_integral_interrupt(i); }
+    _InterruptRaised raise_integral_interrupt(Interrupt i);
     [[nodiscard]] InterruptRaisedOr<void> handle_nested_interrupt(Interrupt i);
     [[nodiscard]] InterruptRaisedOr<void> handle_interrupt(Interrupt i);
     // NOTE: as InterruptGateDescriptor and TrapGateDescriptor have the same layout, we simply choose one to receive

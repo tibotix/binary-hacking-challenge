@@ -13,6 +13,8 @@
 #include "descriptors/gdtldt_descriptors.h"
 #include "descriptors/idt_descriptors.h"
 #include "forward.h"
+#include "mmio.h"
+#include "endianness.h"
 
 
 namespace CPUE {
@@ -33,9 +35,9 @@ struct TranslationContext {
 
 class MMU {
 public:
-    MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_tlb(TLB{cpu}), m_physmem(NULL), m_physmem_size(available_pages * PAGE_SIZE) {
+    MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_tlb(TLB{cpu}), m_mmio(MMIO{}), m_physmem(NULL), m_physmem_size(available_pages * PAGE_SIZE) {
         CPUE_ASSERT(cpu != NULL, "cpu is NULL");
-        init();
+        allocate_physmem();
     }
     MMU(MMU const&) = delete;
 
@@ -44,7 +46,6 @@ public:
     [[nodiscard]] InterruptRaisedOr<GDTLDTDescriptor> segment_selector_to_descriptor(SegmentSelector selector);
     [[nodiscard]] InterruptRaisedOr<IDTDescriptor> interrupt_vector_to_descriptor(InterruptVector vector);
 
-    void add_mmio_register();
 
     [[nodiscard]] InterruptRaisedOr<u64> mem_read64(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
     [[nodiscard]] InterruptRaisedOr<u64> mem_read64(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
@@ -54,7 +55,6 @@ public:
     [[nodiscard]] InterruptRaisedOr<u16> mem_read16(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
     [[nodiscard]] InterruptRaisedOr<u8> mem_read8(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
     [[nodiscard]] InterruptRaisedOr<u8> mem_read8(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-
 
     [[nodiscard]] InterruptRaisedOr<void> mem_write64(LogicalAddress const& laddr, u64 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
     [[nodiscard]] InterruptRaisedOr<void> mem_write64(VirtualAddress const& vaddr, u64 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
@@ -86,13 +86,13 @@ private:
     template<typename D, u16 index_scale>
     [[nodiscard]] InterruptRaisedOr<D> get_descriptor_from_descriptor_table(VirtualAddress const& table_base, u16 table_limit, u16 descriptor_index, ErrorCode error_code);
 
-    template<typename T>
+    template<unsigned_integral T>
     [[nodiscard]] InterruptRaisedOr<T> mem_read(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-    template<typename T>
+    template<unsigned_integral T>
     [[nodiscard]] InterruptRaisedOr<T> mem_read(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-    template<typename T>
+    template<unsigned_integral T>
     [[nodiscard]] InterruptRaisedOr<void> mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-    template<typename T>
+    template<unsigned_integral T>
     [[nodiscard]] InterruptRaisedOr<void> mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
 
     template<typename T = u8>
@@ -101,7 +101,7 @@ private:
         return (T*)(m_physmem + paddr.addr);
     }
 
-    void init() {
+    void allocate_physmem() {
         m_physmem = (u8*)mmap(NULL, m_physmem_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (m_physmem == (u8*)-1) {
             fail("mmap");
@@ -131,10 +131,10 @@ private:
     friend class StartLogicalAddressTranslation;
     std::optional<LogicalAddress> m_currently_translating_laddr;
 
-
 private:
     TLB m_tlb;
     CPU* m_cpu;
+    MMIO m_mmio;
     size_t m_physmem_size;
     u8* m_physmem;
 };

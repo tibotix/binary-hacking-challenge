@@ -7,7 +7,7 @@
 namespace CPUE {
 
 template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
+requires(std::is_same_v<R, T>&&...) && (is_unsigned_integral<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
     // Consider calculation invalid if we are only adding one number
     static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
 

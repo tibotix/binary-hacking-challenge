@@ -56,13 +56,13 @@ constexpr unsigned long long operator""_gb(unsigned long long bytes) {
 
 typedef u16 PCID;
 
-constexpr u64 bitmask64(u8 high, u8 low) {
-    return ((1 << (high + 1)) - 1);
+constexpr u64 bitmask64(u8 high) {
+    return (((u64)1 << (high)) - 1);
 }
 
 template<typename T>
 constexpr T bits(T val, u8 high, u8 low) {
-    return (val & bitmask64(high, low)) >> low;
+    return (val & bitmask64(high + 1)) >> low;
 }
 
 
@@ -89,6 +89,12 @@ requires std::is_integral_v<R> && SameSize<R, T>
 static constexpr R raw_bytes(T* instance) {
     return *((R*)instance);
 }
+
+template<typename T>
+concept is_unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template<typename T>
+concept unsigned_integral = is_unsigned_integral<T>;
 
 
 template<typename T>

@@ -374,14 +374,17 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     return std::make_pair(old_ss.visible.segment_selector, old_sp);
 }
 
-
-template<typename... Args>
-_InterruptRaised CPU::raise_interrupt(Interrupt i, Args&&... args) {
+void CPU::fix_interrupt_ext_bit(Interrupt& i) const {
     // #PF and #CP use custom error_code format
     if (i.vector != Exceptions::VEC_PF && i.vector != Exceptions::VEC_CP && i.error_code.has_value()) {
         // don't clear already set ext bit, but otherwise use value of source (or 0, if we're currently not handling an interrupt)
         i.error_code->standard.ext |= m_interrupt_to_be_handled.has_value() ? m_interrupt_to_be_handled->source.is_external() : 0;
     }
+}
+
+template<typename... Args>
+_InterruptRaised CPU::raise_interrupt(Interrupt i, Args&&... args) {
+    fix_interrupt_ext_bit(i);
 
     // If we are handling the instruction, the interrupt is always integral part of instruction execution
     if (m_state == STATE_HANDLE_INSTRUCTION)
@@ -405,6 +408,11 @@ _InterruptRaised CPU::raise_interrupt(Interrupt i, Args&&... args) {
         case Exceptions::VEC_CP: return m_icu.raise_integral_interrupt(i);
         default: return m_icu.raise_interrupt(i, std::forward<Args>(args)...);
     }
+}
+
+_InterruptRaised CPU::raise_integral_interrupt(Interrupt i) {
+    fix_interrupt_ext_bit(i);
+    return m_icu.raise_integral_interrupt(i);
 }
 
 InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector) {

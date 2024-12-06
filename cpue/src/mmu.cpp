@@ -64,6 +64,7 @@ InterruptRaisedOr<PTE> MMU::va_to_pte(VirtualAddress const& vaddr, TranslationCo
     // Bits 11:3 are bits 47:39 of the linear address
     // Bits 2:0 are all 0
     u64 pml4e_paddr = m_cpu->m_cr3.pml4_base_paddr + bits(vaddr.addr, 47, 39);
+    TODO_NOFAIL("check endianness in paddr_ptr");
     auto* pml4e = paddr_ptr<PML4E>(pml4e_paddr);
     pml4e->accessed = 1;
     MAY_HAVE_RAISED(check_page_structure(pml4e, ctx));
@@ -233,10 +234,10 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
 
 
 InterruptRaisedOr<void> MMU::check_page_structure_protection_key(PageStructureEntry auto* entry, TranslationContext const& ctx) {
-    // We currently do not implement protection key's
     // On instruction fetches PK is not checked
     if (m_cpu->state() != CPU::State::STATE_FETCH_INSTRUCTION)
         return {};
+    // We currently do not implement protection key's
     return {};
 }
 
@@ -350,6 +351,7 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
         .width = ByteWidth::WIDTH_QWORD,
         .intention = TranslationIntention::INTENTION_LOAD_DESCRIPTOR,
     };
+    TODO_NOFAIL("check endianness (get_descriptor_from_descriptor_table)");
     auto* descriptor1 = paddr_ptr<Descriptor>(MAY_HAVE_RAISED(va_to_pa(table_base + (descriptor_index * index_scale), ctx)));
     if (descriptor1->access.descriptor_type() == DescriptorType::RESERVED)
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
@@ -373,25 +375,32 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
     return expanded_descriptor;
 }
 
-
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<T> MMU::mem_read(LogicalAddress const& laddr, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_READ,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    return *paddr_ptr<T>(MAY_HAVE_RAISED(la_to_pa(laddr, ctx)));
+    auto const paddr = MAY_HAVE_RAISED(la_to_pa(laddr, ctx));
+    // TODO: make return type BigEndian<T> or LittleEndian<T>
+    if (auto opt = MAY_HAVE_RAISED(m_mmio.try_mmio_read<T>(paddr)); opt.has_value())
+        return opt->value;
+    return *paddr_ptr<T>(paddr);
 }
 
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<T> MMU::mem_read(VirtualAddress const& vaddr, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_READ,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    return *paddr_ptr<T>(MAY_HAVE_RAISED(va_to_pa(vaddr, ctx)));
+    auto const paddr = MAY_HAVE_RAISED(va_to_pa(vaddr, ctx));
+    // TODO: make return type BigEndian<T> or LittleEndian<T>
+    if (auto opt = MAY_HAVE_RAISED(m_mmio.try_mmio_read<T>(paddr)); opt.has_value())
+        return opt->value;
+    return *paddr_ptr<T>(paddr);
 }
 InterruptRaisedOr<u64> MMU::mem_read64(LogicalAddress const& laddr, TranslationIntention intention) {
     return mem_read<u64>(laddr, intention);
@@ -418,25 +427,31 @@ InterruptRaisedOr<u8> MMU::mem_read8(VirtualAddress const& vaddr, TranslationInt
     return mem_read<u8>(vaddr, intention);
 }
 
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<void> MMU::mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_WRITE,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    *paddr_ptr<T>(MAY_HAVE_RAISED(la_to_pa(laddr, ctx))) = value;
+    auto const paddr = MAY_HAVE_RAISED(la_to_pa(laddr, ctx));
+    if (MAY_HAVE_RAISED(m_mmio.try_mmio_write<T>(paddr, value)))
+        return {};
+    *paddr_ptr<T>(paddr) = value;
     return {};
 }
 
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<void> MMU::mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_WRITE,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    *paddr_ptr<T>(MAY_HAVE_RAISED(va_to_pa(vaddr, ctx))) = value;
+    auto const paddr = MAY_HAVE_RAISED(va_to_pa(vaddr, ctx));
+    if (MAY_HAVE_RAISED(m_mmio.try_mmio_write<T>(paddr, value)))
+        return {};
+    *paddr_ptr<T>(paddr) = value;
     return {};
 }
 InterruptRaisedOr<void> MMU::mem_write64(LogicalAddress const& laddr, u64 value, TranslationIntention intention) {

@@ -33,9 +33,10 @@ if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
     list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
     include(Catch)
 
-    file(GLOB test_sources "tests/**/*_test.cpp" "tests/*_test.cpp")
+    file(GLOB test_sources "tests/src/**/*_test.cpp" "tests/src/*_test.cpp")
     add_executable(cpue_test ${test_sources})
     target_include_directories(cpue_test PUBLIC include)
+    target_include_directories(cpue_test PUBLIC tests/include)
 
     target_link_libraries(cpue_test PRIVATE Catch2::Catch2WithMain)
     target_link_libraries(cpue_test PRIVATE cpue)
