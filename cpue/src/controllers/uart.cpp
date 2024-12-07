@@ -95,7 +95,7 @@ u8 UARTController::read_rbr() {
 void UARTController::write_thr(u8 value) {
     std::scoped_lock _(m_mutex);
     assert_in_fifo_mode();
-    if (!m_tx_fifo.enqueue(value))
+    if (!m_tx_fifo.try_enqueue(value))
         return record_overrun_error();
     update_thre_interrupt_if_necessary();
     cv.notify_one();
@@ -163,7 +163,7 @@ void UARTController::rx(char const c) {
     if (!m_active_interrupt_map.test(Interrupts::CHARACTER_TIMEOUT_INDICATION.number))
         m_last_char_received_time_point = std::chrono::steady_clock::now();
 
-    if (!m_rx_fifo.enqueue(c))
+    if (!m_rx_fifo.try_enqueue(c))
         return record_overrun_error();
     update_data_ready_bit_and_rda_interrupt_if_necessary();
     cv.notify_one();
