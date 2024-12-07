@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     CPUE::connect_uart_devices(cpu.uart1(), vt100);
     vt100.start_loop_thread();
     while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     // CPUE::Emulator e;
     // e.load_elf();
