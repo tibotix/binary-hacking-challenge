@@ -116,7 +116,32 @@ private:
      *  - 0, otherwise
      */
     template<typename... Args>
-    _InterruptRaised raise_interrupt(Interrupt i, Args&&... args);
+    _InterruptRaised raise_interrupt(Interrupt i, Args&&... args) {
+        fix_interrupt_ext_bit(i);
+
+        // If we are handling the instruction, the interrupt is always integral part of instruction execution
+        if (m_state == STATE_HANDLE_INSTRUCTION)
+            return m_icu.raise_integral_interrupt(i);
+        if (m_state == STATE_FETCH_INSTRUCTION && (i.vector == Exceptions::VEC_GP || i.vector == Exceptions::VEC_PF))
+            return m_icu.raise_interrupt(i, std::forward<Args>(args)...);
+
+        // Integral Exceptions are: DE, BP, OF, BR, TS, NP, SS, (GP), (PF), AC, MF, XM, VE, CP,
+        switch (i.vector) {
+            case Exceptions::VEC_DE:
+            case Exceptions::VEC_BP:
+            case Exceptions::VEC_OF:
+            case Exceptions::VEC_BR:
+            case Exceptions::VEC_TS:
+            case Exceptions::VEC_NP:
+            case Exceptions::VEC_SS:
+            case Exceptions::VEC_AC:
+            case Exceptions::VEC_MF:
+            case Exceptions::VEC_XM:
+            case Exceptions::VEC_VE:
+            case Exceptions::VEC_CP: return m_icu.raise_integral_interrupt(i);
+            default: return m_icu.raise_interrupt(i, std::forward<Args>(args)...);
+        }
+    }
     _InterruptRaised raise_integral_interrupt(Interrupt i);
     [[nodiscard]] InterruptRaisedOr<void> handle_nested_interrupt(Interrupt i);
     [[nodiscard]] InterruptRaisedOr<void> handle_interrupt(Interrupt i);
