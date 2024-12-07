@@ -3,6 +3,7 @@
 #include <thread>
 #include <condition_variable>
 #include <chrono>
+#include <queue>
 #include "forward.h"
 #include "controllers/pic.h"
 #include "common.h"
