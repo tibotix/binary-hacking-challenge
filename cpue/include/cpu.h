@@ -829,9 +829,6 @@ private:
     std::optional<Interrupt> m_interrupt_to_be_handled;
     State m_state;
 
-    // TODO: initialize all registers with sane default values
-    //       See page 3425
-
     // General Purpose / Pointer Registers
     u64 m_rax = 0x0;
     u64 m_rbx = 0x0;
