@@ -72,24 +72,18 @@ void CPU::interpreter_loop() {
             if (!opt_i.has_value())
                 break;
 
-            Interrupt i = opt_i.value();
+            auto [priority, i] = opt_i.value();
 
             /**
              * The processor first services a pending event from the class which has the highest priority,
              * transferring execution to the first instruction of the handler.
              * Lower priority exceptions are discarded; lower priority interrupts are held pending.
              */
-
-            if (i.type.category() == InterruptCategory::INTERRUPT) {
-                // clear all exceptions in ICU, as they are guaranteed to be of lower priority than i
-                // (since i is not an exception)
-                TODO_NOFAIL("clear all exceptions in ICU");
-            }
-            TODO_NOFAIL("clear all exceptions having priority lower than i");
+            m_icu.discard_interrupts_of_category_with_priority_lower_than(InterruptCategory::EXCEPTION, priority);
 
             /**
-             * As we don't implement asynchronous interrupts, we know for sure, that when
-             * handle_nested_interrupt and handle_interrupt return, they finished by either
+             * As we don't implement asynchronous interrupts (all interrupts are handled at instruction boundary),
+             * we know for sure, that when handle_nested_interrupt and handle_interrupt return, they finished by either
              * succeeding or raising another interrupt.
              */
 
