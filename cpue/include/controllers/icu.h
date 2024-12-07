@@ -77,6 +77,7 @@ private:
     _InterruptRaised _raise_interrupt(Interrupt i, u8 priority) {
         std::scoped_lock lock(m_lock);
         CPUE_ASSERT(m_pending_interrupts.size() < MAX_PENDING_CAPACITY, "ICU capacity full");
+        CPUE_TRACE("ICU enqueued interrupt: ({0},{1})", i.vector, (u8)i.source);
         m_pending_interrupts.push({i, priority});
         return INTERRUPT_RAISED;
     }

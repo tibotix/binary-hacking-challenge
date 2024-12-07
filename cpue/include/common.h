@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <cassert>
 
+#include "logging.h"
+
 
 #define CPUE_ASSERT(cond, msg) assert((cond) && (msg))
 
