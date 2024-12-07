@@ -24,7 +24,7 @@ public:
     friend Disassembler;
     friend TLB;
     friend ICU;
-    CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{&m_icu}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
+    CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
         reset();
         init_mmio();
     }

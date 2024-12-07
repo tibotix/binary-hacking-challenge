@@ -1,12 +1,13 @@
 #pragma once
 
 #include <optional>
-#include <queue>
 #include <bitset>
+#include <mutex>
 
 #include "common.h"
 #include "forward.h"
 #include "interrupts.h"
+#include "address.h"
 
 namespace CPUE {
 
@@ -64,32 +65,44 @@ namespace CPUE {
  * service routine, or if AEOI (Automatic End of Interrupt) bit is set, until the trailing edge of the last INTA.
  *
  * To signal that an interrupt is being handled by the software, the interrupt controller receives an EOI (end of interrupt) notice from the OS.
+ * -> in our PIC, a single byte write to PIC::MMIO_REG_BASE+0x0 indicates a EOI notice.
+ *
+ * Most OSes also use CLI/STI to shield itself during a ISR from further Interrupts. With sti;iret; there is also no race condition, cause:
+ * Page 3286:
+ * > Maskable hardware interrupts remain inhibited on the instruction boundary following an execution of STI.
+ * > The inhibition ends after delivery of another event (e.g., exception) or the execution of the next instruction.
  *
  * Most architectures also support interrupt priorities. When this is enabled,
  * it permits interrupt nesting only for those interrupts that have a higher priority than the current priority level.
+ * -> we do not support this.
  *
  */
 
 
-constexpr u8 PIC_NUM_IRQ_PINS = 8;
-constexpr u8 PIC_IRQ_VEC_BASE = 0xc0;
 
 class PICConnectionHandle {
 public:
-    explicit PICConnectionHandle(u8 pin) : m_pin(pin) { CPUE_ASSERT(m_pin < PIC_NUM_IRQ_PINS, "Invalid pin number"); }
+    explicit PICConnectionHandle(u8 pin);
     u8 pin() const { return m_pin; }
 
 private:
     u8 m_pin;
 };
 
+
 class PIC {
 public:
-    explicit PIC(ICU* icu) : m_icu(icu){};
+    static constexpr PhysicalAddress MMIO_REG_BASE = 0xff00'0000'0000'ff00_pa;
+    static constexpr u8 NUM_IRQ_PINS = 8;
+    static constexpr u8 IRQ_VEC_BASE = 0xc0;
+
+public:
+    explicit PIC(CPU* cpu) : m_cpu(cpu){};
     PIC(PIC const&) = delete;
 
     std::optional<PICConnectionHandle> request_connection() {
-        if (m_next_free_pin >= PIC_NUM_IRQ_PINS)
+        std::scoped_lock _(m_mutex);
+        if (m_next_free_pin >= NUM_IRQ_PINS)
             return {};
         return PICConnectionHandle(m_next_free_pin++);
     }
@@ -101,14 +114,33 @@ public:
 
 private:
     void process_pending_irqs();
+    void init_mmio_registers();
+    void received_eoi();
+
+private:
+    // NOTE: normally, they would be sent using port I/O -> we only use MMIO
+    union ICW4 {
+        struct {
+            u8 pm : 1; // 1 = 8086/8088 mode (we implement only this mode)
+            u8 aeoi : 1; // 1 = Auto-EOI ; 0=Not-Auto-EOI
+            u8 bufmode : 2; // Not implemented
+            u8 sfnm : 1; // 1=special-fully-nested-mode
+            u8 : 3;
+        } concrete;
+        u8 value;
+    };
+    // start with pm=1 and aeoi=0
+    ICW4 m_icw4 = {.value = 0x1};
 
 private:
     u8 m_next_free_pin = 0;
-    std::bitset<PIC_NUM_IRQ_PINS> m_imr = 0; // Interrupt-Masking Register
-    std::bitset<PIC_NUM_IRQ_PINS> m_isr = 0; // In-Service Register
-    std::bitset<PIC_NUM_IRQ_PINS> m_irr = 0; // In-Request Register
+    std::bitset<NUM_IRQ_PINS> m_imr = 0; // Interrupt-Masking Register
+    std::bitset<NUM_IRQ_PINS> m_isr = 0; // In-Service Register
+    std::bitset<NUM_IRQ_PINS> m_irr = 0; // In-Request Register
 
-    ICU* m_icu = nullptr;
+    std::mutex m_mutex;
+
+    CPU* m_cpu = nullptr;
 };
 
 }
