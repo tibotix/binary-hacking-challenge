@@ -41,6 +41,8 @@ public:
     }
     MMU(MMU const&) = delete;
 
+    MMIO& mmio() { return m_mmio; }
+
     [[nodiscard]] InterruptRaisedOr<PhysicalAddress> la_to_pa(LogicalAddress const& laddr, TranslationContext const& ctx);
 
     [[nodiscard]] InterruptRaisedOr<GDTLDTDescriptor> segment_selector_to_descriptor(SegmentSelector selector);
