@@ -24,51 +24,47 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 #undef CASE
 }
 
-void CPU::handle_RFLAGS(u64 *dest, u64 *src, cs_x86 const& insn_detail) {
-    switch (insn_detail.operands[0].type) {
-        case x86_op_type::X86_OP_INVALID:
-            fail("Instruction is invalid!");
-            break;
-
-        case x86_op_type::X86_OP_REG:
-
-
-            /*
-             * Only for adding
-             * TODO: pack into seperate functions check_of, ...
-             */
-
-            // of checks for not neg numbers, cf doesn't, 
-            // but we don't support neg num anyway, should we ignore cf?
-            if ( dest[0] > std::numeric_limits<int8_t>::max() && \
-                dest[0] >= 0 && src[0] >= 0)
-                set_of(true);
-            else
-                set_of(false);
-
-            // Should i use limtis?
-            if (dest[0] > std::numeric_limits<u64>::max())
-                set_cf(true);
-            else 
-                set_cf(false);
-            break;
-
-        case x86_op_type::X86_OP_IMM:
-            TODO();
-            break;
-
-        case x86_op_type::X86_OP_MEM:
-            TODO();
-            break;
-    }
-};
+/*void CPU::handle_RFLAGS(u64 *dest, u64 *src, cs_x86 const& insn_detail) {*/
+/*    switch (insn_detail.operands[0].type) {*/
+/*        case x86_op_type::X86_OP_INVALID:*/
+/*            fail("Instruction is invalid!");*/
+/*            break;*/
+/**/
+/*        case x86_op_type::X86_OP_REG:*/
+/**/
+/**/
+/*            /**/
+/*             * Only for adding*/
+/*             * TODO: pack into seperate functions check_of, ...*/
+/*             */
+/**/
+/*            if ( dest[0] > std::numeric_limits<int8_t>::max() && \*/
+/*                dest[0] >= 0 && src[0] >= 0)*/
+/*                set_of(true);*/
+/*            else*/
+/*                set_of(false);*/
+/**/
+/*            if (dest[0] > std::numeric_limits<u64>::max())*/
+/*                set_cf(true);*/
+/*            else */
+/*                set_cf(false);*/
+/*            break;*/
+/**/
+/*        case x86_op_type::X86_OP_IMM:*/
+/*            TODO();*/
+/*            break;*/
+/**/
+/*        case x86_op_type::X86_OP_MEM:*/
+/*            TODO();*/
+/*            break;*/
+/*    }*/
+/*};*/
 
 //RFLAGS: OF, CF
 InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
-    // Type should never be invalid
     if ( insn_detail.operands[0].type == x86_op_type::X86_OP_INVALID )
         fail("Instruction is invalid!");
-    // Checking if opcode is pointing to registers
+
     if ( insn_detail.operands[0].type == x86_op_type::X86_OP_REG ) {
         auto dest_reg = m_reg64_table[insn_detail.operands[0].reg];
         auto src_reg = m_reg64_table[insn_detail.operands[1].reg];
