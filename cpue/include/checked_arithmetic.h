@@ -9,10 +9,10 @@ namespace CPUE {
 template <typename R>
 struct SumBits{
     R value;
-    unsigned int check_of : 1;
-    unsigned int check_carry : 1;
+    unsigned int is_of : 1;
+    unsigned int is_carry : 1;
 
-    constexpr SumBits() : check_of(0), check_carry(0) {}
+    constexpr SumBits() : is_of(0), is_carry(0) {}
 };
 
 // Not allowing overflows
@@ -26,9 +26,9 @@ requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigne
     return r;
 }
 
-// Allows for overflows
+// ### FOR SIGNED (OVERFLOW)
 template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_uadd_for_of(R const first, T const... factors) {
+requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_signed_v<R>)constexpr SumBits<R> CPUE_checked_uadd_for_bits(R const first, T const... factors) {
     // Consider calculation invalid if we are only adding one number
     static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
 
@@ -48,6 +48,29 @@ requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigne
         }
             
             /*fail("Integer overflow in addition.");*/
+        res.value += f;
+    }
+    return res;
+}
+
+// TODO: implement AAA for 'adjusting' when cf = 1
+// ### FOR UNSIGNED (CARRY)
+template<typename R, typename... T>
+requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_uadd_for_bits(R const first, T const... factors) {
+    // Consider calculation invalid if we are only adding one number
+    static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
+
+    SumBits<R> res;
+    res.value = first;
+
+    constexpr R MAX_VAL = std::numeric_limits<R>::max();
+
+
+    for (const auto f : {factors...}) {
+        if ( (res.value + f) > MAX_VAL ) {
+            res.value = res.value + f - MAX_VAL;
+            res.is_cf = 1;
+        }
         res.value += f;
     }
     return res;
