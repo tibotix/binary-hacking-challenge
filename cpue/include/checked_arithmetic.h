@@ -17,7 +17,7 @@ struct SumBits{
 
 // Not allowing overflows
 template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_uadd_fail_of(R const first, T const... factors) {
+requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
     //TODO:
     /*auto var = CPUE_checked_uadd(first, factors...);*/
     /*if( var.check_of)*/
@@ -28,7 +28,7 @@ requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigne
 
 // Allows for overflows
 template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_uadd(R const first, T const... factors) {
+requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_uadd_for_of(R const first, T const... factors) {
     // Consider calculation invalid if we are only adding one number
     static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
 

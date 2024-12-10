@@ -35,7 +35,7 @@ struct VirtualAddress {
     constexpr VirtualAddress(u64 addr) : addr(addr) {}
     u64 addr;
 
-    VirtualAddress operator+(unsigned long int const i) const { return {CPUE_checked_uadd<u64, u64>(addr, i)}; }
+    VirtualAddress operator+(unsigned long int const i) const { return CPUE_checked_uadd<u64, u64>(addr, i); }
 };
 
 /**
