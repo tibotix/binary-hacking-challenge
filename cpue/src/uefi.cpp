@@ -3,6 +3,7 @@
 
 namespace CPUE {
 
+
 void UEFI::prepare_long_mode() {
     // 1. Configure GDT
     // 2. Configure IDT

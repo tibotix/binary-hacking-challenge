@@ -7,7 +7,7 @@ namespace CPUE {
 
 class UEFI {
 public:
-    UEFI(CPU* cpu) : m_cpu(cpu) {}
+    explicit UEFI(CPU* cpu) : m_cpu(cpu) {}
 
     void prepare_long_mode();
 

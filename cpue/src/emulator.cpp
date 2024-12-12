@@ -1,13 +1,14 @@
 #include "emulator.h"
+
+#include "common.h"
 #include "devices/vt100.h"
 #include "uefi.h"
-#include "common.h"
 
 
 namespace CPUE {
 
 
-void Emulator::start() {
+void Emulator::start() const {
     CPU cpu;
 
     // configure long-mode and init kernel
