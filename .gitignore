@@ -1,4 +1,7 @@
 
+# command.json
+**/.compile_commands.json
+
 # clang .cache
 **/.cache/
 
