@@ -19,20 +19,26 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 endif ()
 
 
+# cpue
 file(GLOB cpue_sources "src/**/*.cpp" "src/*.cpp")
 # Note: To build a shared library, use -DBUILD_SHARED_LIBS=ON when configuring
 add_library(cpue STATIC ${cpue_sources})
 target_include_directories(cpue PUBLIC include)
 target_include_directories(cpue PUBLIC ${capstone_SOURCE_DIR}/include)
 target_include_directories(cpue PUBLIC ${spdlog_SOURCE_DIR}/include)
+target_include_directories(cpue PUBLIC ${elfio_SOURCE_DIR})
 target_link_libraries(cpue PRIVATE capstone elfio spdlog::spdlog)
 target_link_options(cpue PUBLIC -Wl,-z,relro,-z,now)
 target_compile_definitions(cpue PRIVATE $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>)
 
 
+# cpue_main
+set(CLI11_PRECOMPILED 1)
+add_subdirectory("deps/CLI11")
 set(cpue_main_sources "./main.cpp")
 add_executable(cpue_main ${cpue_main_sources})
-target_link_libraries(cpue_main cpue)
+target_link_libraries(cpue_main cpue CLI11::CLI11)
+target_include_directories(cpue_main PUBLIC ${CLI11_SOURCE_DIR}/include)
 set_target_properties(cpue_main PROPERTIES OUTPUT_NAME "cpue")
 target_compile_definitions(cpue_main PRIVATE $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>)
 

@@ -1,21 +1,54 @@
-
+#include <CLI/CLI.hpp>
 
 #include "emulator.h"
-#include "mmu.h"
 #include "cpu.h"
 #include "devices/vt100.h"
+#include "kernel.h"
 
+
+using namespace CPUE;
+
+[[noreturn]] static void die(char const* msg) {
+    printf("%s\n", msg);
+    exit(1);
+}
+
+int run(KernelType kernel_type, std::string const& kernel_img, std::string const& binary, bool verbose) {
+    auto* kernel = [&]() -> Kernel* {
+        switch (kernel_type) {
+            case NONE: return new NoKernel();
+            case EMULATE: return new EmulatedKernel();
+            case CUSTOM: return new CustomKernel(kernel_img);
+            default: die("Unknown kernel type");
+        }
+    }();
+    Emulator e{*kernel, binary, verbose};
+    e.start();
+    return 0;
+}
 
 int main(int argc, char** argv) {
-    CPUE::CPU cpu{};
-    CPUE::MMU mmu{&cpu, 1};
-    CPUE::VT100 vt100;
-    CPUE::connect_uart_devices(cpu.uart1(), vt100);
-    vt100.start_loop_thread();
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    CLI::App app;
+
+    bool verbose = false;
+    app.add_flag("-v,--verbose", verbose, "Enable verbose output.");
+    KernelType kernel_type;
+    app.add_option("--kernel", kernel_type, "Kernel type to use.")
+        ->check(CLI::IsMember(std::map<std::string, KernelType>({{"none", NONE}, {"emulate", EMULATE}, {"custom", CUSTOM}})))
+        ->default_val("emulate");
+    std::string kernel_img;
+    auto* kernel_img_opt = app.add_option("--kernel-img", kernel_img, "Path to the kernel image to load.")->check(CLI::ExistingFile);
+    std::string binary;
+    app.add_option("binary", binary, "Path to the binary to emulate.")->required()->check(CLI::ExistingFile);
+
+    CLI11_PARSE(app, argc, argv);
+
+    if (kernel_type == CUSTOM && !*kernel_img_opt) {
+        die("custom kernel specified but no kernel image given. (Use --kernel-img=<kernel_img> to set one).");
     }
-    // CPUE::Emulator e;
-    // e.load_elf();
-    // e.start();
+    if (kernel_type != CUSTOM && *kernel_img_opt) {
+        die("non-custom kernel specified but kernel image given. (Either use --kernel=custom or remove --kernel-img).");
+    }
+
+    return run(kernel_type, kernel_img, binary, verbose);
 }
