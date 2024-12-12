@@ -6,75 +6,59 @@
 
 namespace CPUE {
 
-template <typename R>
-struct SumBits{
+template<typename R>
+struct SumBits {
     R value;
-    unsigned int is_of : 1;
-    unsigned int is_carry : 1;
+    bool has_of_set;
+    bool has_cf_set;
 
-    constexpr SumBits() : is_of(0), is_carry(0) {}
+    constexpr SumBits() : has_of_set(false), has_cf_set(false) {}
 };
+
+
+template<typename R, typename T>
+requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_single_uadd(R const first, T const summand) {
+    SumBits<R> res;
+    res.value = first;
+
+    constexpr R MAX_VAL = std::numeric_limits<R>::max();
+
+    bool first_sign_bit = first >> (sizeof(R) * 8 - 1);
+    bool summand_sign_bit = summand >> (sizeof(T) * 8 - 1);
+
+    // Set Carry-Flag if including this summand would exceed MAX_VAL
+    size_t max_summand = MAX_VAL - res.value;
+    if (summand > max_summand) {
+        res.has_cf_set = true;
+    }
+    res.value += summand;
+
+    bool res_sign_bit = res.value >> (sizeof(R) * 8 - 1);
+    if (first_sign_bit == summand_sign_bit && first_sign_bit != res_sign_bit) {
+        res.has_of_set = true;
+    }
+
+    return res;
+}
 
 // Not allowing overflows
 template<typename R, typename... T>
 requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
-    //TODO:
-    /*auto var = CPUE_checked_uadd(first, factors...);*/
-    /*if( var.check_of)*/
-    /*    fail("Overflow occured!");*/
-    R r;
-    return r;
-}
-
-// ### FOR SIGNED (OVERFLOW)
-template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_signed_v<R>)constexpr SumBits<R> CPUE_checked_uadd_for_bits(R const first, T const... factors) {
     // Consider calculation invalid if we are only adding one number
     static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
-
-    SumBits<R> res;
-    res.value = first;
-
-    constexpr R MAX_VAL = std::numeric_limits<R>::max();
-    constexpr R MIN_VAL = std::numeric_limits<R>::min();
-
+    R res = first;
 
     for (const auto f : {factors...}) {
-        // Fail if including this additional factor would exceed MAX_VAL
-        size_t max_summand = MAX_VAL - res.value;
-        if (f > max_summand) {
-            res.value = MIN_VAL + (f - max_summand);
-            res.check_of = 1;
-        }
-            
-            /*fail("Integer overflow in addition.");*/
-        res.value += f;
+        // Fail if including this additional factor would overflow (set carry flag in unsigned arithmetic)
+        auto r = CPUE_checked_single_uadd(res, f);
+        if (r.has_cf_set)
+            fail("Integer overflow in addition.");
+        res = r.value;
     }
+
     return res;
 }
 
-// TODO: implement AAA for 'adjusting' when cf = 1
-// ### FOR UNSIGNED (CARRY)
-template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_uadd_for_bits(R const first, T const... factors) {
-    // Consider calculation invalid if we are only adding one number
-    static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
-
-    SumBits<R> res;
-    res.value = first;
-
-    constexpr R MAX_VAL = std::numeric_limits<R>::max();
-
-
-    for (const auto f : {factors...}) {
-        if ( (res.value + f) > MAX_VAL ) {
-            res.value = res.value + f - MAX_VAL;
-            res.is_cf = 1;
-        }
-        res.value += f;
-    }
-    return res;
-}
 
 template<typename R, typename... T>
 requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr R CPUE_checked_umul(R const first, T const... factors) {
