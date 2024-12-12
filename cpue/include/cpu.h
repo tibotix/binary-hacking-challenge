@@ -135,7 +135,51 @@ private:
 
     void m_init_64_reg();
 
+private:
+    template<typename R>
+    void update_rflags(SumBits<R> res) {
+        set_cf(res.has_cf_set);
+        set_of(res.has_of_set);
+    }
 
+    // NOTE: Delete and substitute with reg setter and getter
+    //NOTE: Will this mess with the reserved bits?
+    void set_cf(bool value) { this->m_rflags.CF = value; };
+    // pf doesn't get used anymore!
+    void set_pf(bool value) { this->m_rflags.PF = value; };
+    void set_af(bool value) { this->m_rflags.AF = value; };
+    void set_zf(bool value) { this->m_rflags.ZF = value; };
+    void set_sf(bool value) { this->m_rflags.SF = value; };
+    void set_tf(bool value) { this->m_rflags.TF = value; };
+    void set_if(bool value) { this->m_rflags.IF = value; };
+    void set_df(bool value) { this->m_rflags.DF = value; };
+    void set_of(bool value) { this->m_rflags.OF = value; };
+    void set_iopl(bool value) { this->m_rflags.IOPL = value; };
+    void set_nt(bool value) { this->m_rflags.NT = value; };
+    void set_rf(bool value) { this->m_rflags.RF = value; };
+    void set_vm(bool value) { this->m_rflags.VM = value; };
+    void set_ac(bool value) { this->m_rflags.AC = value; };
+    void set_vif(bool value) { this->m_rflags.VIF = value; };
+    void set_vip(bool value) { this->m_rflags.VIP = value; };
+    void set_id(bool value) { this->m_rflags.ID = value; };
+
+    bool get_cf() const { return this->m_rflags.CF; };
+    bool get_pf() const { return this->m_rflags.PF; };
+    bool get_af() const { return this->m_rflags.AF; };
+    bool get_zf() const { return this->m_rflags.ZF; };
+    bool get_sf() const { return this->m_rflags.SF; };
+    bool get_tf() const { return this->m_rflags.TF; };
+    bool get_if() const { return this->m_rflags.IF; };
+    bool get_df() const { return this->m_rflags.DF; };
+    bool get_of() const { return this->m_rflags.OF; };
+    bool get_iopl() const { return this->m_rflags.IOPL; };
+    bool get_nt() const { return this->m_rflags.NT; };
+    bool get_rf() const { return this->m_rflags.RF; };
+    bool get_vm() const { return this->m_rflags.VM; };
+    bool get_ac() const { return this->m_rflags.AC; };
+    bool get_vif() const { return this->m_rflags.VIF; };
+    bool get_vip() const { return this->m_rflags.VIP; };
+    bool get_id() const { return this->m_rflags.ID; };
 
 
 private:
@@ -150,7 +194,7 @@ private:
     State m_state;
 
     // Look up table for instruction handling
-    u64 *m_reg64_table[16];
+    u64* m_reg64_table[16];
 
     // TODO: initialize all registers with sane default values
     //       See page 3425
@@ -230,56 +274,6 @@ private:
     };
     static_assert(sizeof(RFLAGS) == 8);
     RFLAGS m_rflags;
-
-    /**
-     * Setting Flags for instructions
-     */
-    void handle_RFLAGS(u64 *dest, u64 *source, cs_x86 const& insn_detail);
-
-    /**
-     * Setter for RFLAGS
-     */
-    // NOTE: Delete and substitute with reg setter and getter
-    //NOTE: Will this mess with the reserved bits?
-    void set_cf(bool value) { this->m_rflags.CF = value; };
-    // pf doesn't get used anymore!
-    void set_pf(bool value) { this->m_rflags.PF = value; };
-    void set_af(bool value) { this->m_rflags.AF = value; };
-    void set_zf(bool value) { this->m_rflags.ZF = value; };
-    void set_sf(bool value) { this->m_rflags.SF = value; };
-    void set_tf(bool value) { this->m_rflags.TF = value; };
-    void set_if(bool value) { this->m_rflags.IF = value; };
-    void set_df(bool value) { this->m_rflags.DF = value; };
-    void set_of(bool value) { this->m_rflags.OF = value; };
-    void set_iopl(bool value) { this->m_rflags.IOPL = value; };
-    void set_nt(bool value) { this->m_rflags.NT = value; };
-    void set_rf(bool value) { this->m_rflags.RF = value; };
-    void set_vm(bool value) { this->m_rflags.VM = value; };
-    void set_ac(bool value) { this->m_rflags.AC = value; };
-    void set_vif(bool value) { this->m_rflags.VIF = value; };
-    void set_vip(bool value) { this->m_rflags.VIP = value; };
-    void set_id(bool value) { this->m_rflags.ID = value; };
-
-    /**
-     * Getter for RFLAGS
-     */ 
-    bool get_cf() const { return this->m_rflags.CF; };
-    bool get_pf() const { return this->m_rflags.PF; };
-    bool get_af() const { return this->m_rflags.AF; };
-    bool get_zf() const { return this->m_rflags.ZF; };
-    bool get_sf() const { return this->m_rflags.SF; };
-    bool get_tf() const { return this->m_rflags.TF; };
-    bool get_if() const { return this->m_rflags.IF; };
-    bool get_df() const { return this->m_rflags.DF; };
-    bool get_of() const { return this->m_rflags.OF; };
-    bool get_iopl() const { return this->m_rflags.IOPL; };
-    bool get_nt() const { return this->m_rflags.NT; };
-    bool get_rf() const { return this->m_rflags.RF; };
-    bool get_vm() const { return this->m_rflags.VM; };
-    bool get_ac() const { return this->m_rflags.AC; };
-    bool get_vif() const { return this->m_rflags.VIF; };
-    bool get_vip() const { return this->m_rflags.VIP; };
-    bool get_id() const { return this->m_rflags.ID; };
 
 
     /**

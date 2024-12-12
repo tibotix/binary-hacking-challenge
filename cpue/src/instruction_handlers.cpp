@@ -11,7 +11,7 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 #define CASE(name) \
     case x86_insn::X86_INS_##name: return handle_##name(*detail); break;
 
-    switch (insn.id) { 
+    switch (insn.id) {
         CASE(ADD)
         CASE(SUB)
         CASE(MUL)
@@ -35,7 +35,7 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 /**/
 /*            /**/
 /*             * Only for adding*/
-/*             * TODO: pack into seperate functions check_of, ...*/
+/*             * TODO: pack into separate functions check_of, ...*/
 /*             */
 /**/
 /*            if ( dest[0] > std::numeric_limits<int8_t>::max() && \*/
@@ -62,23 +62,26 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 
 //RFLAGS: OF, CF
 InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
-    if ( insn_detail.operands[0].type == x86_op_type::X86_OP_INVALID )
+    if (insn_detail.operands[0].type == x86_op_type::X86_OP_INVALID)
         fail("Instruction is invalid!");
+    auto first_op = insn_detail.operands[0];
+    auto second_op = insn_detail.operands[1];
 
-    if ( insn_detail.operands[0].type == x86_op_type::X86_OP_REG ) {
-        auto dest_reg = m_reg64_table[insn_detail.operands[0].reg];
-        auto src_reg = m_reg64_table[insn_detail.operands[1].reg];
-
-        dest_reg[0] += src_reg[0];
-
-        handle_RFLAGS(dest_reg, src_reg, insn_detail);
+    if (first_op.type == x86_op_type::X86_OP_REG) {
+        // TODO: check : second operand has to be REG
+        auto dest_reg = m_reg64_table[first_op.reg];
+        auto src_reg = m_reg64_table[second_op.reg];
+        auto res = CPUE_checked_single_uadd(*dest_reg, *src_reg);
+        update_rflags(res);
+        *dest_reg = res.value;
     }
 
-    if ( insn_detail.operands[0].type == x86_op_type::X86_OP_MEM) {
+    if (first_op.type == x86_op_type::X86_OP_MEM) {
+        // MAY_HAVE_RAISED(m_mmu.mem_read16());
         TODO();
     }
 
-    if ( insn_detail.operands[0].type == x86_op_type::X86_OP_IMM ) {
+    if (first_op.type == x86_op_type::X86_OP_IMM) {
         TODO();
     }
 
@@ -87,8 +90,7 @@ InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
 InterruptRaisedOr<void> CPU::handle_AAA(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust After Addition
-InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {
-} //	ASCII Adjust AX Before Division
+InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {} //	ASCII Adjust AX Before Division
 InterruptRaisedOr<void> CPU::handle_AAM(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust AX After Multiply
