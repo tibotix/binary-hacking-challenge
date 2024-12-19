@@ -1,0 +1,88 @@
+
+
+UARTController MMIO:
+THR/RBR: 0xffff'ffff'0000'0000
+IER: 0xffff'ffff'0000'0001
+IIR/FCR: 0xffff'ffff'0000'0002
+LSR: 0xffff'ffff'0000'0005
+
+PIC MMIO:
+EOI : 0xffff'ffff'0000'ff00
+ICW4: 0xffff'ffff'0000'ff01
+
+
+=================================================================================
+Startup:
+
+The startup procedure is as follows:
+1. UEFI prepares long mode.
+2. Kernel-img is loaded into memory (Only with KernelType=CUSTOM)
+3. User-elf is loaded into memory
+4. CPU starts execution at kernel-img entry point if KernelType=CUSTOM else user-elf entry point.
+
+
+
+=================================================================================
+UEFI:
+
+UEFI configures paging with identity-mapped pages.
+But it will map only the first 4MB at most, even if more physical memory is available.
+PT_SIZE is the number of bytes needed to fully identity map all or 4MB of physical memory using 4KB pages.
+If PHYSMEM >= 4MB, PT_SIZE=0x3082.
+A(PT_SIZE) is the Page-Aligned PT_SIZE, being at most 0x4000 (if PHYSMEM is >= 4MB).
+We reserve 2 PAGES of Scratch-Space after the IDT. This can be used by the kernel for general purpose.
+UEFI guarantees that it will not use more than 0x8000 bytes of physical memory.
+
+
+Physical/Virtual MemoryMap after UEFI:
++-----------------------+-----------------------+
+| 0x000000   - PT_SIZE  |     Page Table        | [0x0000-...]
+| A(PT_SIZE) - 0x1000   |     GDT               | [0x4000-...]
+|            - 0x2000   |     IDT               |
+|            - 0x4000   |     Scratch Space     | [...-0x8000]
++-----------------------+-----------------------+
+
+GDT:
++---------------------+---------------------+
+| 0x0 - 0x8           |   NULL Selector     |
+|     - 0x10          |   Code Descriptor   |
+|     - 0x18          |   Data Descriptor   |
+|     - 0xff0         |   Empty Entries     |
+|     - 0x1000        |   GDT Pointer       |
++---------------------+---------------------+
+
+IDT:
++---------------------+---------------------+
+| 0x0 - 0xff0         |   Empty Entries     |
+|     - 0x1000        |   IDT Pointer       |
++---------------------+---------------------+
+
+
+=================================================================================
+Kernel Loading:
+
+We implement a lower-half kernel, meaning the kernel is initially loaded at lower addresses.
+
+The Kernel ELF must ...
+ - be statically compiled,
+ - be no PIE,
+ - have a base address of at least 0x8000,
+ - be no greater than 512MB in memory.
+
+ID_END = min(PHYSMEM, 4MB)
+
+Virtual MemoryMap after Kernel Loading:
++-----------------------+-----------------------+
+| 0x000000 - 0x8000     |  Reserved UEFI Space  | [0x0000-...]
+| 0x000000 - ID_END     |  Identity-Mapped Mem  | [0x0000-...]
+| K_BASE   - K_END      |  Kernel Image         | [0x8000-...]
++-----------------------+-----------------------+
+
+EXPT_SIZE is the total number of bytes of additional page table structures needed to map the kernel elf.
+
+Physical MemoryMap after Kernel Loading:
++-------------------------+-----------------------+
+| 0x000000   - 0x8000     |  Reserved UEFI Space  | [0x0000-...]
+| 0x8000     - +EXPT_SIZE |  Extra Page Tables    |
+| +EXPT_SIZE - K_END      |  Kernel Image         |
++-------------------------+-----------------------+
