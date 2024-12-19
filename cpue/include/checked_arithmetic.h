@@ -7,18 +7,25 @@
 namespace CPUE {
 
 template<typename R>
-struct SumBits {
+struct ArithmeticResult {
     R value;
     bool has_of_set;
     bool has_cf_set;
+    bool has_sf_set;
+    bool has_zf_set;
+    /* Is used for BCD-Type arithmetics, 
+     * which we don't include
+     * bool has_af_set; 
+    */
 
-    constexpr SumBits() : has_of_set(false), has_cf_set(false) {}
+    constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), \
+        has_sf_set(false), has_zf_set(false) {} 
 };
 
-
+// TODO: OF, SF, ZF, CF
 template<typename R, typename T>
-requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr SumBits<R> CPUE_checked_single_uadd(R const first, T const summand) {
-    SumBits<R> res;
+requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr ArithmeticResult<R> CPUE_checked_single_uadd(R const first, T const summand) {
+    ArithmeticResult<R> res;
     res.value = first;
 
     constexpr R MAX_VAL = std::numeric_limits<R>::max();
@@ -33,10 +40,18 @@ requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R
     }
     res.value += summand;
 
+    // Setting SIGN-BIT, extract it from res
     bool res_sign_bit = res.value >> (sizeof(R) * 8 - 1);
+    res.has_sf_set = res_sign_bit;
+
+    // Setting OVERFLOW-BIT
     if (first_sign_bit == summand_sign_bit && first_sign_bit != res_sign_bit) {
         res.has_of_set = true;
     }
+    
+    // Set ZERO-BIT
+    if (res.value == 0)
+        res.has_zf_set = 1;
 
     return res;
 }

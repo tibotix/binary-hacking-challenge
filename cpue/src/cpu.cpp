@@ -38,6 +38,10 @@ void CPU::m_init_64_reg() {
     m_reg64_table[x86_reg::X86_REG_R15] = &m_r15;
 }
 
+ApplicationSegmentRegister& applicationSegmentRegister() {
+    
+}
+
 void CPU::reset() {
     // See page 3425
 
@@ -52,7 +56,7 @@ void CPU::reset() {
     m_r8 = m_r9 = m_r10 = m_r11 = m_r12 = m_r13 = m_r14 = m_r15 = 0x0;
 
     m_cs = _default_cs_segment_register;
-    m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
+m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
 
     m_rflags = instance<RFLAGS, u64>(0x2);
     m_cr0 = instance<CR0, u64>(0x60000010);

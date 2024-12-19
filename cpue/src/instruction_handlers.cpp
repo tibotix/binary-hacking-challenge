@@ -64,25 +64,46 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
     if (insn_detail.operands[0].type == x86_op_type::X86_OP_INVALID)
         fail("Instruction is invalid!");
+
     auto first_op = insn_detail.operands[0];
     auto second_op = insn_detail.operands[1];
 
     if (first_op.type == x86_op_type::X86_OP_REG) {
-        // TODO: check : second operand has to be REG
         auto dest_reg = m_reg64_table[first_op.reg];
-        auto src_reg = m_reg64_table[second_op.reg];
-        auto res = CPUE_checked_single_uadd(*dest_reg, *src_reg);
-        update_rflags(res);
-        *dest_reg = res.value;
+
+        if (second_op.type == x86_op_type::X86_OP_REG) {
+            auto src_reg = m_reg64_table[second_op.reg];
+            auto res = CPUE_checked_single_uadd(*dest_reg, *src_reg);
+            update_rflags(res);
+            *dest_reg = res.value;
+        }
+
+        if (second_op.type == x86_op_type::X86_OP_MEM) {
+
+            TODO();
+        }
+
+        if (second_op.type == x86_op_type::X86_OP_IMM) {
+            auto src_imm = second_op.imm;
+
+            TODO();
+        }
     }
 
     if (first_op.type == x86_op_type::X86_OP_MEM) {
-        // MAY_HAVE_RAISED(m_mmu.mem_read16());
+        auto first_offset = first_op.mem.base + (first_op.mem.index * first_op.mem.scale) + first_op.mem.disp;
+
+        auto log_first_address = LogicalAddress(segment_register, first_offset);
+
+        auto value = MAY_HAVE_RAISED(m_mmu.mem_read16(log_first_address));
+
         TODO();
     }
 
+    //  When an immediate value is used as an operand, 
+    //  it is sign-extended to the length of the destination operand format.
     if (first_op.type == x86_op_type::X86_OP_IMM) {
-        TODO();
+        fail(" First operand cannot be immediate value!");
     }
 
 } //	Add

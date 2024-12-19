@@ -137,9 +137,11 @@ private:
 
 private:
     template<typename R>
-    void update_rflags(SumBits<R> res) {
+    void update_rflags(ArithmeticResult<R> res) {
         set_cf(res.has_cf_set);
         set_of(res.has_of_set);
+        set_sf(res.has_sf_set);
+        set_zf(res.has_zf_set);
     }
 
     // NOTE: Delete and substitute with reg setter and getter
