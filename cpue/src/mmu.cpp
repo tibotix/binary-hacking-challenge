@@ -13,6 +13,10 @@ InterruptRaisedOr<PhysicalAddress> MMU::la_to_pa(LogicalAddress const& laddr, Tr
 }
 
 InterruptRaisedOr<PhysicalAddress> MMU::va_to_pa(VirtualAddress const& vaddr, TranslationContext const& ctx) {
+    // If paging is disabled, VirtualAddresses are treated as PhysicalAddresses (no paging translation is happening).
+    if (!m_cpu->is_paging_enabled())
+        return PhysicalAddress(vaddr.addr);
+
     StartVirtualAddressTranslation _(this, vaddr);
     // In IA-32e mode (if IA32_EFER.LMA = 1), linear addresses may undergo some pre-processing before being translated through paging.
     // Some of this pre-processing is done only if enabled by software, but some occurs unconditionally.
@@ -26,7 +30,7 @@ InterruptRaisedOr<PhysicalAddress> MMU::va_to_pa(VirtualAddress const& vaddr, Tr
     // the final physical address is computed as follows:
     // Bits 51:12 are from the PTE.
     // Bits 11:0 are from the original linear address.
-    u64 paddr = pte.paddr + bits(vaddr.addr, 11, 0);
+    u64 paddr = (pte.c.paddr << 12) | bits(vaddr.addr, 11, 0);
     return paddr;
 }
 
@@ -35,7 +39,7 @@ InterruptRaisedOr<PTE> MMU::va_to_pte(VirtualAddress const& vaddr, TranslationCo
 
     // Query TLB for translation - we might be lucky
     if (std::optional<TLBEntry> entry; entry = m_tlb.lookup(vaddr), entry.has_value()) {
-        PTE pte = {
+        PTE pte{{
             .present = 1,
             .rw = entry->rw,
             .user = entry->user,
@@ -49,74 +53,120 @@ InterruptRaisedOr<PTE> MMU::va_to_pte(VirtualAddress const& vaddr, TranslationCo
             .paddr = entry->paddr,
             .pkey = entry->pkey,
             .xd = entry->xd,
-        };
+        }};
         // access checks still need to be performed
-        MAY_HAVE_RAISED(check_page_structure(&pte, ctx));
+        MAY_HAVE_RAISED(check_page_structure((PageStructureEntry*)&pte, ctx));
         // if we pass checks, return
         return pte;
     }
 
+    // Do page-table-walk
+    auto result = MAY_HAVE_RAISED(page_table_walk(vaddr, ctx));
+
+    if (ctx.op == OP_WRITE)
+        result.pte->c.dirty = 1;
+
+    // Cache entry for future lookups
+    TLBEntry const entry = {
+        .paddr = result.pte->c.paddr,
+        .rw = (u64)(result.pml4e->c.rw & result.pdpte->c.rw & result.pde->c.rw & result.pte->c.rw),
+        .user = (u64)(result.pml4e->c.user & result.pdpte->c.user & result.pde->c.user & result.pte->c.user),
+        .xd = (u64)(result.pml4e->c.xd | result.pdpte->c.xd | result.pde->c.xd | result.pte->c.xd),
+        .dirty = result.pte->c.dirty,
+        .global = result.pte->c.global,
+        .pkey = result.pte->c.pkey,
+        .pcid = m_cpu->pcid(),
+    };
+    m_tlb.insert(vaddr, entry);
+
+    return *result.pte;
+}
+
+
+InterruptRaisedOr<PTE*> MMU::va_to_pte_no_tlb(VirtualAddress const& vaddr, TranslationContext const& ctx) {
+    auto result = MAY_HAVE_RAISED(page_table_walk(vaddr, ctx));
+    if (ctx.op == OP_WRITE)
+        result.pte->c.dirty = 1;
+    return result.pte;
+}
+
+auto MMU::page_table_walk(VirtualAddress const& vaddr, TranslationContext const& ctx) -> InterruptRaisedOr<PageTableWalkResult> {
+    auto data = std::make_tuple<MMU*, TranslationContext const*>(this, &ctx);
+    auto result = page_table_walk(
+        vaddr,
+        [](PageStructureEntry* entry, void* d) -> bool {
+            auto t = *static_cast<decltype(data)*>(d);
+            return !std::get<0>(t)->check_page_structure(entry, *std::get<1>(t)).raised();
+        },
+        &data);
+    if (result.aborted)
+        return INTERRUPT_RAISED;
+    return result;
+};
+
+auto MMU::page_table_walk(VirtualAddress const& vaddr, bool (*f)(PageStructureEntry*, void*), void* data) -> PageTableWalkResult {
     // See Section 5.5.4
+    PageTableWalkResult r;
 
     // A 4-KByte naturally aligned PML4 table is located at the physical address specified in bits 51:12 of CR3
     // A PML4E is selected using the physical address defined as follows:
     // Bits 51:12 are from CR3 or the HLATP
     // Bits 11:3 are bits 47:39 of the linear address
     // Bits 2:0 are all 0
-    u64 pml4e_paddr = m_cpu->m_cr3.pml4_base_paddr + bits(vaddr.addr, 47, 39);
-    auto* pml4e = paddr_ptr<PML4E>(pml4e_paddr);
-    pml4e->accessed = 1;
-    MAY_HAVE_RAISED(check_page_structure(pml4e, ctx));
+    {
+        u64 pml4e_paddr = (m_cpu->m_cr3.c.pml4_base_paddr << 12) | (bits(vaddr.addr, 47, 39) << 3);
+        TODO_NOFAIL("check endianness in paddr_ptr");
+        r.pml4e = paddr_ptr<PML4E>(pml4e_paddr);
+    }
+    r.pml4e->c.accessed = 1;
+    if (!f((PageStructureEntry*)(r.pml4e), data))
+        goto abort_page_table_walk;
 
     // A 4-KByte naturally aligned page-directory-pointer table is located at the physical address specified in bits 51:12 of the PML4E
     // A PDPTE is selected using the physical address defined as follows:
     // Bits 51:12 are from the PML4E.
     // Bits 11:3 are bits 38:30 of the linear address.
     // Bits 2:0 are all 0
-    u64 pdpte_paddr = pml4e->paddr + bits(vaddr.addr, 38, 30);
-    auto* pdpte = paddr_ptr<PDPTE>(pdpte_paddr);
-    pdpte->accessed = 1;
-    CPUE_ASSERT(pdpte->page_size == 0, "we don't support huge pages");
-    MAY_HAVE_RAISED(check_page_structure(pdpte, ctx));
+    {
+        u64 pdpte_paddr = (r.pml4e->c.paddr << 12) | (bits(vaddr.addr, 38, 30) << 3);
+        r.pdpte = paddr_ptr<PDPTE>(pdpte_paddr);
+    }
+    r.pdpte->c.accessed = 1;
+    CPUE_ASSERT(r.pdpte->c.page_size == 0, "we don't support huge pages");
+    if (!f((PageStructureEntry*)r.pdpte, data))
+        goto abort_page_table_walk;
 
     // If the PDPTE’s PS flag is 0, a 4-KByte naturally aligned page directory is located at the physical address specified in bits 51:12 of the PDPTE
     // A PDE is selected using the physical address defined as follows:
     // Bits 51:12 are from the PDPTE.
     // Bits 11:3 are bits 29:21 of the linear address.
     // Bits 2:0 are all 0.
-    u64 pde_paddr = pdpte->paddr + bits(vaddr.addr, 29, 21);
-    auto* pde = paddr_ptr<PDE>(pde_paddr);
-    pde->accessed = 1;
-    CPUE_ASSERT(pde->page_size == 0, "we don't support huge pages");
-    MAY_HAVE_RAISED(check_page_structure(pde, ctx));
+    {
+        u64 pde_paddr = (r.pdpte->c.paddr << 12) | (bits(vaddr.addr, 29, 21) << 3);
+        r.pde = paddr_ptr<PDE>(pde_paddr);
+    }
+    r.pde->c.accessed = 1;
+    CPUE_ASSERT(r.pde->c.page_size == 0, "we don't support huge pages");
+    if (!f((PageStructureEntry*)r.pde, data))
+        goto abort_page_table_walk;
 
     // If the PDE’s PS flag is 0, a 4-KByte naturally aligned page table is located at the physical address specified in bits 51:12 of the PDE
     // A PTE is selected using the physical address defined as follows:
     // Bits 51:12 are from the PDE.
     // Bits 11:3 are bits 20:12 of the linear address.
     // Bits 2:0 are all 0
-    u64 pte_paddr = pde->paddr + bits(vaddr.addr, 20, 12);
-    auto* pte = paddr_ptr<PTE>(pte_paddr);
-    pte->accessed = 1;
-    MAY_HAVE_RAISED(check_page_structure(pte, ctx));
+    {
+        u64 pte_paddr = (r.pde->c.paddr << 12) | (bits(vaddr.addr, 20, 12) << 3);
+        r.pte = paddr_ptr<PTE>(pte_paddr);
+    }
+    r.pte->c.accessed = 1;
+    if (!f((PageStructureEntry*)r.pte, data))
+        goto abort_page_table_walk;
+    return r;
 
-    if (ctx.op == OP_WRITE)
-        pte->dirty = 1;
-
-    // Cache entry for future lookups
-    TLBEntry const entry = {
-        .paddr = pte->paddr,
-        .rw = (u64)(pml4e->rw & pdpte->rw & pde->rw & pte->rw),
-        .user = (u64)(pml4e->user & pdpte->user & pde->user & pte->user),
-        .xd = (u64)(pml4e->xd | pdpte->xd | pde->xd | pte->xd),
-        .dirty = pte->dirty,
-        .global = pte->global,
-        .pkey = pte->pkey,
-        .pcid = m_cpu->pcid(),
-    };
-    m_tlb.insert(vaddr, entry);
-
-    return *pte;
+abort_page_table_walk:
+    r.aborted = true;
+    return r;
 }
 
 
@@ -133,14 +183,14 @@ InterruptRaisedOr<void> MMU::check_page_structure_reserved_bits(HasReservedBits 
     return raise_page_fault(error_code);
 }
 
-InterruptRaisedOr<void> MMU::check_page_structure_present(PageStructureEntry auto* entry, TranslationContext const& ctx) {
+InterruptRaisedOr<void> MMU::check_page_structure_present(PageStructureEntry* entry, TranslationContext const& ctx) {
     /**
      * If a paging-structure entry’s P flag (bit 0) is 0 or if the entry sets any reserved bit,
      * the entry is used neither to reference another paging-structure entry nor to map a page.
      * There is no translation for a linear address whose translation would use such a paging-structure entry;
      * a reference to such a linear address causes a page-fault exception.
      */
-    if (entry->present == 0) {
+    if (entry->c.present == 0) {
         ErrorCode const error_code = {.pf = {
                                           .present = 0,
                                           .wr = (u8)(ctx.op == OP_READ ? 0 : 1),
@@ -153,7 +203,7 @@ InterruptRaisedOr<void> MMU::check_page_structure_present(PageStructureEntry aut
     return {};
 }
 
-InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEntry auto* entry, TranslationContext const& ctx) {
+InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEntry* entry, TranslationContext const& ctx) {
     ErrorCode const error_code = {.pf = {
                                       .present = 1,
                                       .wr = (u8)(ctx.op == OP_READ ? 0 : 1),
@@ -190,16 +240,16 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
      * a CPL of 0, 1, or 2, it is in supervisor mode; if it is operating at a CPL of 3, it is in user mode. When the processor is
      * in supervisor mode, it can access all pages; when in user mode, it can access only user-level pages.
      */
-    if (cpm == CPU::USER_MODE && !entry->user)
+    if (cpm == CPU::USER_MODE && !entry->c.user)
         return raise_page_fault(error_code);
 
 
-    if (cpm == CPU::SUPERVISOR_MODE && entry->user) {
+    if (cpm == CPU::SUPERVISOR_MODE && entry->c.user) {
         // SMEP
-        if (m_cpu->state() == CPU::State::STATE_FETCH_INSTRUCTION && m_cpu->m_cr4.SMEP == 1)
+        if (m_cpu->state() == CPU::State::STATE_FETCH_INSTRUCTION && m_cpu->m_cr4.c.SMEP == 1)
             return raise_page_fault(error_code);
         // SMAP
-        if (m_cpu->m_cr4.SMAP == 1 && (m_cpu->m_rflags.AC == 0 || implicit_access))
+        if (m_cpu->m_cr4.c.SMAP == 1 && (m_cpu->m_rflags.AC == 0 || implicit_access))
             return raise_page_fault(error_code);
     }
 
@@ -212,10 +262,10 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
      * ization), all pages are both readable and writable (write-protection is ignored).
      */
     // If CR0.WP = 1, read-only pages are not writable from any privilege level (useful for Copy-on-write)
-    if (m_cpu->m_cr0.WP == 1 && ctx.op == OP_WRITE && entry->rw == 0)
+    if (m_cpu->m_cr0.c.WP == 1 && ctx.op == OP_WRITE && entry->c.rw == 0)
         return raise_page_fault(error_code);
     // When the processor is in user mode, it can write only to user-mode pages that are read/write accessible.
-    if (cpm == CPU::USER_MODE && ctx.op == OP_WRITE && entry->rw == 0)
+    if (cpm == CPU::USER_MODE && ctx.op == OP_WRITE && entry->c.rw == 0)
         return raise_page_fault(error_code);
 
     /**
@@ -225,18 +275,18 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
      * An attempt to fetch instructions from a memory page with the execute-disable bit set causes a page-fault exception.
      */
     // TODO: maybe use ctx.intention == INTENTION_FETCH_INSTRUCTION
-    if (m_cpu->m_efer.NXE == 1 && m_cpu->state() == CPU::State::STATE_FETCH_INSTRUCTION && entry->xd == 1)
+    if (m_cpu->m_efer.c.NXE == 1 && m_cpu->state() == CPU::State::STATE_FETCH_INSTRUCTION && entry->c.xd == 1)
         return raise_page_fault(error_code);
 
     return {};
 }
 
 
-InterruptRaisedOr<void> MMU::check_page_structure_protection_key(PageStructureEntry auto* entry, TranslationContext const& ctx) {
-    // We currently do not implement protection key's
+InterruptRaisedOr<void> MMU::check_page_structure_protection_key(PageStructureEntry* entry, TranslationContext const& ctx) {
     // On instruction fetches PK is not checked
     if (m_cpu->state() != CPU::State::STATE_FETCH_INSTRUCTION)
         return {};
+    // We currently do not implement protection key's
     return {};
 }
 
@@ -303,13 +353,13 @@ InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, Tra
      *   — No instruction may write into a data segment if it is not writable.
      *   — No instruction may read an executable segment unless the readable flag is set
      */
-    if (ctx.op == MemoryOp::OP_WRITE && descriptor.access.executable) {
+    if (ctx.op == MemoryOp::OP_WRITE && descriptor.access.c.executable) {
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     }
-    if (ctx.op == MemoryOp::OP_WRITE && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.wr) {
+    if (ctx.op == MemoryOp::OP_WRITE && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.c.wr) {
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     }
-    if (ctx.op == MemoryOp::OP_READ && descriptor.access.executable && !descriptor.access.wr) {
+    if (ctx.op == MemoryOp::OP_READ && descriptor.access.c.executable && !descriptor.access.c.wr) {
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     }
 
@@ -350,11 +400,12 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
         .width = ByteWidth::WIDTH_QWORD,
         .intention = TranslationIntention::INTENTION_LOAD_DESCRIPTOR,
     };
+    TODO_NOFAIL("check endianness (get_descriptor_from_descriptor_table)");
     auto* descriptor1 = paddr_ptr<Descriptor>(MAY_HAVE_RAISED(va_to_pa(table_base + (descriptor_index * index_scale), ctx)));
     if (descriptor1->access.descriptor_type() == DescriptorType::RESERVED)
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     // If the P flag is set to 0, a not present (#NP) exception is generated when a program attempts to access the descriptor. (Can be used by OS to track access counts)
-    if (!descriptor1->access.present)
+    if (!descriptor1->access.c.present)
         return m_cpu->raise_interrupt(Exceptions::NP(error_code));
     if (!descriptor1->access.is_expanded_descriptor()) {
         return *(D*)descriptor1;
@@ -373,25 +424,32 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
     return expanded_descriptor;
 }
 
-
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<T> MMU::mem_read(LogicalAddress const& laddr, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_READ,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    return *paddr_ptr<T>(MAY_HAVE_RAISED(la_to_pa(laddr, ctx)));
+    auto const paddr = MAY_HAVE_RAISED(la_to_pa(laddr, ctx));
+    // TODO: make return type BigEndian<T> or LittleEndian<T>
+    if (auto opt = MAY_HAVE_RAISED(m_mmio.try_mmio_read<T>(paddr)); opt.has_value())
+        return opt->value;
+    return *paddr_ptr<T>(paddr);
 }
 
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<T> MMU::mem_read(VirtualAddress const& vaddr, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_READ,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    return *paddr_ptr<T>(MAY_HAVE_RAISED(va_to_pa(vaddr, ctx)));
+    auto const paddr = MAY_HAVE_RAISED(va_to_pa(vaddr, ctx));
+    // TODO: make return type BigEndian<T> or LittleEndian<T>
+    if (auto opt = MAY_HAVE_RAISED(m_mmio.try_mmio_read<T>(paddr)); opt.has_value())
+        return opt->value;
+    return *paddr_ptr<T>(paddr);
 }
 InterruptRaisedOr<u64> MMU::mem_read64(LogicalAddress const& laddr, TranslationIntention intention) {
     return mem_read<u64>(laddr, intention);
@@ -418,25 +476,31 @@ InterruptRaisedOr<u8> MMU::mem_read8(VirtualAddress const& vaddr, TranslationInt
     return mem_read<u8>(vaddr, intention);
 }
 
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<void> MMU::mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_WRITE,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    *paddr_ptr<T>(MAY_HAVE_RAISED(la_to_pa(laddr, ctx))) = value;
+    auto const paddr = MAY_HAVE_RAISED(la_to_pa(laddr, ctx));
+    if (MAY_HAVE_RAISED(m_mmio.try_mmio_write<T>(paddr, value)))
+        return {};
+    *paddr_ptr<T>(paddr) = value;
     return {};
 }
 
-template<typename T>
+template<unsigned_integral T>
 InterruptRaisedOr<void> MMU::mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention) {
     TranslationContext ctx = {
         .op = MemoryOp::OP_WRITE,
         .width = get_byte_width<T>(),
         .intention = intention,
     };
-    *paddr_ptr<T>(MAY_HAVE_RAISED(va_to_pa(vaddr, ctx))) = value;
+    auto const paddr = MAY_HAVE_RAISED(va_to_pa(vaddr, ctx));
+    if (MAY_HAVE_RAISED(m_mmio.try_mmio_write<T>(paddr, value)))
+        return {};
+    *paddr_ptr<T>(paddr) = value;
     return {};
 }
 InterruptRaisedOr<void> MMU::mem_write64(LogicalAddress const& laddr, u64 value, TranslationIntention intention) {

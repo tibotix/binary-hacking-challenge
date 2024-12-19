@@ -7,3 +7,9 @@
 [submodule "deps/catch2"]
 	path = cpue/deps/catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "cpue/deps/spdlog"]
+	path = cpue/deps/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "cpue/deps/CLI11"]
+	path = cpue/deps/CLI11
+	url = https://github.com/CLIUtils/CLI11.git

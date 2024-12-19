@@ -13,13 +13,12 @@ struct ArithmeticResult {
     bool has_cf_set;
     bool has_sf_set;
     bool has_zf_set;
-    /* Is used for BCD-Type arithmetics, 
+    /* Is used for BCD-Type arithmetic,
      * which we don't include
-     * bool has_af_set; 
+     * bool has_af_set;
     */
 
-    constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), \
-        has_sf_set(false), has_zf_set(false) {} 
+    constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), has_sf_set(false), has_zf_set(false) {}
 };
 
 // TODO: OF, SF, ZF, CF
@@ -48,7 +47,7 @@ requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R
     if (first_sign_bit == summand_sign_bit && first_sign_bit != res_sign_bit) {
         res.has_of_set = true;
     }
-    
+
     // Set ZERO-BIT
     if (res.value == 0)
         res.has_zf_set = 1;
@@ -58,7 +57,7 @@ requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R
 
 // Not allowing overflows
 template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
+requires(std::is_same_v<R, T>&&...) && (is_unsigned_integral<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
     // Consider calculation invalid if we are only adding one number
     static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
     R res = first;

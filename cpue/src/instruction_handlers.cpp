@@ -5,7 +5,7 @@ namespace CPUE {
 
 // Access the detailed operand information
 //cs_x86 *x86 = &(insn[i].detail->x86);
-
+// TODO: use dispatch array, and build it in constexpr, use nullptr for not implemented and pointer to member function otherwise
 InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
     auto* detail = &(insn.detail->x86);
 #define CASE(name) \
@@ -79,7 +79,6 @@ InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
         }
 
         if (second_op.type == x86_op_type::X86_OP_MEM) {
-
             TODO();
         }
 
@@ -100,7 +99,7 @@ InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
         TODO();
     }
 
-    //  When an immediate value is used as an operand, 
+    //  When an immediate value is used as an operand,
     //  it is sign-extended to the length of the destination operand format.
     if (first_op.type == x86_op_type::X86_OP_IMM) {
         fail(" First operand cannot be immediate value!");
@@ -111,7 +110,9 @@ InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
 InterruptRaisedOr<void> CPU::handle_AAA(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust After Addition
-InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {} //	ASCII Adjust AX Before Division
+InterruptRaisedOr<void> CPU::handle_AAD(cs_x86 const& insn_detail) {
+    TODO();
+} //	ASCII Adjust AX Before Division
 InterruptRaisedOr<void> CPU::handle_AAM(cs_x86 const& insn_detail) {
     TODO();
 } //	ASCII Adjust AX After Multiply
