@@ -6,11 +6,11 @@
 namespace CPUE {
 
 
-static constexpr Descriptor::AccessByte _default_access_byte = {
-    .accessed = 1,
-    .wr = 1,
-    .present = 1,
-};
+static constexpr Descriptor::AccessByte _default_access_byte = {.c = {
+                                                                    .accessed = 1,
+                                                                    .wr = 1,
+                                                                    .present = 1,
+                                                                }};
 static constexpr ApplicationSegmentRegister _default_application_segment_register = {.visible = 0x0,
     .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0}}};
 static constexpr ApplicationSegmentRegister _default_cs_segment_register = {.visible = 0x0,
@@ -36,13 +36,13 @@ void CPU::reset() {
     m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
 
     m_rflags = instance<RFLAGS, u64>(0x2);
-    m_cr0 = instance<CR0, u64>(0x60000010);
+    m_cr0 = {.value = 0x60000010};
     m_cr2 = 0x0_va;
-    m_cr3 = instance<CR3, u64>(0x0);
-    m_cr4 = instance<CR4, u64>(0x0);
-    m_cr8 = instance<CR8, u64>(0x0);
+    m_cr3 = {.value = 0x0};
+    m_cr4 = {.value = 0x0};
+    m_cr8 = {.value = 0x0};
 
-    m_efer = instance<EFER, u64>(0x0);
+    m_efer = {.value = 0x0};
 
     m_fsbase = m_gsbase = 0x0;
     m_kernel_gsbase = 0x0;
@@ -52,6 +52,34 @@ void CPU::reset() {
 
     m_ldtr = m_tr = _default_system_segment_register;
 };
+
+
+auto CPU::paging_mode() const -> PagingMode {
+    // If CR0.PG = 0, paging is not used. The logical processor treats all linear addresses as if they were physical
+    // addresses.
+    if (m_cr0.c.PG == 0)
+        return PAGING_MODE_NONE;
+    // If CR4.PAE = 0, 32-bit paging is used.
+    if (m_cr4.c.PAE == 0)
+        return PAGING_MODE_32BIT;
+    // If CR4.PAE = 1 and IA32_EFER.LME = 0, PAE paging is used.
+    if (m_efer.c.LME == 0)
+        return PAGING_MODE_PAE;
+    // If CR4.PAE = 1, IA32_EFER.LME = 1, and CR4.LA57 = 0, 4-level paging is used.
+    if (m_cr4.c.LA57 == 0)
+        return PAGING_MODE_4LEVEL;
+    // If CR4.PAE = 1, IA32_EFER.LME = 1, and CR4.LA57 = 1, 5-level paging is used.
+    if (m_cr4.c.LA57 == 1)
+        return PAGING_MODE_5LEVEL;
+    fail("Ambiguous paging mode.");
+}
+
+auto CPU::execution_mode() const -> ExecutionMode {
+    if (efer_LMA() == 1)
+        return ExecutionMode::LONG_MODE;
+    TODO_NOFAIL("execution_mode");
+    return ExecutionMode::COMPATIBILITY_MODE;
+}
 
 
 void CPU::interpreter_loop() {
@@ -196,21 +224,21 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     // rpl is not checked as vectors have none (only segment-selectors)
     // The processor checks the DPL of the interrupt or trap gate only if an exception or interrupt is generated with an
     // INT n, INT3, or INTO instruction (INT1 would not check). Here, the CPL must be less than or equal to the DPL of the gate.
-    if (i.source == InterruptSource::INTN_INT3_INTO_INSN && cpl() > descriptor.access.dpl)
+    if (i.source == InterruptSource::INTN_INT3_INTO_INSN && cpl() > descriptor.access.c.dpl)
         return raise_interrupt(Exceptions::GP(error_code));
 
     auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(descriptor.segment_selector));
 
     // Check if target code segment is executable code segment
-    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.c.executable == 0)
         return raise_interrupt(Exceptions::GP(error_code));
     auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
     // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
     if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
         return raise_interrupt(Exceptions::GP(error_code));
 
-    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
-    auto dest_dpl = dest_segment_descriptor.access.dpl;
+    auto dest_is_conforming = dest_segment_descriptor.access.c.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.c.dpl;
 
     TODO_NOFAIL("Privilege Checks");
 
@@ -279,21 +307,21 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
                                 .selector_index = selector.index,
                             }};
     // CPL ≤ call gate DPL; RPL ≤ call gate DPL
-    if (cpl() > call_gate_descriptor.access.dpl || selector.rpl > call_gate_descriptor.access.dpl)
+    if (cpl() > call_gate_descriptor.access.c.dpl || selector.rpl > call_gate_descriptor.access.c.dpl)
         return raise_interrupt(Exceptions::GP(error_code));
 
     auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(call_gate_descriptor.segment_selector));
 
     // Check if target code segment is executable code segment
-    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.c.executable == 0)
         return raise_interrupt(Exceptions::GP(error_code));
     auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
     // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
     if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
         return raise_interrupt(Exceptions::GP(error_code));
 
-    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
-    auto dest_dpl = dest_segment_descriptor.access.dpl;
+    auto dest_is_conforming = dest_segment_descriptor.access.c.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.c.dpl;
     // Destination conforming code segment DPL ≤ CPL
     if (dest_is_conforming && dest_dpl > cpl())
         return raise_interrupt(Exceptions::GP(error_code));
@@ -413,12 +441,12 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     auto [base, limit] = descriptor_table_of_selector(selector);
     auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, access);
     auto new_access_byte = descriptor.access;
-    new_access_byte.accessed = 1;
+    new_access_byte.c.accessed = 1;
     MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
 
     // The Segment Not Present exception occurs when trying to load a segment or gate which has its `Present` bit set to 0.
     // However, when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
-    if (descriptor.access.present == 0) {
+    if (descriptor.access.c.present == 0) {
         if (alias.type() == SegmentRegisterType::STACK) {
             return raise_integral_interrupt(Exceptions::SS(error_code));
         }
@@ -439,7 +467,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Segment selectors for code segments that are not readable cannot be loaded into data-segment registers (DS, ES, FS, and GS).
-    if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && !descriptor.access.wr && alias.type() == SegmentRegisterType::DATA) {
+    if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && !descriptor.access.c.wr && alias.type() == SegmentRegisterType::DATA) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Segment selectors for system segments cannot be loaded into data-segment registers (DS, ES, FS, and GS).
@@ -447,7 +475,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Only segment selectors of writable data segments can be loaded into the SS register.
-    if (alias == SegmentRegisterAlias::SS && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.wr) {
+    if (alias == SegmentRegisterAlias::SS && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.c.wr) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
 
@@ -462,26 +490,26 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         // The processor loads the segment selector into the segment register if the DPL is numerically greater
         // than or equal to both the CPL and the RPL. Otherwise, a general-protection fault is generated and the segment
         // register is not loaded.
-        if (!(descriptor.access.dpl <= cpl() && descriptor.access.dpl <= selector.rpl)) {
+        if (!(descriptor.access.c.dpl <= cpl() && descriptor.access.c.dpl <= selector.rpl)) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
     if (alias == SegmentRegisterAlias::SS) {
         // PRIVILEGE LEVEL CHECKING WHEN LOADING THE SS REGISTER
         // If the RPL and DPL are not equal to the CPL, a general-protection exception (#GP) is generated.
-        if (!(descriptor.access.dpl == cpl() == selector.rpl)) {
+        if (!(descriptor.access.c.dpl == cpl() == selector.rpl)) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
     if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT) {
         // PRIVILEGE LEVEL CHECKING WHEN TRANSFERRING PROGRAM CONTROL BETWEEN CODE SEGMENTS
-        if (!descriptor.access.ec) {
+        if (!descriptor.access.c.ec) {
             // Accessing Nonconforming Code Segments
             // When accessing nonconforming code segments, the CPL of the calling procedure must be equal to the DPL of the
             // destination code segment; otherwise, the processor generates a general-protection exception (#GP).
             // A transfer into a nonconforming segment at a different privilege level results in a general-protection exception (#GP),
             // unless a gate is used to access it.
-            if (descriptor.access.dpl != cpl() && !descriptor.is_gate_descriptor()) {
+            if (descriptor.access.c.dpl != cpl() && !descriptor.is_gate_descriptor()) {
                 return raise_integral_interrupt(Exceptions::GP(error_code));
             }
         } else {
@@ -490,7 +518,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
             // greater than (less privileged) the DPL of the destination code segment; the processor generates a general-protec-
             // tion exception (#GP) only if the CPL is less than the DPL. (The segment selector RPL for the destination code
             // segment is not checked if the segment is a conforming code segment.)
-            if (cpl() < descriptor.access.dpl) {
+            if (cpl() < descriptor.access.c.dpl) {
                 return raise_integral_interrupt(Exceptions::GP(error_code));
             }
         }

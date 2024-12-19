@@ -24,7 +24,8 @@ public:
     friend Disassembler;
     friend TLB;
     friend ICU;
-    CPU() : m_icu(this), m_mmu(this, 2), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
+    friend UEFI;
+    explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
         reset();
         init_mmio();
     }
@@ -51,19 +52,23 @@ public:
         SUPERVISOR_MODE,
     };
 
+    enum PagingMode { PAGING_MODE_NONE, PAGING_MODE_32BIT, PAGING_MODE_PAE, PAGING_MODE_4LEVEL, PAGING_MODE_5LEVEL };
+
 
 public:
+    [[nodiscard]] PagingMode paging_mode() const;
     [[nodiscard]] bool is_paging_enabled() const {
-        TODO_NOFAIL("is_paging_enabled: use actual registers");
-        return true;
+        // We only support 4-Level paging or No paging.
+        switch (paging_mode()) {
+            case PAGING_MODE_NONE: return false;
+            case PAGING_MODE_4LEVEL: return true;
+            case PAGING_MODE_32BIT:
+            case PAGING_MODE_PAE:
+            case PAGING_MODE_5LEVEL: fail("Only 4-Level Paging or No Paging is supported.");
+        }
     }
     void assert_paging_enabled() const { CPUE_ASSERT(is_paging_enabled(), "paging not enabled"); }
-    [[nodiscard]] ExecutionMode execution_mode() const {
-        if (m_efer.LMA == 1)
-            return ExecutionMode::LONG_MODE;
-        TODO_NOFAIL("execution_mode");
-        return ExecutionMode::COMPATIBILITY_MODE;
-    }
+    [[nodiscard]] ExecutionMode execution_mode() const;
     void assert_in_long_mode() const { CPUE_ASSERT(execution_mode() == ExecutionMode::LONG_MODE, "not in long mode"); }
 
     [[nodiscard]] State state() const { return m_state; }
@@ -87,10 +92,18 @@ public:
      * allow CR4.PCIDE to be set to 1;
      */
     [[nodiscard]] PCID pcid() const {
-        if (m_cr4.PCIDE == 0)
+        if (m_cr4.c.PCIDE == 0)
             return 0;
         return m_cr3.pcid();
     }
+
+
+    // TODO: also add them to register lookup table
+    void set_cr0(u64 value) { m_cr0.value = value; }
+    void set_cr2(u64 value) { m_cr2.addr = value; }
+    void set_cr3(u64 value) { m_cr3.value = value; }
+    void set_cr4(u64 value) { m_cr4.value = value; }
+    void set_cr8(u64 value) { m_cr8.value = value; }
 
 
     LogicalAddress stack_pointer() const { return {m_ss, m_rsp}; }
@@ -151,7 +164,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn);
     [[nodiscard]] InterruptRaisedOr<std::pair<SegmentSelector, u64>> do_stack_switch(u8 target_pl);
 
-    [[nodiscard]] bool alignment_check_enabled() const { return m_cr0.AM && m_rflags.AC && cpl() == 3; }
+    [[nodiscard]] bool alignment_check_enabled() const { return m_cr0.c.AM && m_rflags.AC && cpl() == 3; }
     [[nodiscard]] InterruptRaisedOr<void> do_canonicality_check(VirtualAddress const& vaddr);
 
     DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
@@ -909,92 +922,104 @@ private:
     /**
      * Control Registers
      */
-    struct CR0 {
-        u64 PE : 1; // Protected Mode Enable
-        u64 MP : 1; // Monitor Co-Processor
-        u64 EM : 1; // Emulation
-        u64 TS : 1; // Task Switched
-        u64 ET : 1; // Extension Type
-        u64 NE : 1; // Numeric Error
-        u64 : 10; // Reserved
-        u64 WP : 1; // Write Protect
-        u64 : 1; // Reserved
-        u64 AM : 1; // Alignment Mask
-        u64 : 10; // Reserved
-        u64 NW : 1; // Not-Write Through
-        u64 CD : 1; // Cache Disable
-        u64 PG : 1; // Paging
+    union CR0 {
+        struct Concrete {
+            u64 PE : 1; // Protected Mode Enable
+            u64 MP : 1; // Monitor Co-Processor
+            u64 EM : 1; // Emulation
+            u64 TS : 1; // Task Switched
+            u64 ET : 1; // Extension Type
+            u64 NE : 1; // Numeric Error
+            u64 : 10; // Reserved
+            u64 WP : 1; // Write Protect
+            u64 : 1; // Reserved
+            u64 AM : 1; // Alignment Mask
+            u64 : 10; // Reserved
+            u64 NW : 1; // Not-Write Through
+            u64 CD : 1; // Cache Disable
+            u64 PG : 1; // Paging
+        } c;
+        u64 value;
     };
     static_assert(sizeof(CR0) == 8);
-    CR0 m_cr0;
+    CR0 m_cr0 = {.value = 0x0};
 
     // This control register contains the linear (virtual) address which triggered a page fault, available in the page fault's interrupt handler.
     VirtualAddress m_cr2;
-    struct CR3 {
-        u64 _pcid1 : 3;
-        u64 PWT : 1;
-        u64 PCD : 1;
-        u64 _pcid2 : 7;
-        u64 pml4_base_paddr : MAXPHYADDR - 12; // Physical Base Address of the PML4
-        u64 __reserved1 : 60 - MAXPHYADDR = 0; // Reserved (must be 0)
-        u64 LAM_U57 : 1; // When set, enables LAM57 (masking of linear-address bits 62:57) for user pointers and overrides CR3.LAM_U48.
-        u64 LAM_U48 : 1; // When set and CR3.LAM_U57 is clear, enables LAM48 (masking of linear-address bits 62:48) for user pointers.
-        u64 __reserved2 : 1 = 0; // Reserved (must be 0)
+    union CR3 {
+        struct Concrete {
+            u64 _pcid1 : 3;
+            u64 PWT : 1;
+            u64 PCD : 1;
+            u64 _pcid2 : 7;
+            u64 pml4_base_paddr : MAXPHYADDR - 12; // Physical Base Address of the PML4
+            u64 __reserved1 : 60 - MAXPHYADDR = 0; // Reserved (must be 0)
+            u64 LAM_U57 : 1; // When set, enables LAM57 (masking of linear-address bits 62:57) for user pointers and overrides CR3.LAM_U48.
+            u64 LAM_U48 : 1; // When set and CR3.LAM_U57 is clear, enables LAM48 (masking of linear-address bits 62:48) for user pointers.
+            u64 __reserved2 : 1 = 0; // Reserved (must be 0)
+        } c;
+        u64 value;
 
-        u64 reserved_bits_ored() const { return __reserved1 || __reserved2; }
+        u64 reserved_bits_ored() const { return c.__reserved1 || c.__reserved2; }
 
         // // We have to do it this way cause of bit-field limitations/alignment issues
-        PCID pcid() const { return ((u16)_pcid2 << 5) || PCD << 4 || PWT << 3 || _pcid1; }
+        PCID pcid() const { return ((u16)c._pcid2 << 5) || c.PCD << 4 || c.PWT << 3 || c._pcid1; }
         void set_pcid(PCID pcid) {
-            _pcid1 = bits(pcid, 2, 0);
-            PWT = bits(pcid, 3, 3);
-            PCD = bits(pcid, 4, 4);
-            _pcid2 = bits(pcid, 11, 5);
+            c._pcid1 = bits(pcid, 2, 0);
+            c.PWT = bits(pcid, 3, 3);
+            c.PCD = bits(pcid, 4, 4);
+            c._pcid2 = bits(pcid, 11, 5);
         }
     };
     static_assert(sizeof(CR3) == 8);
-    CR3 m_cr3;
+    CR3 m_cr3 = {.value = 0x0};
 
-    struct CR4 {
-        u64 VME : 1; // Virtual-8086 Mode Extensions
-        u64 PVI : 1; // Protected Mode Virtual Interrupts
-        u64 TSD : 1; // Time Stamp enabled only in ring 0
-        u64 DE : 1; // Debugging Extensions
-        u64 PSE : 1; // Page Size Extension
-        u64 PAE : 1; // Physical Address Extension
-        u64 MCE : 1; // Machine Check Exception
-        u64 PGE : 1; // Page Global Enable
-        u64 PCE : 1; // Performance Monitoring Counter Enable
-        u64 OSFXSR : 1; // OS support for fxsave and fxrstor instructions
-        u64 OSXMMEXCPT : 1; // OS Support for unmasked simd floating point exceptions
-        u64 UMIP : 1; // User-Mode Instruction Prevention (SGDT, SIDT, SLDT, SMSW, and STR are disabled in user mode)
-        u64 LA57 : 1 = 0; // 57-bit linear addresses. When set in IA-32e mode, the processor uses 5-level paging to translate 57-bit linear addresses. When clear in IA-32e mode, the processor uses 4-level paging to translate 48-bit linear addresses.
-        u64 VMXE : 1; // Virtual Machine Extensions Enable
-        u64 SMXE : 1; // Safer Mode Extensions Enable
-        u64 __reserved1 : 1 = 0; // Reserved (must be 0)
-        u64 FSGSBASE : 1; // Enables the instructions RDFSBASE, RDGSBASE, WRFSBASE, and WRGSBASE
-        u64 PCIDE : 1; // PCID Enable
-        u64 OSXSAVE : 1; // XSAVE And Processor Extended States Enable
-        u64 KL : 1 = 0; // Key-Locker-Enable Bit.
-        u64 SMEP : 1; // Supervisor Mode Executions Protection Enable
-        u64 SMAP : 1; // Supervisor Mode Access Protection Enable
-        u64 PKE : 1; // Enable protection keys for user-mode pages
-        u64 CET : 1; // Enable Control-flow Enforcement Technology
-        u64 PKS : 1; // Enable protection keys for supervisor-mode pages
-        u64 UINTR : 1; // Enables user interrupts when set, including user-interrupt delivery, user-interrupt notification identification, and the user-interrupt instructions.
-        u64 __reserved2 : 2 = 0; // Reserved (must be 0)
-        u64 LAM_SUP : 1; // When set, enables LAM (linear-address masking) for supervisor pointers.
+    union CR4 {
+        struct Concrete {
+            u64 VME : 1; // Virtual-8086 Mode Extensions
+            u64 PVI : 1; // Protected Mode Virtual Interrupts
+            u64 TSD : 1; // Time Stamp enabled only in ring 0
+            u64 DE : 1; // Debugging Extensions
+            u64 PSE : 1; // Page Size Extension
+            u64 PAE : 1; // Physical Address Extension
+            u64 MCE : 1; // Machine Check Exception
+            u64 PGE : 1; // Page Global Enable
+            u64 PCE : 1; // Performance Monitoring Counter Enable
+            u64 OSFXSR : 1; // OS support for fxsave and fxrstor instructions
+            u64 OSXMMEXCPT : 1; // OS Support for unmasked simd floating point exceptions
+            u64 UMIP : 1; // User-Mode Instruction Prevention (SGDT, SIDT, SLDT, SMSW, and STR are disabled in user mode)
+            u64 LA57 : 1 = 0; // 57-bit linear addresses. When set in IA-32e mode, the processor uses 5-level paging to translate 57-bit linear addresses. When clear in IA-32e mode, the processor uses 4-level paging to translate 48-bit linear addresses.
+            u64 VMXE : 1; // Virtual Machine Extensions Enable
+            u64 SMXE : 1; // Safer Mode Extensions Enable
+            u64 __reserved1 : 1 = 0; // Reserved (must be 0)
+            u64 FSGSBASE : 1; // Enables the instructions RDFSBASE, RDGSBASE, WRFSBASE, and WRGSBASE
+            u64 PCIDE : 1; // PCID Enable
+            u64 OSXSAVE : 1; // XSAVE And Processor Extended States Enable
+            u64 KL : 1 = 0; // Key-Locker-Enable Bit.
+            u64 SMEP : 1; // Supervisor Mode Executions Protection Enable
+            u64 SMAP : 1; // Supervisor Mode Access Protection Enable
+            u64 PKE : 1; // Enable protection keys for user-mode pages
+            u64 CET : 1; // Enable Control-flow Enforcement Technology
+            u64 PKS : 1; // Enable protection keys for supervisor-mode pages
+            u64 UINTR : 1; // Enables user interrupts when set, including user-interrupt delivery, user-interrupt notification identification, and the user-interrupt instructions.
+            u64 __reserved2 : 2 = 0; // Reserved (must be 0)
+            u64 LAM_SUP : 1; // When set, enables LAM (linear-address masking) for supervisor pointers.
+        } c;
+        u64 value;
 
-        u64 reserved_bits_ored() const { return __reserved1 || __reserved2; }
+        u64 reserved_bits_ored() const { return c.__reserved1 || c.__reserved2; }
     };
     static_assert(sizeof(CR4) == 8);
-    CR4 m_cr4;
+    CR4 m_cr4 = {.value = 0x0};
 
-    struct CR8 {
-        u64 TPR : 4; // This sets the threshold value corresponding to the highestpriority interrupt to be blocked. A value of 0 means all interrupts are enabled. This field is available in 64-bit mode. A value of 15 means all interrupts will be disabled.
+    union CR8 {
+        struct Concrete {
+            u64 TPR : 4; // This sets the threshold value corresponding to the highestpriority interrupt to be blocked. A value of 0 means all interrupts are enabled. This field is available in 64-bit mode. A value of 15 means all interrupts will be disabled.
+        } c;
+        u64 value;
     };
     static_assert(sizeof(CR8) == 8);
-    CR8 m_cr8;
+    CR8 m_cr8 = {.value = 0x0};
     /**
      * CR1, CR5-7, CR9-15:
      * Reserved, the cpu will throw a #ud exception when trying to access them.
@@ -1004,18 +1029,29 @@ private:
     /**
      * MSRs (Model-Specific-Registers)
      */
-    struct EFER {
-        u64 SCE : 1; // System Call Extensions
-        u64 : 7; // Reserved
-        u64 LME : 2; // Long Mode Enable
-        u64 LMA : 1; // Long Mode Active
-        u64 NXE : 1; // No-Execute Enable
-        u64 SVME : 1; // Secure Virtual Machine Enable
-        u64 LMSLE : 1; // Long Mode Segment Limit Enable
-        u64 FFXSR : 1; // Fast FXSAVE/FXRSTOR
-        u64 TCE : 1; // Translation Cache Extension u8 16 - 63 0 Reserved
+    union EFER {
+        struct Concrete {
+            u64 SCE : 1; // System Call Extensions
+            u64 : 7; // Reserved
+            u64 LME : 2; // Long Mode Enable
+            u64 : 1; // Long Mode Active (See efer_LMA)
+            u64 NXE : 1; // No-Execute Enable
+            u64 SVME : 1; // Secure Virtual Machine Enable
+            u64 LMSLE : 1; // Long Mode Segment Limit Enable
+            u64 FFXSR : 1; // Fast FXSAVE/FXRSTOR
+            u64 TCE : 1; // Translation Cache Extension u8 16 - 63 0 Reserved
+        } c;
+        u64 value;
     };
-    EFER m_efer;
+    EFER m_efer = {.value = 0x0};
+    /**
+     * The LMA flag in the IA32_EFER MSR (bit 10) is a status bit that indicates whether the logical processor is in IA-32e mode (and thus
+     * uses either 4-level paging or 5-level paging). The processor always sets IA32_EFER.LMA to CR0.PG & IA32_EFER.LME. Software
+     * cannot directly modify IA32_EFER.LMA; an execution of WRMSR to the IA32_EFER MSR ignores bit 10 of its source operand.
+     */
+    u8 efer_LMA() const { return m_cr0.c.PG & m_efer.c.LME; }
+
+
     // MSRs with the addresses 0xC0000100 (for FS) and 0xC0000101 (for GS) contain the base addresses of the FS and GS segment registers.
     // These are commonly used for thread-pointers in user code and CPU-local pointers in kernel code.
     // Safe to contain anything, since use of a segment does not confer additional privileges to user code.

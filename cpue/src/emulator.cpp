@@ -9,12 +9,13 @@ namespace CPUE {
 
 
 void Emulator::start() const {
-    CPU cpu;
+    CPU cpu{m_available_pages};
 
     // configure long-mode and init kernel
+    u64 top = 0;
     UEFI uefi{&cpu};
-    uefi.prepare_long_mode();
-    CPUE_ASSERT(m_kernel.init(), "Failed to initialize kernel");
+    uefi.prepare_long_mode(top);
+    CPUE_ASSERT(m_kernel.init(top), "Failed to initialize kernel");
 
     //    CPUE_ASSERT(m_binary.load(), "Failed to read binary file");
     //    auto data = m_binary.read();

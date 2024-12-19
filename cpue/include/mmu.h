@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <cmath>
 #include <sys/mman.h>
 #include <iostream>
 
@@ -35,13 +36,17 @@ struct TranslationContext {
 
 class MMU {
 public:
-    MMU(CPU* cpu, size_t available_pages) : m_cpu(cpu), m_tlb(TLB{cpu}), m_mmio(MMIO{}), m_physmem(NULL), m_physmem_size(available_pages * PAGE_SIZE) {
+    friend Loader;
+    MMU(CPU* cpu, size_t available_pages)
+        : m_tlb(TLB{cpu}), m_cpu(cpu), m_mmio(MMIO{}), m_physmem_size(available_pages * PAGE_SIZE), m_available_pages(available_pages), m_physmem(NULL) {
         CPUE_ASSERT(cpu != NULL, "cpu is NULL");
         allocate_physmem();
     }
     MMU(MMU const&) = delete;
 
     MMIO& mmio() { return m_mmio; }
+    size_t physmem_size() const { return m_physmem_size; }
+    size_t available_pages() const { return m_available_pages; }
 
     [[nodiscard]] InterruptRaisedOr<PhysicalAddress> la_to_pa(LogicalAddress const& laddr, TranslationContext const& ctx);
 
@@ -71,7 +76,19 @@ private:
     [[nodiscard]] InterruptRaisedOr<PhysicalAddress> va_to_pa(VirtualAddress const& vaddr, TranslationContext const& ctx);
     [[nodiscard]] InterruptRaisedOr<VirtualAddress> la_to_va(LogicalAddress const& laddr, TranslationContext const& ctx);
     [[nodiscard]] InterruptRaisedOr<PTE> va_to_pte(VirtualAddress const& vaddr, TranslationContext const& ctx);
-    [[nodiscard]] InterruptRaisedOr<void> check_page_structure(PageStructureEntry auto* entry, TranslationContext const& ctx) {
+    [[nodiscard]] InterruptRaisedOr<PTE*> va_to_pte_no_tlb(VirtualAddress const& vaddr, TranslationContext const& ctx);
+    struct PageTableWalkResult {
+        PageTableWalkResult() : pml4e(nullptr), pdpte(nullptr), pde(nullptr), pte(nullptr), aborted(false) {}
+        PML4E* pml4e;
+        PDPTE* pdpte;
+        PDE* pde;
+        PTE* pte;
+        bool aborted;
+    };
+    [[nodiscard]] InterruptRaisedOr<PageTableWalkResult> page_table_walk(VirtualAddress const& vaddr, TranslationContext const& ctx);
+    // TODO: maybe rename this to better capture the "generality" intention of this page_table_walk
+    [[nodiscard]] PageTableWalkResult page_table_walk(VirtualAddress const& vaddr, bool (*f)(PageStructureEntry*, void*), void* data = nullptr);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure(PageStructureEntry* entry, TranslationContext const& ctx) {
         MAY_HAVE_RAISED(check_page_structure_reserved_bits(entry, ctx));
         MAY_HAVE_RAISED(check_page_structure_present(entry, ctx));
         MAY_HAVE_RAISED(check_page_structure_access_rights(entry, ctx));
@@ -79,9 +96,9 @@ private:
         return {};
     }
     [[nodiscard]] InterruptRaisedOr<void> check_page_structure_reserved_bits(HasReservedBits auto* entry, TranslationContext const& ctx);
-    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_present(PageStructureEntry auto* entry, TranslationContext const& ctx);
-    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_access_rights(PageStructureEntry auto* entry, TranslationContext const& ctx);
-    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_protection_key(PageStructureEntry auto* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_present(PageStructureEntry* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_access_rights(PageStructureEntry* entry, TranslationContext const& ctx);
+    [[nodiscard]] InterruptRaisedOr<void> check_page_structure_protection_key(PageStructureEntry* entry, TranslationContext const& ctx);
     _InterruptRaised raise_page_fault(VirtualAddress const& vaddr, ErrorCode const& error_code);
     _InterruptRaised raise_page_fault(ErrorCode const& error_code);
 
@@ -138,6 +155,7 @@ private:
     CPU* m_cpu;
     MMIO m_mmio;
     size_t m_physmem_size;
+    size_t m_available_pages;
     u8* m_physmem;
 };
 

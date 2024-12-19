@@ -11,10 +11,9 @@ public:
     explicit ELF(std::string const& filename) : m_filename(filename){};
     ELF(ELF const& other) = default;
 
-    void load() {
-        if (!m_reader.load(m_filename)) {
-            // failed to load elf
-        }
+    bool load() {
+        if (!m_reader.load(m_filename))
+            return false;
     }
 
 private:

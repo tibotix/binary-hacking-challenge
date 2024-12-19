@@ -11,7 +11,7 @@ constexpr u64 TLB::key(VirtualAddress const& vaddr) const {
 }
 
 std::optional<TLBEntry> TLB::lookup(VirtualAddress const& vaddr) const {
-    bool allow_global_pages = m_cpu->m_cr4.PGE == 1;
+    bool allow_global_pages = m_cpu->m_cr4.c.PGE == 1;
     auto range = m_entries.equal_range(key(vaddr));
     for (auto it = range.first; it != range.second; ++it) {
         // if we find entry with current pcid, take it
