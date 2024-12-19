@@ -94,7 +94,7 @@ class UARTController final : public UARTDevice {
 public:
     // Non-FIFO mode is essentially FIFO-mode with capacity 1 (resembles the THR/RBR registers)
     static constexpr u8 FIFO_CAPACITY = 16;
-    static constexpr PhysicalAddress MMIO_REG_BASE = 0xff00'0000'0000'0000_pa;
+    static constexpr PhysicalAddress MMIO_REG_BASE = 0xffff'ffff'0000'0000_pa;
     static constexpr u8 MAX_PENDING_INTERRUPTS = 8;
 
     explicit UARTController(CPU* cpu);
