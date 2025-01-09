@@ -21,9 +21,8 @@ struct ArithmeticResult {
     constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), has_sf_set(false), has_zf_set(false) {}
 };
 
-// TODO: OF, SF, ZF, CF
-template<typename R, typename T>
-requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr ArithmeticResult<R> CPUE_checked_single_uadd(R const first, T const summand) {
+template<unsigned_integral R, typename T>
+requires(std::is_same_v<R, T>) constexpr ArithmeticResult<R> CPUE_checked_single_uadd(R const first, T const summand) {
     ArithmeticResult<R> res;
     res.value = first;
 
@@ -34,19 +33,17 @@ requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R
 
     // Set Carry-Flag if including this summand would exceed MAX_VAL
     size_t max_summand = MAX_VAL - res.value;
-    if (summand > max_summand) {
+    if (summand > max_summand)
         res.has_cf_set = true;
-    }
     res.value += summand;
 
     // Setting SIGN-BIT, extract it from res
-    bool res_sign_bit = res.value >> (sizeof(R) * 8 - 1);
+    bool res_sign_bit = sign_bit(res.value);
     res.has_sf_set = res_sign_bit;
 
     // Setting OVERFLOW-BIT
-    if (first_sign_bit == summand_sign_bit && first_sign_bit != res_sign_bit) {
+    if (first_sign_bit == summand_sign_bit && first_sign_bit != res_sign_bit)
         res.has_of_set = true;
-    }
 
     // Set ZERO-BIT
     if (res.value == 0)
@@ -56,8 +53,8 @@ requires(std::is_same_v<R, T>) && (std::is_integral_v<R> && std::is_unsigned_v<R
 }
 
 // Not allowing overflows
-template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (is_unsigned_integral<R>)constexpr R CPUE_checked_uadd(R const first, T const... factors) {
+template<unsigned_integral R, typename... T>
+requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first, T const... factors) {
     // Consider calculation invalid if we are only adding one number
     static_assert(sizeof...(factors) > 0, "You have to add at least two numbers together.");
     R res = first;
@@ -74,8 +71,8 @@ requires(std::is_same_v<R, T>&&...) && (is_unsigned_integral<R>)constexpr R CPUE
 }
 
 
-template<typename R, typename... T>
-requires(std::is_same_v<R, T>&&...) && (std::is_integral_v<R> && std::is_unsigned_v<R>)constexpr R CPUE_checked_umul(R const first, T const... factors) {
+template<unsigned_integral R, typename... T>
+requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first, T const... factors) {
     // Consider calculation invalid if we are only multiplying one number
     static_assert(sizeof...(factors) > 0, "You have to multiply at least two numbers together.");
 

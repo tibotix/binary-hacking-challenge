@@ -318,8 +318,8 @@ InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, Tra
         if (ctx.intention != TranslationIntention::INTENTION_LOAD_DESCRIPTOR)
             return ZERO_ERROR_CODE_NOEXT;
         return {.standard = {
-                    .tbl = static_cast<u8>(laddr.segment_register.visible.segment_selector.table << 1),
-                    .selector_index = laddr.segment_register.visible.segment_selector.index,
+                    .tbl = static_cast<u8>(laddr.segment_register.visible.segment_selector.c.table << 1),
+                    .selector_index = laddr.segment_register.visible.segment_selector.c.index,
                 }};
     }();
 
@@ -375,11 +375,11 @@ InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, Tra
 
 InterruptRaisedOr<GDTLDTDescriptor> MMU::segment_selector_to_descriptor(SegmentSelector selector) {
     ErrorCode error_code = {.standard = {
-                                .tbl = static_cast<u8>(selector.table << 1),
-                                .selector_index = selector.index,
+                                .tbl = static_cast<u8>(selector.c.table << 1),
+                                .selector_index = selector.c.index,
                             }};
     auto [base, limit] = m_cpu->descriptor_table_of_selector(selector);
-    return get_descriptor_from_descriptor_table<GDTLDTDescriptor, 8>(base, limit, selector.index, error_code);
+    return get_descriptor_from_descriptor_table<GDTLDTDescriptor, 8>(base, limit, selector.c.index, error_code);
 }
 
 InterruptRaisedOr<IDTDescriptor> MMU::interrupt_vector_to_descriptor(InterruptVector vector) {

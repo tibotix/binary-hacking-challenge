@@ -21,7 +21,6 @@ TEST_CASE("CPUE_checked_single_uadd", "[checked_arithmetic]") {
     REQUIRE(res.has_cf_set == true);
     REQUIRE(res.has_of_set == true);
 
-    // Not sure if of is set rightly
     res = CPUE_checked_single_uadd<u8, u8>(127, 127);
     REQUIRE(res.has_cf_set == false);
     REQUIRE(res.has_of_set == true);
@@ -38,6 +37,6 @@ TEST_CASE("CPUE_checked_single_uadd", "[checked_arithmetic]") {
     REQUIRE(res.has_cf_set == true);
     REQUIRE(res.has_of_set == false);
     res = CPUE_checked_single_uadd<u8, u8>(127, 130);
-    REQUIRE(res.has_cf_set == false);
-    REQUIRE(res.has_of_set == true);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == false);
 }

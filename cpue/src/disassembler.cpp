@@ -10,8 +10,8 @@ InterruptRaisedOr<cs_insn const> Disassembler::next_insn() {
     u8 code[20] = {0};
     u64 code_size = 1;
 
-    for (; code_size <= sizeof(code); ++code_size) {
-        code[code_size] = MAY_HAVE_RAISED(m_cpu->mmu().mem_read8(VirtualAddress(address + code_size - 1)));
+    for (; code_size <= sizeof(code) - 1; ++code_size) {
+        code[code_size] = MAY_HAVE_RAISED(m_cpu->mmu().mem_read8(LogicalAddress(m_cpu->m_cs, address + code_size - 1)));
         u8 const* code_ptr = code;
         if (cs_disasm_iter(m_handle, &code_ptr, &code_size, &address, m_insn))
             return *m_insn;

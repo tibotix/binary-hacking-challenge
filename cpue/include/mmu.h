@@ -72,6 +72,15 @@ public:
     [[nodiscard]] InterruptRaisedOr<void> mem_write8(LogicalAddress const& laddr, u8 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
     [[nodiscard]] InterruptRaisedOr<void> mem_write8(VirtualAddress const& vaddr, u8 value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
 
+    template<unsigned_integral T>
+    [[nodiscard]] InterruptRaisedOr<T> mem_read(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    template<unsigned_integral T>
+    [[nodiscard]] InterruptRaisedOr<T> mem_read(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    template<unsigned_integral T>
+    [[nodiscard]] InterruptRaisedOr<void> mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+    template<unsigned_integral T>
+    [[nodiscard]] InterruptRaisedOr<void> mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
+
 private:
     [[nodiscard]] InterruptRaisedOr<PhysicalAddress> va_to_pa(VirtualAddress const& vaddr, TranslationContext const& ctx);
     [[nodiscard]] InterruptRaisedOr<VirtualAddress> la_to_va(LogicalAddress const& laddr, TranslationContext const& ctx);
@@ -104,15 +113,6 @@ private:
 
     template<typename D, u16 index_scale>
     [[nodiscard]] InterruptRaisedOr<D> get_descriptor_from_descriptor_table(VirtualAddress const& table_base, u16 table_limit, u16 descriptor_index, ErrorCode error_code);
-
-    template<unsigned_integral T>
-    [[nodiscard]] InterruptRaisedOr<T> mem_read(LogicalAddress const& laddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-    template<unsigned_integral T>
-    [[nodiscard]] InterruptRaisedOr<T> mem_read(VirtualAddress const& vaddr, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-    template<unsigned_integral T>
-    [[nodiscard]] InterruptRaisedOr<void> mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
-    template<unsigned_integral T>
-    [[nodiscard]] InterruptRaisedOr<void> mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention = TranslationIntention::INTENTION_UNKNOWN);
 
     template<typename T = u8>
     T* paddr_ptr(PhysicalAddress const& paddr) {

@@ -68,6 +68,15 @@ constexpr T bits(T val, u8 high, u8 low) {
 }
 
 
+template<typename T>
+requires std::is_integral_v<T>
+constexpr u8 sign_bit(T value) {
+    return value >> (sizeof(T) * 8 - 1);
+}
+
+template<class... T>
+constexpr bool always_false = false;
+
 template<class... Ts>
 struct overloaded : Ts... {
     using Ts::operator()...;
@@ -137,6 +146,30 @@ constexpr ByteWidth get_byte_width() {
     }
 }
 
+template<ByteWidth Width>
+struct ByteWidthToType;
+template<>
+struct ByteWidthToType<WIDTH_BYTE> {
+    using type = u8;
+};
+template<>
+struct ByteWidthToType<WIDTH_WORD> {
+    using type = u16;
+};
+template<>
+struct ByteWidthToType<WIDTH_DWORD> {
+    using type = u32;
+};
+template<>
+struct ByteWidthToType<WIDTH_QWORD> {
+    using type = u64;
+};
+template<>
+struct ByteWidthToType<WIDTH_DQWORD> {
+    using type = u64;
+};
+template<ByteWidth Width>
+using ByteWidthToType_t = typename ByteWidthToType<Width>::type;
 
 
 

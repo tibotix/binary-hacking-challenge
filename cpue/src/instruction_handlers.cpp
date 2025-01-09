@@ -3,13 +3,11 @@
 
 namespace CPUE {
 
-// Access the detailed operand information
-//cs_x86 *x86 = &(insn[i].detail->x86);
 // TODO: use dispatch array, and build it in constexpr, use nullptr for not implemented and pointer to member function otherwise
 InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
-    auto* detail = &(insn.detail->x86);
+    auto const& detail = insn.detail->x86;
 #define CASE(name) \
-    case x86_insn::X86_INS_##name: return handle_##name(*detail); break;
+    case x86_insn::X86_INS_##name: return handle_##name(detail); break;
 
     switch (insn.id) {
         CASE(ADD)
@@ -19,92 +17,45 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 
         CASE(MOV)
         CASE(LEA)
-        //CASE(XOR)
+            //CASE(XOR)
+
+        default: TODO("Unhandled instruction.");
     }
 #undef CASE
 }
 
-/*void CPU::handle_RFLAGS(u64 *dest, u64 *src, cs_x86 const& insn_detail) {*/
-/*    switch (insn_detail.operands[0].type) {*/
-/*        case x86_op_type::X86_OP_INVALID:*/
-/*            fail("Instruction is invalid!");*/
-/*            break;*/
-/**/
-/*        case x86_op_type::X86_OP_REG:*/
-/**/
-/**/
-/*            /**/
-/*             * Only for adding*/
-/*             * TODO: pack into separate functions check_of, ...*/
-/*             */
-/**/
-/*            if ( dest[0] > std::numeric_limits<int8_t>::max() && \*/
-/*                dest[0] >= 0 && src[0] >= 0)*/
-/*                set_of(true);*/
-/*            else*/
-/*                set_of(false);*/
-/**/
-/*            if (dest[0] > std::numeric_limits<u64>::max())*/
-/*                set_cf(true);*/
-/*            else */
-/*                set_cf(false);*/
-/*            break;*/
-/**/
-/*        case x86_op_type::X86_OP_IMM:*/
-/*            TODO();*/
-/*            break;*/
-/**/
-/*        case x86_op_type::X86_OP_MEM:*/
-/*            TODO();*/
-/*            break;*/
-/*    }*/
-/*};*/
+
+
+template<unsigned_integral R, unsigned_integral T>
+requires(sizeof(R) >= sizeof(T)) constexpr R zero_extend(T value) {
+    return value;
+}
+
+template<unsigned_integral R, unsigned_integral T>
+requires(sizeof(R) >= sizeof(T)) constexpr R sign_extend(T value) {
+    if (sign_bit(value))
+        return (static_cast<R>(-1) << sizeof(T)) | value;
+    return value;
+}
 
 //RFLAGS: OF, CF
 InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
-    if (insn_detail.operands[0].type == x86_op_type::X86_OP_INVALID)
-        fail("Instruction is invalid!");
-
     auto first_op = insn_detail.operands[0];
     auto second_op = insn_detail.operands[1];
 
-    if (first_op.type == x86_op_type::X86_OP_REG) {
-        auto dest_reg = m_reg64_table[first_op.reg];
-
-        if (second_op.type == x86_op_type::X86_OP_REG) {
-            auto src_reg = m_reg64_table[second_op.reg];
-            auto res = CPUE_checked_single_uadd(*dest_reg, *src_reg);
+    auto add = [this]<typename T1, typename T2>(Operand<T1> first_op, Operand<T2> second_op) -> InterruptRaisedOr<void> {
+        if constexpr (sizeof(T1) >= sizeof(T2)) {
+            auto first_val = MAY_HAVE_RAISED(first_op.read());
+            auto second_op_val = MAY_HAVE_RAISED(second_op.read());
+            T1 second_val = second_op.operand().type == X86_OP_IMM ? sign_extend<T1, T2>(second_op_val) : static_cast<T1>(second_op_val);
+            auto res = CPUE_checked_single_uadd<T1, T1>(first_val, second_val);
             update_rflags(res);
-            *dest_reg = res.value;
+            return first_op.write(res.value);
         }
+        return {};
+    };
 
-        if (second_op.type == x86_op_type::X86_OP_MEM) {
-            TODO();
-        }
-
-        if (second_op.type == x86_op_type::X86_OP_IMM) {
-            auto src_imm = second_op.imm;
-
-            TODO();
-        }
-    }
-
-    if (first_op.type == x86_op_type::X86_OP_MEM) {
-        auto first_offset = first_op.mem.base + (first_op.mem.index * first_op.mem.scale) + first_op.mem.disp;
-
-        auto log_first_address = LogicalAddress(segment_register, first_offset);
-
-        auto value = MAY_HAVE_RAISED(m_mmu.mem_read16(log_first_address));
-
-        TODO();
-    }
-
-    //  When an immediate value is used as an operand,
-    //  it is sign-extended to the length of the destination operand format.
-    if (first_op.type == x86_op_type::X86_OP_IMM) {
-        fail(" First operand cannot be immediate value!");
-    }
-
+    return with_operands2(first_op, second_op, add);
 } //	Add
 
 InterruptRaisedOr<void> CPU::handle_AAA(cs_x86 const& insn_detail) {

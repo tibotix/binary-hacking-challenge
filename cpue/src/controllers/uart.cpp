@@ -17,6 +17,7 @@ UARTController::~UARTController() {
     {
         std::scoped_lock _(m_mutex);
         m_should_stop = true;
+        cv.notify_one();
     }
     m_thread.join();
 }

@@ -18,40 +18,20 @@ static constexpr ApplicationSegmentRegister _default_cs_segment_register = {.vis
 static constexpr SystemSegmentRegister _default_system_segment_register = {.visible = 0x0,
     .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0, .base3 = 0x0}}};
 
-//Initializing lookup-table when costructing cpu
-void CPU::m_init_64_reg() {
-    m_reg64_table[x86_reg::X86_REG_RAX] = &m_rax;
-    m_reg64_table[x86_reg::X86_REG_RBX] = &m_rbx;
-    m_reg64_table[x86_reg::X86_REG_RCX] = &m_rcx;
-    m_reg64_table[x86_reg::X86_REG_RDX] = &m_rdx;
-    m_reg64_table[x86_reg::X86_REG_RSI] = &m_rsi;
-    m_reg64_table[x86_reg::X86_REG_RSP] = &m_rsp;
-    m_reg64_table[x86_reg::X86_REG_RBP] = &m_rbp;
-    m_reg64_table[x86_reg::X86_REG_RIP] = &m_rip;
-    m_reg64_table[x86_reg::X86_REG_R8] = &m_r8;
-    m_reg64_table[x86_reg::X86_REG_R9] = &m_r9;
-    m_reg64_table[x86_reg::X86_REG_R10] = &m_r10;
-    m_reg64_table[x86_reg::X86_REG_R11] = &m_r11;
-    m_reg64_table[x86_reg::X86_REG_R12] = &m_r12;
-    m_reg64_table[x86_reg::X86_REG_R13] = &m_r13;
-    m_reg64_table[x86_reg::X86_REG_R14] = &m_r14;
-    m_reg64_table[x86_reg::X86_REG_R15] = &m_r15;
-}
 
-ApplicationSegmentRegister& applicationSegmentRegister() {}
 
 void CPU::reset() {
     // See page 3425
 
-    m_rax = 0x0;
-    m_rbx = 0x0;
-    m_rcx = 0x0;
-    m_rdx = 0x00000600;
-    m_rsi = 0x0;
-    m_rsp = 0x0;
-    m_rbp = 0x0;
+    m_rax_val = 0x0;
+    m_rbx_val = 0x0;
+    m_rcx_val = 0x0;
+    m_rdx_val = 0x00000600;
+    m_rsi_val = 0x0;
+    m_rsp_val = 0x0;
+    m_rbp_val = 0x0;
     m_rip = 0x0000FFF0;
-    m_r8 = m_r9 = m_r10 = m_r11 = m_r12 = m_r13 = m_r14 = m_r15 = 0x0;
+    m_r8_val = m_r9_val = m_r10_val = m_r11_val = m_r12_val = m_r13_val = m_r14_val = m_r15_val = 0x0;
 
     m_cs = _default_cs_segment_register;
     m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
@@ -270,7 +250,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * changed and no stack switch occurs.
      */
     auto old_ss = m_ss.visible.segment_selector;
-    auto old_sp = m_rsp;
+    auto old_sp = m_rsp.read();
     if (dest_is_conforming && dest_dpl < cpl()) {
         std::tie(old_ss, old_sp) = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
     }
@@ -324,11 +304,11 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
     assert_in_long_mode();
 
     ErrorCode error_code = {.standard = {
-                                .tbl = (u8)(selector.table << 1),
-                                .selector_index = selector.index,
+                                .tbl = (u8)(selector.c.table << 1),
+                                .selector_index = selector.c.index,
                             }};
     // CPL ≤ call gate DPL; RPL ≤ call gate DPL
-    if (cpl() > call_gate_descriptor.access.c.dpl || selector.rpl > call_gate_descriptor.access.c.dpl)
+    if (cpl() > call_gate_descriptor.access.c.dpl || selector.c.rpl > call_gate_descriptor.access.c.dpl)
         return raise_interrupt(Exceptions::GP(error_code));
 
     auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(call_gate_descriptor.segment_selector));
@@ -380,7 +360,7 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
 InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 target_pl) {
     // Check TSS limits
     if (m_tr.hidden.cached_descriptor.limit() < sizeof(TSS) - 1) {
-        ErrorCode error_code = {.standard = {.tbl = 0, .selector_index = m_tr.visible.segment_selector.index}};
+        ErrorCode error_code = {.standard = {.tbl = 0, .selector_index = m_tr.visible.segment_selector.c.index}};
         return raise_interrupt(Exceptions::TS(error_code));
     }
     // Stack switch
@@ -410,12 +390,12 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
     //  4. Temporarily saves the current values of the SS and RSP registers.
     auto old_ss = m_ss;
-    auto old_sp = m_rsp;
+    auto old_sp = m_rsp.read();
     // The new SS is forced to NULL and the SS selector’s RPL field is forced to the new CPL.
     // we can do this cause in 64-bit mode the processor does not perform runtime NULL-selector checks
-    m_ss.visible.segment_selector.index = 0x0;
-    m_ss.visible.segment_selector.rpl = target_pl;
-    m_rsp = new_sp;
+    m_ss.visible.segment_selector.c.index = 0x0;
+    m_ss.visible.segment_selector.c.rpl = target_pl;
+    m_rsp.write(new_sp);
     //  6. Pushes the temporarily saved values for the SS and RSP registers (for the calling procedure) onto the new stack
     //  7. Copies the number of parameter specified in the parameter count field of the call gate from the calling
     //     procedure’s stack to the new stack. If the count is 0, no parameters are copied.
@@ -445,13 +425,13 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector, GDTLDTDescriptor const& descriptor) {
     ErrorCode error_code = {.standard = {
-                                .tbl = static_cast<u8>(selector.table << 1),
-                                .selector_index = selector.index,
+                                .tbl = static_cast<u8>(selector.c.table << 1),
+                                .selector_index = selector.c.index,
                             }};
 
     // 64-bit mode does not perform NULL-selector runtime checking
     // If an attempt is made to load null selector in the SS register in CPL3 and 64-bit mode.
-    if (selector.index == 0 && alias == SegmentRegisterAlias::SS && cpl() == 3) {
+    if (selector.c.index == 0 && alias == SegmentRegisterAlias::SS && cpl() == 3) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
 
@@ -460,7 +440,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     // segment register, assuming that the type of memory that contains the segment descriptor supports processor
     // writes. (Can also be used for example to track number of accesses to a descriptor).
     auto [base, limit] = descriptor_table_of_selector(selector);
-    auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, access);
+    auto const access_byte_vaddr = VirtualAddress(base) + (selector.c.index * 8) + offsetof(Descriptor, access);
     auto new_access_byte = descriptor.access;
     new_access_byte.c.accessed = 1;
     MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
@@ -511,14 +491,14 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         // The processor loads the segment selector into the segment register if the DPL is numerically greater
         // than or equal to both the CPL and the RPL. Otherwise, a general-protection fault is generated and the segment
         // register is not loaded.
-        if (!(descriptor.access.c.dpl <= cpl() && descriptor.access.c.dpl <= selector.rpl)) {
+        if (!(descriptor.access.c.dpl <= cpl() && descriptor.access.c.dpl <= selector.c.rpl)) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
     if (alias == SegmentRegisterAlias::SS) {
         // PRIVILEGE LEVEL CHECKING WHEN LOADING THE SS REGISTER
         // If the RPL and DPL are not equal to the CPL, a general-protection exception (#GP) is generated.
-        if (!(descriptor.access.c.dpl == cpl() == selector.rpl)) {
+        if (!(descriptor.access.c.dpl == cpl() == selector.c.rpl)) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
@@ -563,9 +543,9 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 InterruptRaisedOr<void> CPU::stack_push(u64 value) {
     TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
-    if (m_rsp < 8)
+    if (m_rsp.read() < 8)
         return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
-    m_rsp -= 8;
+    m_rsp.write(m_rsp.read() - 8);
     MAY_HAVE_RAISED(mmu().mem_write64(stack_pointer(), value));
     return {};
 }
@@ -590,14 +570,12 @@ InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) 
 }
 
 DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) const {
-    switch (selector.table) {
+    switch (selector.c.table) {
         case 0: return m_gdtr;
         case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
         default: fail();
     }
 }
-
-void CPU::init_mmio() {}
 
 
 }
