@@ -81,17 +81,17 @@ enum RegisterType {
     OTHER,
 };
 
-class GRegister {
+class Register {
 public:
-    static GRegister QWORD(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) {
+    static Register QWORD(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) {
         return {value_ptr, type, RegisterModifier::QWORD, callbacks};
     };
-    static GRegister DWORD(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) {
+    static Register DWORD(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) {
         return {value_ptr, type, RegisterModifier::DWORD, callbacks};
     };
-    static GRegister WORD(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, type, RegisterModifier::WORD, callbacks}; };
-    static GRegister LOW(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, type, RegisterModifier::LOW, callbacks}; };
-    static GRegister HIGH(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, type, RegisterModifier::HIGH, callbacks}; };
+    static Register WORD(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, type, RegisterModifier::WORD, callbacks}; };
+    static Register LOW(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, type, RegisterModifier::LOW, callbacks}; };
+    static Register HIGH(u64* value_ptr, RegisterType type, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, type, RegisterModifier::HIGH, callbacks}; };
 
     [[nodiscard]] InterruptRaisedOr<SizedValue> read() const {
         MAY_HAVE_RAISED(m_callbacks.invoke_before_read());
@@ -107,8 +107,8 @@ public:
     }
     RegisterType type() const { return m_type; }
 
-private:
-    GRegister(u64* value_ptr, RegisterType type, RegisterModifier& modifier, RegisterCallbacks const& callbacks)
+protected:
+    Register(u64* value_ptr, RegisterType type, RegisterModifier& modifier, RegisterCallbacks const& callbacks)
         : m_value_ptr(value_ptr), m_type(type), m_modifier(modifier), m_callbacks(callbacks) {
         CPUE_ASSERT(value_ptr != nullptr, "value_ptr must not be null.");
     };
@@ -119,41 +119,17 @@ private:
     RegisterCallbacks m_callbacks;
 };
 
-
-
-
-template<unsigned_integral V>
-class Register {
+class GeneralPurposeRegister final : Register {
 public:
-    friend class RegisterFactory;
-    using value_type = V;
-
-    [[nodiscard]] V read() const { return (*m_value_ptr & m_bitmask) >> m_rshift; }
-    void write(V value) {
-        value = (value << m_rshift) & m_bitmask;
-        *m_value_ptr = (*m_value_ptr & m_keep_bitmask) | value;
-    }
+    static GeneralPurposeRegister QWORD(u64* value_ptr, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, RegisterModifier::QWORD, callbacks}; };
+    static GeneralPurposeRegister DWORD(u64* value_ptr, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, RegisterModifier::DWORD, callbacks}; };
+    static GeneralPurposeRegister WORD(u64* value_ptr, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, RegisterModifier::WORD, callbacks}; };
+    static GeneralPurposeRegister LOW(u64* value_ptr, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, RegisterModifier::LOW, callbacks}; };
+    static GeneralPurposeRegister HIGH(u64* value_ptr, RegisterCallbacks const& callbacks = empty_callbacks) { return {value_ptr, RegisterModifier::HIGH, callbacks}; };
 
 private:
-    Register(u64* value_ptr, u64 bitmask, u64 keep_bitmask, u8 rshift) : m_value_ptr(value_ptr), m_bitmask(bitmask), m_keep_bitmask(keep_bitmask), m_rshift(rshift) {
-        CPUE_ASSERT(value_ptr != nullptr, "value_ptr == nullptr");
-    };
-
-    u64* m_value_ptr;
-    u64 m_bitmask;
-    u64 m_keep_bitmask;
-    u8 m_rshift;
-    ByteWidth m_width = get_byte_width<V>();
-};
-
-
-class RegisterFactory {
-public:
-    static Register<u64> QWORD(u64* value_ptr) { return {value_ptr, 0xFFFFFFFFFFFFFFFFlu, 0x0lu, 0}; }
-    static Register<u32> DWORD(u64* value_ptr) { return {value_ptr, 0xFFFFFFFFlu, 0x0lu, 0}; }
-    static Register<u16> WORD(u64* value_ptr) { return {value_ptr, 0xFFFFlu, ~0xFFFFlu, 0}; }
-    static Register<u8> LOW(u64* value_ptr) { return {value_ptr, 0xFFlu, ~0xFFlu, 0}; }
-    static Register<u8> HIGH(u64* value_ptr) { return {value_ptr, 0xFF00lu, ~0xFF00lu, 8}; }
+    GeneralPurposeRegister(u64* value_ptr, RegisterModifier& modifier, RegisterCallbacks const& callbacks)
+        : Register(value_ptr, RegisterType::GENERAL_PURPOSE_REGISTER, modifier, callbacks){};
 };
 
 

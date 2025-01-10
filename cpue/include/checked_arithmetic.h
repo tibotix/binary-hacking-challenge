@@ -2,13 +2,14 @@
 
 #include <limits>
 #include "common.h"
+#include "sized_value.h"
+
 
 
 namespace CPUE {
 
-template<typename R>
 struct ArithmeticResult {
-    R value;
+    SizedValue value;
     bool has_of_set;
     bool has_cf_set;
     bool has_sf_set;
@@ -21,12 +22,12 @@ struct ArithmeticResult {
     constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), has_sf_set(false), has_zf_set(false) {}
 };
 
-template<unsigned_integral R, typename T>
-requires(std::is_same_v<R, T>) constexpr ArithmeticResult<R> CPUE_checked_single_uadd(R const first, T const summand) {
-    ArithmeticResult<R> res;
-    res.value = first;
+constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, SizedValue const& summand) {
+    ArithmeticResult res;
+    res.value = first.value();
 
-    constexpr R MAX_VAL = std::numeric_limits<R>::max();
+    // TODO: get proper max, maybe make func and use in sign_extend
+    u64 MAX_VAL = first.width();
 
     bool first_sign_bit = first >> (sizeof(R) * 8 - 1);
     bool summand_sign_bit = summand >> (sizeof(T) * 8 - 1);
@@ -52,6 +53,11 @@ requires(std::is_same_v<R, T>) constexpr ArithmeticResult<R> CPUE_checked_single
     return res;
 }
 
+template<unsigned_integral R, typename T>
+requires(std::is_same_v<R, T>) constexpr ArithmeticResult CPUE_checked_single_uadd(R const first, T const summand) {
+    return CPUE_checked_single_uadd(SizedValue<R>(first), SizedValue<T>(summand));
+}
+
 // Not allowing overflows
 template<unsigned_integral R, typename... T>
 requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first, T const... factors) {
@@ -64,12 +70,23 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first,
         auto r = CPUE_checked_single_uadd(res, f);
         if (r.has_cf_set)
             fail("Integer overflow in addition.");
-        res = r.value;
+        res = r.value.value_as<R>();
     }
 
     return res;
 }
 
+
+
+
+constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
+    TODO();
+}
+
+
+constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
+    TODO();
+}
 
 template<unsigned_integral R, typename... T>
 requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first, T const... factors) {
@@ -90,6 +107,12 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
     }
     return res;
 }
+
+
+constexpr ArithmeticResult CPUE_checked_single_udiv(SizedValue const& first, SizedValue const& summand) {
+    TODO();
+}
+
 
 
 }
