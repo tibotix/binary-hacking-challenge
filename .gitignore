@@ -21,6 +21,8 @@
 # gdb history files
 **/.gdb_history
 
+# log files
+**/*.log
 
 # tutorial/:
 tutorial/stack
