@@ -18,18 +18,18 @@ namespace CPUE {
 
 
 
-[[noreturn]] inline void fail(char const* msg = NULL) {
+[[noreturn]] constexpr void fail(char const* msg = NULL) {
     if (msg != NULL)
         printf("%s\n", msg);
     exit(1);
 }
 
-inline void TODO_NOFAIL(char const* msg = NULL) {
+constexpr void TODO_NOFAIL(char const* msg = NULL) {
     if (msg != NULL)
         printf("TODO: %s\n", msg);
 }
 
-[[noreturn]] inline void TODO(char const* msg = NULL) {
+[[noreturn]] constexpr void TODO(char const* msg = NULL) {
     fail(msg);
 }
 
@@ -58,13 +58,17 @@ constexpr unsigned long long operator""_gb(unsigned long long bytes) {
 
 typedef u16 PCID;
 
-constexpr u64 bitmask64(u8 high) {
-    return (((u64)1 << (high)) - 1);
+constexpr u64 bitmask(u8 high) {
+    return (high >= 64) ? ~0ULL : (static_cast<u64>(1) << high) - 1;
+}
+constexpr u64 bytemask(u8 high) {
+    return bitmask(high * 8);
 }
 
+// TODO: maybe rename to bit_extract or extract_bits
 template<typename T>
 constexpr T bits(T val, u8 high, u8 low) {
-    return (val & bitmask64(high + 1)) >> low;
+    return (val & bitmask(high + 1)) >> low;
 }
 
 
@@ -125,51 +129,52 @@ enum MemoryOp {
     OP_WRITE,
 };
 
-enum ByteWidth : u8 {
-    WIDTH_BYTE = 1,
-    WIDTH_WORD = 2,
-    WIDTH_DWORD = 4,
-    WIDTH_QWORD = 8,
-    WIDTH_DQWORD = 16,
+
+class ByteWidth {
+public:
+    enum Width : u8 { WIDTH_BYTE = 1, WIDTH_WORD = 2, WIDTH_DWORD = 4, WIDTH_QWORD = 8, WIDTH_DQWORD = 16 };
+
+    ByteWidth() = default;
+    constexpr ByteWidth(Width width) : m_width(width) {}
+    constexpr ByteWidth(u8 width) : m_width(static_cast<Width>(width)) {}
+
+    // Allow switch and comparisons.
+    constexpr operator Width() const { return m_width; }
+
+    // Prevent usage in if statement
+    explicit operator bool() const = delete;
+
+    constexpr u64 bitmask() const { return bytemask(m_width); }
+
+    template<typename T, typename Func>
+    constexpr T do_with_concrete_type(Func& f) const {
+        switch (m_width) {
+            case WIDTH_BYTE: return f.template operator()<u8>();
+            case WIDTH_WORD: return f.template operator()<u16>();
+            case WIDTH_DWORD: return f.template operator()<u32>();
+            case WIDTH_QWORD: return f.template operator()<u64>();
+            default: fail("Can't convert to concrete type.");
+        }
+    }
+
+private:
+    Width m_width;
 };
+
 
 template<typename T>
 requires std::is_integral_v<T>
 constexpr ByteWidth get_byte_width() {
     switch (sizeof(T)) {
-        case 1: return WIDTH_BYTE;
-        case 2: return WIDTH_WORD;
-        case 4: return WIDTH_DWORD;
-        case 8: return WIDTH_QWORD;
-        case 16: return WIDTH_DQWORD;
+        case 1: return ByteWidth::WIDTH_BYTE;
+        case 2: return ByteWidth::WIDTH_WORD;
+        case 4: return ByteWidth::WIDTH_DWORD;
+        case 8: return ByteWidth::WIDTH_QWORD;
+        case 16: return ByteWidth::WIDTH_DQWORD;
         default: fail("Unsupported byte width");
     }
 }
 
-template<ByteWidth Width>
-struct ByteWidthToType;
-template<>
-struct ByteWidthToType<WIDTH_BYTE> {
-    using type = u8;
-};
-template<>
-struct ByteWidthToType<WIDTH_WORD> {
-    using type = u16;
-};
-template<>
-struct ByteWidthToType<WIDTH_DWORD> {
-    using type = u32;
-};
-template<>
-struct ByteWidthToType<WIDTH_QWORD> {
-    using type = u64;
-};
-template<>
-struct ByteWidthToType<WIDTH_DQWORD> {
-    using type = u64;
-};
-template<ByteWidth Width>
-using ByteWidthToType_t = typename ByteWidthToType<Width>::type;
 
 
 

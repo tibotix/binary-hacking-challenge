@@ -6,7 +6,7 @@ namespace CPUE {
 
 // Reading instructions byte by byte
 InterruptRaisedOr<cs_insn const> Disassembler::next_insn() {
-    u64 address = m_cpu->m_rip;
+    u64 address = m_cpu->m_rip_val;
     u8 code[20] = {0};
     u64 code_size = 1;
 

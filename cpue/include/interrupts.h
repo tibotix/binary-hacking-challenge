@@ -35,7 +35,10 @@ public:
     static InterruptRaisedOr<T> InterruptRaised() { return {true, {}}; }
 
     bool raised() const { return m_raised; }
-    T release_value() { return std::move(m_value); }
+    T release_value() {
+        CPUE_ASSERT(!raised(), "Trying to call release_value() with raised()==true.");
+        return std::move(m_value);
+    }
 
 private:
     template<typename U = T>
@@ -52,7 +55,7 @@ public:
     static InterruptRaisedOr<void> InterruptRaised() { return {true}; }
 
     bool raised() const { return m_raised; }
-    void release_value() {}
+    void release_value() { CPUE_ASSERT(!raised(), "Trying to call release_value() with raised()==true."); }
 
 private:
     InterruptRaisedOr(bool raised) : m_raised(raised) {}

@@ -10,6 +10,7 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
     case x86_insn::X86_INS_##name: return handle_##name(detail); break;
 
     switch (insn.id) {
+        CASE(ADD)
         CASE(BOUND)
         CASE(DEC)
         CASE(DIV)
@@ -36,6 +37,7 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
         CASE(LGDT)
         CASE(LIDT)
         CASE(LLDT)
+        CASE(LTR)
         CASE(LOOP)
         CASE(MOV)
         CASE(MOVSX)
@@ -47,11 +49,9 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
         CASE(OR)
         CASE(POP)
         CASE(POPF)
-        CASE(POPFD)
         CASE(POPFQ)
         CASE(PUSH)
         CASE(PUSHF)
-        CASE(PUSHFD)
         CASE(PUSHFQ)
         CASE(RET)
         CASE(ROL)
@@ -78,26 +78,37 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
 }
 
 
+/**
+ * Helper Functions:
+ */
 
 template<unsigned_integral R, unsigned_integral T>
 requires(sizeof(R) >= sizeof(T)) constexpr R zero_extend(T value) {
     return value;
 }
-
 template<unsigned_integral R, unsigned_integral T>
 requires(sizeof(R) >= sizeof(T)) constexpr R sign_extend(T value) {
     if (sign_bit(value))
         return (static_cast<R>(-1) << sizeof(T)) | value;
     return value;
 }
-
 constexpr SizedValue sign_extend(SizedValue const& value, ByteWidth width) {
-    if (sign_bit(value.value()))
-        return {(static_cast<u64>((1 << (width * 8 + 1)) - 1) << value.width()) | value.value(), width};
+    if (value.sign_bit())
+        return {(value.max_val() << value.bit_width()) | value.value(), width};
     return value;
 }
 
-//RFLAGS: OF, CF
+InterruptRaisedOr<void> CPU::do_privileged_instruction_check(u8 pl) {
+    if (cpl() != pl)
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    return {};
+}
+
+
+/**
+ * Handler Implementations:
+ */
+
 InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
@@ -105,8 +116,9 @@ InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.width());
+        second_val = sign_extend(second_val, first_val.byte_width());
     auto res = CPUE_checked_single_uadd(first_val, second_val);
+
     update_rflags(res);
     return first_op.write(res.value);
 } //	Add
@@ -137,8 +149,9 @@ InterruptRaisedOr<void> CPU::handle_INC(cs_x86 const& insn_detail) {
 } //	Increment by 1
 InterruptRaisedOr<void> CPU::handle_INT(cs_x86 const& insn_detail) {
     // TODO: increment m_rip, because the return address is the next insn
+    auto first_op = Operand(this, insn_detail.operands[0]);
     Interrupt i = {
-        .vector = 0, // TODO: use actual vector
+        .vector = MAY_HAVE_RAISED(first_op.read()).as<InterruptVector>(),
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
@@ -172,21 +185,25 @@ InterruptRaisedOr<void> CPU::handle_INTO(cs_x86 const& insn_detail) {
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    if (m_rflags.OF) {
+    if (m_rflags.c.OF) {
         return handle_interrupt(i);
     }
     return {};
 } //	Call to Interrupt Procedure
 InterruptRaisedOr<void> CPU::handle_INVLPG(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Invalidate TLB Entries
 InterruptRaisedOr<void> CPU::handle_IRET(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Interrupt Return
 InterruptRaisedOr<void> CPU::handle_IRETD(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Interrupt Return
 InterruptRaisedOr<void> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Interrupt Return
 InterruptRaisedOr<void> CPU::handle_JMP(cs_x86 const& insn_detail) {
@@ -196,7 +213,7 @@ InterruptRaisedOr<void> CPU::handle_JNE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Not Equal
 InterruptRaisedOr<void> CPU::handle_JE(cs_x86 const& insn_detail) {
-    if (rflags().ZF)
+    if (m_rflags.c.ZF)
         TODO_NOFAIL("JMP");
     TODO();
 } //	Jump Equal
@@ -213,20 +230,34 @@ InterruptRaisedOr<void> CPU::handle_JL(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Lower
 InterruptRaisedOr<void> CPU::handle_LEA(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    if (second_op.operand().type != X86_OP_MEM)
+        return raise_integral_interrupt(Exceptions::UD());
+    auto offset = MAY_HAVE_RAISED(operand_mem_offset(second_op.operand().mem));
+
+    return first_op.write(SizedValue(offset, first_op.byte_width()));
 } //	Load Effective Address
 InterruptRaisedOr<void> CPU::handle_LEAVE(cs_x86 const& insn_detail) {
     TODO();
 } //	High Level Procedure Exit
 InterruptRaisedOr<void> CPU::handle_LGDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Global/Interrupt Descriptor Table Register
 InterruptRaisedOr<void> CPU::handle_LIDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Global/Interrupt Descriptor Table Register
 InterruptRaisedOr<void> CPU::handle_LLDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Local Descriptor Table Register
+InterruptRaisedOr<void> CPU::handle_LTR(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
+    TODO();
+} //	Load Task Register
 InterruptRaisedOr<void> CPU::handle_LOOP(cs_x86 const& insn_detail) {
     // TODO: no high priority
     TODO();
@@ -268,35 +299,43 @@ InterruptRaisedOr<void> CPU::handle_NOP(cs_x86 const& insn_detail) {
     return {};
 } //	No Operation
 InterruptRaisedOr<void> CPU::handle_NOT(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto value = MAY_HAVE_RAISED(first_op.read());
+    auto not_value = SizedValue(~value.value(), value.byte_width());
+
+    return first_op.write(not_value);
 } //	One's Complement Negation
 InterruptRaisedOr<void> CPU::handle_OR(cs_x86 const& insn_detail) {
     TODO();
 } //	Logical Inclusive OR
 InterruptRaisedOr<void> CPU::handle_POP(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto value = MAY_HAVE_RAISED(stack_pop(INTENTION_HANDLE_INSTRUCTION));
+
+    return first_op.write(SizedValue(value));
 } //	Pop a Value From the Stack
 InterruptRaisedOr<void> CPU::handle_POPF(cs_x86 const& insn_detail) {
     TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POPFD(cs_x86 const& insn_detail) {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
+} //	Pop Stack Into lower 16 bits of RFLAGS Register
 InterruptRaisedOr<void> CPU::handle_POPFQ(cs_x86 const& insn_detail) {
     TODO();
-} //	Pop Stack Into EFLAGS Register
+} //	Pop Stack Into RFLAGS Register
 InterruptRaisedOr<void> CPU::handle_PUSH(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto value = MAY_HAVE_RAISED(first_op.read());
+
+    return stack_push(value.as<u64>());
+
 } //	Push Word, Doubleword, or Quadword Onto the Stack
 InterruptRaisedOr<void> CPU::handle_PUSHF(cs_x86 const& insn_detail) {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHFD(cs_x86 const& insn_detail) {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
+    return stack_push(m_rflags.value & 0x000000000000FFFF);
+} //	Push lower 16 bits of RFLAGS Register Onto the Stack
 InterruptRaisedOr<void> CPU::handle_PUSHFQ(cs_x86 const& insn_detail) {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
+    return stack_push(m_rflags.value & 0x0000000000FCFFFF);
+} //	Push RFLAGS Register Onto the Stack
 InterruptRaisedOr<void> CPU::handle_RET(cs_x86 const& insn_detail) {
     TODO();
 } //	Return From Procedure
@@ -328,18 +367,22 @@ InterruptRaisedOr<void> CPU::handle_SHR(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift
 InterruptRaisedOr<void> CPU::handle_SIDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Store Interrupt Descriptor Table Register
 InterruptRaisedOr<void> CPU::handle_SLDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Store Local Descriptor Table Register
 InterruptRaisedOr<void> CPU::handle_STI(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Set Interrupt Flag
 InterruptRaisedOr<void> CPU::handle_SUB(cs_x86 const& insn_detail) {
     TODO();
 } //	Subtract
 InterruptRaisedOr<void> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Swap GS Base Register
 InterruptRaisedOr<void> CPU::handle_TEST(cs_x86 const& insn_detail) {

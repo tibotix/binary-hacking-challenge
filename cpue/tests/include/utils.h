@@ -24,6 +24,7 @@ static cs_insn const asm_disassemble(std::string const& code) {
     cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
     size_t count = cs_disasm(handle, reinterpret_cast<uint8_t const*>(code.data()), code.size(), 0x1000, 1, &insn);
     CPUE_ASSERT(count > 0, "testing utils: cs_disasm() failed");
+    // TODO: make this better without leaks
     //	cs_free(insn, count);
     //	cs_close(&handle);
 

@@ -15,14 +15,18 @@ void UEFI::setup_paging(u64& top) {
     // This will set up Identity-mapped paging
 
     m_cpu->m_efer.c.LME = 1; // allow paging to be enabled
-    m_cpu->m_cr4.c.LA57 = 0; // Use 4-Level paging
-    m_cpu->m_cr4.c.PAE = 1;
+    auto cr4 = m_cpu->cr4();
+    cr4.c.LA57 = 0; // Use 4-Level paging
+    cr4.c.PAE = 1;
+    m_cpu->m_cr4_val = cr4.value;
 
     // Disable Paging
-    m_cpu->m_cr0.c.PG = 0;
+    auto cr0 = m_cpu->cr0();
+    cr0.c.PG = 0;
+    m_cpu->m_cr0_val = cr0.value;
 
     // Setup page tables
-    m_cpu->set_cr3(0x0);
+    m_cpu->m_cr3_val = 0x0;
 
     // Map all available RAM
     // map at most 2MB
@@ -60,7 +64,8 @@ void UEFI::setup_paging(u64& top) {
     }
 
     // Enable Paging
-    m_cpu->m_cr0.c.PG = 1;
+    cr0.c.PG = 1;
+    m_cpu->m_cr0_val = cr0.value;
 }
 void UEFI::setup_gdt(u64& top) {
     // This will set up a temporary GDT to jump to enter long mode

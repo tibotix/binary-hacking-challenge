@@ -24,13 +24,12 @@ struct ArithmeticResult {
 
 constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, SizedValue const& summand) {
     ArithmeticResult res;
-    res.value = first.value();
+    res.value = first;
 
-    // TODO: get proper max, maybe make func and use in sign_extend
-    u64 MAX_VAL = first.width();
+    u64 MAX_VAL = first.max_val();
 
-    bool first_sign_bit = first >> (sizeof(R) * 8 - 1);
-    bool summand_sign_bit = summand >> (sizeof(T) * 8 - 1);
+    bool first_sign_bit = first.sign_bit();
+    bool summand_sign_bit = summand.sign_bit();
 
     // Set Carry-Flag if including this summand would exceed MAX_VAL
     size_t max_summand = MAX_VAL - res.value;
@@ -39,7 +38,7 @@ constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, Siz
     res.value += summand;
 
     // Setting SIGN-BIT, extract it from res
-    bool res_sign_bit = sign_bit(res.value);
+    bool res_sign_bit = res.value.sign_bit();
     res.has_sf_set = res_sign_bit;
 
     // Setting OVERFLOW-BIT
@@ -48,14 +47,14 @@ constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, Siz
 
     // Set ZERO-BIT
     if (res.value == 0)
-        res.has_zf_set = 1;
+        res.has_zf_set = true;
 
     return res;
 }
 
 template<unsigned_integral R, typename T>
 requires(std::is_same_v<R, T>) constexpr ArithmeticResult CPUE_checked_single_uadd(R const first, T const summand) {
-    return CPUE_checked_single_uadd(SizedValue<R>(first), SizedValue<T>(summand));
+    return CPUE_checked_single_uadd(SizedValue(first), SizedValue(summand));
 }
 
 // Not allowing overflows
@@ -70,7 +69,7 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first,
         auto r = CPUE_checked_single_uadd(res, f);
         if (r.has_cf_set)
             fail("Integer overflow in addition.");
-        res = r.value.value_as<R>();
+        res = r.value.template as<R>();
     }
 
     return res;

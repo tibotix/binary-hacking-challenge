@@ -13,7 +13,7 @@ PICConnectionHandle::PICConnectionHandle(u8 pin) : m_pin(pin) {
 void PIC::init_mmio_registers() {
     // EOI write trigger
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x0, {
-                                                                   .width = WIDTH_BYTE,
+                                                                   .width = ByteWidth::WIDTH_BYTE,
                                                                    .read_func = [](void* data) -> BigEndian<u64> {
                                                                        fail("Trying to read non-readable MMIO register");
                                                                    },
@@ -27,7 +27,7 @@ void PIC::init_mmio_registers() {
 
     // ICW4
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x1, {
-                                                                   .width = WIDTH_BYTE,
+                                                                   .width = ByteWidth::WIDTH_BYTE,
                                                                    .read_func = [](void* data) -> BigEndian<u64> {
                                                                        auto* this_ = static_cast<PIC*>(data);
                                                                        std::scoped_lock _(this_->m_mutex);

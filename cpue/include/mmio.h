@@ -25,11 +25,11 @@ struct MMIOReg {
 
     BigEndian<u64> read() const {
         CPUE_ASSERT(read_func != nullptr, "read_func is null");
-        return read_func(data) & bitmask64(8 * width);
+        return read_func(data) & bytemask(width);
     }
     void write(BigEndian<u64> value) const {
         CPUE_ASSERT(write_func != nullptr, "read_func is null");
-        return write_func(data, value & bitmask64(8 * width));
+        return write_func(data, value & bytemask(width));
     }
 };
 
@@ -65,7 +65,7 @@ public:
         // NOTE: we support mismatched register and read width.
         // Example: reading 2 bytes from base addr of 4byte register with value 0x01020304 (stored 0x04030201 in mem) results in 0x0304
         // Example: reading 8 bytes from base addr of 4byte register with value 0x01020304 (stored 0x04030201 in mem) results in 0x0000000001020304
-        return (it->reg.read() >> offset_in_bits) & bitmask64(8 * get_byte_width<T>());
+        return (it->reg.read() >> offset_in_bits) & bytemask(get_byte_width<T>());
     }
     template<unsigned_integral T>
     [[nodiscard]] InterruptRaisedOr<bool> try_mmio_write(PhysicalAddress const& paddr, BigEndian<T> const& value) {
@@ -77,10 +77,10 @@ public:
         // Example: writing 0x0a0b (0x0b0a in le) to base addr of 4byte register with value 0x01020304 (stored 0x04030201 in mem) results in 0x01020a0b
         // Example: writing 0x0a0b0c0d (0x0d0c0b0a in le) to base addr of 2byte register with value 0x0102 (stored 0x0201 in mem) results in 0x0c0d
         auto prev = it->reg.read();
-        auto offset_val = prev & bitmask64(offset_in_bits);
-        u64 val = (((u64)value << offset_in_bits) | offset_val) & bitmask64(8 * it->reg.width);
+        auto offset_val = prev & bitmask(offset_in_bits);
+        u64 val = (((u64)value << offset_in_bits) | offset_val) & bytemask(it->reg.width);
         if (get_byte_width<T>() + offset_in_bytes < it->reg.width) {
-            val = (prev & ~bitmask64(8 * it->reg.width - offset_in_bits)) | val;
+            val = (prev & ~bytemask(it->reg.width - offset_in_bytes)) | val;
         }
         it->reg.write(val);
         return true;

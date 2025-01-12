@@ -45,6 +45,7 @@ public:
     MMU(MMU const&) = delete;
 
     MMIO& mmio() { return m_mmio; }
+    TLB& tlb() { return m_tlb; }
     size_t physmem_size() const { return m_physmem_size; }
     size_t available_pages() const { return m_available_pages; }
 

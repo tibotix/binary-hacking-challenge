@@ -114,7 +114,7 @@ auto MMU::page_table_walk(VirtualAddress const& vaddr, bool (*f)(PageStructureEn
     // Bits 11:3 are bits 47:39 of the linear address
     // Bits 2:0 are all 0
     {
-        u64 pml4e_paddr = (m_cpu->m_cr3.c.pml4_base_paddr << 12) | (bits(vaddr.addr, 47, 39) << 3);
+        u64 pml4e_paddr = (m_cpu->cr3().c.pml4_base_paddr << 12) | (bits(vaddr.addr, 47, 39) << 3);
         TODO_NOFAIL("check endianness in paddr_ptr");
         r.pml4e = paddr_ptr<PML4E>(pml4e_paddr);
     }
@@ -246,10 +246,10 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
 
     if (cpm == CPU::SUPERVISOR_MODE && entry->c.user) {
         // SMEP
-        if (m_cpu->state() == CPU::State::STATE_FETCH_INSTRUCTION && m_cpu->m_cr4.c.SMEP == 1)
+        if (m_cpu->state() == CPU::State::STATE_FETCH_INSTRUCTION && m_cpu->cr4().c.SMEP == 1)
             return raise_page_fault(error_code);
         // SMAP
-        if (m_cpu->m_cr4.c.SMAP == 1 && (m_cpu->m_rflags.AC == 0 || implicit_access))
+        if (m_cpu->cr4().c.SMAP == 1 && (m_cpu->m_rflags.c.AC == 0 || implicit_access))
             return raise_page_fault(error_code);
     }
 
@@ -262,7 +262,7 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
      * ization), all pages are both readable and writable (write-protection is ignored).
      */
     // If CR0.WP = 1, read-only pages are not writable from any privilege level (useful for Copy-on-write)
-    if (m_cpu->m_cr0.c.WP == 1 && ctx.op == OP_WRITE && entry->c.rw == 0)
+    if (m_cpu->cr0().c.WP == 1 && ctx.op == OP_WRITE && entry->c.rw == 0)
         return raise_page_fault(error_code);
     // When the processor is in user mode, it can write only to user-mode pages that are read/write accessible.
     if (cpm == CPU::USER_MODE && ctx.op == OP_WRITE && entry->c.rw == 0)
@@ -292,7 +292,7 @@ InterruptRaisedOr<void> MMU::check_page_structure_protection_key(PageStructureEn
 
 
 _InterruptRaised MMU::raise_page_fault(VirtualAddress const& vaddr, ErrorCode const& error_code) {
-    m_cpu->m_cr2 = vaddr;
+    m_cpu->m_cr2_val = vaddr.addr;
     // In particular, a page-fault exception resulting from an attempt to use a linear address will invalidate any
     // TLB entries that are for a page number corresponding to that linear address and that are associated with the
     // current PCID.

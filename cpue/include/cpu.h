@@ -11,7 +11,7 @@
 #include "disassembler.h"
 #include "segmentation.h"
 #include "forward.h"
-#include "register.h"
+#include "register_proxy.h"
 #include "spdlog/fmt/bundled/chrono.h"
 
 
@@ -28,6 +28,10 @@ public:
     friend TLB;
     friend ICU;
     friend UEFI;
+    friend RegisterProxy;
+    friend GeneralPurposeRegisterProxy;
+    friend ControlRegisterProxy;
+    friend ApplicationSegmentRegisterProxy;
     explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
         reset();
     }
@@ -56,30 +60,33 @@ public:
 
     enum PagingMode { PAGING_MODE_NONE, PAGING_MODE_32BIT, PAGING_MODE_PAE, PAGING_MODE_4LEVEL, PAGING_MODE_5LEVEL };
 
-    struct RFLAGS {
-        u64 CF : 1; // Carry Flag
-        u64 : 1; // Reserved
-        u64 PF : 1; // Parity Flag
-        u64 : 1; // Reserved
-        u64 AF : 1; // Auxiliary Carry Flag
-        u64 : 1; // Reserved
-        u64 ZF : 1; // Zero Flag
-        u64 SF : 1; // Sign Flag
-        u64 TF : 1; // Trap Flag
-        u64 IF : 1; // Interrupt Enable Flag
-        u64 DF : 1; // Direction Flag
-        u64 OF : 1; // Overflow Flag
-        u64 IOPL : 2; // I/O Privilege Leve
-        u64 NT : 1; // Nested Task
-        u64 : 1; // Reserved
-        u64 RF : 1; // Resume Flag
-        u64 VM : 1; // Virtual-8086 Mode
-        // Controls alignment-checking in user-mode
-        // Allows to disable SMAP for explicit accesses, can only be modified in supervisor mode
-        u64 AC : 1; // Alignment Check / Access Control
-        u64 VIF : 1; // Virtual Interrupt Flag
-        u64 VIP : 1; // Virtual Interrupt Pending
-        u64 ID : 1; // ID Flag
+    union RFLAGS {
+        struct Concrete {
+            u64 CF : 1; // Carry Flag
+            u64 : 1; // Reserved
+            u64 PF : 1; // Parity Flag
+            u64 : 1; // Reserved
+            u64 AF : 1; // Auxiliary Carry Flag
+            u64 : 1; // Reserved
+            u64 ZF : 1; // Zero Flag
+            u64 SF : 1; // Sign Flag
+            u64 TF : 1; // Trap Flag
+            u64 IF : 1; // Interrupt Enable Flag
+            u64 DF : 1; // Direction Flag
+            u64 OF : 1; // Overflow Flag
+            u64 IOPL : 2; // I/O Privilege Leve
+            u64 NT : 1; // Nested Task
+            u64 : 1; // Reserved
+            u64 RF : 1; // Resume Flag
+            u64 VM : 1; // Virtual-8086 Mode
+            // Controls alignment-checking in user-mode
+            // Allows to disable SMAP for explicit accesses, can only be modified in supervisor mode
+            u64 AC : 1; // Alignment Check / Access Control
+            u64 VIF : 1; // Virtual Interrupt Flag
+            u64 VIP : 1; // Virtual Interrupt Pending
+            u64 ID : 1; // ID Flag
+        } c;
+        u64 value;
     };
     static_assert(sizeof(RFLAGS) == 8);
 
@@ -232,48 +239,51 @@ public:
      * allow CR4.PCIDE to be set to 1;
      */
     [[nodiscard]] PCID pcid() const {
-        if (m_cr4.c.PCIDE == 0)
+        if (cr4().c.PCIDE == 0)
             return 0;
-        return m_cr3.pcid();
+        return cr3().pcid();
     }
 
-    u64 rip() const { return m_rip; }
+    u64 rip() const { return m_rip_val; }
 
 
+    CR0 cr0() const { return {.value = m_cr0_val}; }
+    VirtualAddress cr2() const { return {m_cr2_val}; }
+    CR3 cr3() const { return {.value = m_cr3_val}; }
+    CR4 cr4() const { return {.value = m_cr4_val}; }
+    CR8 cr8() const { return {.value = m_cr8_val}; }
 
 
-    // TODO: also add them to register lookup table
-    void set_cr0(u64 value) { m_cr0.value = value; }
-    void set_cr2(u64 value) { m_cr2.addr = value; }
-    void set_cr3(u64 value) { m_cr3.value = value; }
-    void set_cr4(u64 value) { m_cr4.value = value; }
-    void set_cr8(u64 value) { m_cr8.value = value; }
+    LogicalAddress stack_pointer() const { return {m_ss, m_rsp_val}; }
+    [[nodiscard]] InterruptRaisedOr<void> stack_push(u64 value, TranslationIntention intention = INTENTION_UNKNOWN);
+    [[nodiscard]] InterruptRaisedOr<u64> stack_pop(TranslationIntention intention = INTENTION_UNKNOWN);
 
-
-    LogicalAddress stack_pointer() const { return {m_ss, m_rsp.read()}; }
-    [[nodiscard]] InterruptRaisedOr<void> stack_push(u64 value);
-    [[nodiscard]] InterruptRaisedOr<u64> stack_pop();
-
-    LogicalAddress code_pointer() const { return {m_cs, m_rip}; }
+    LogicalAddress code_pointer() const { return {m_cs, m_rip_val}; }
 
 
     [[nodiscard]] InterruptRaisedOr<void> load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector);
     [[nodiscard]] InterruptRaisedOr<void> load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector, GDTLDTDescriptor const& descriptor);
 
 
-    template<typename V>
-    std::optional<Register<V>*> gpreg(x86_reg reg) {
-        auto gpreg_map = get_gpreg_map<V>();
-        auto it = gpreg_map.find(reg);
-        if (it == gpreg_map.end())
-            return std::nullopt;
-        return it->second;
+    RegisterProxy* reg(x86_reg reg) {
+        CPUE_ASSERT(reg < sizeof(m_register_map), "reg out of range.");
+        return m_register_map[reg];
     }
-    std::optional<Register<u64>*> gpreg64(x86_reg reg) { return gpreg<u64>(reg); }
-    std::optional<Register<u32>*> gpreg32(x86_reg reg) { return gpreg<u32>(reg); }
-    std::optional<Register<u16>*> gpreg16(x86_reg reg) { return gpreg<u16>(reg); }
-    std::optional<Register<u8>*> gpreg8(x86_reg reg) { return gpreg<u8>(reg); }
-
+    RegisterProxy* gpreg(x86_reg reg) {
+        auto r = this->reg(reg);
+        CPUE_ASSERT(r == nullptr || r->type() == GENERAL_PURPOSE_REGISTER, "gpreg called with non-gp register.");
+        return r;
+    }
+    RegisterProxy* sreg(x86_reg reg) {
+        auto r = this->reg(reg);
+        CPUE_ASSERT(r == nullptr || r->type() == APPLICATION_SEGMENT_REGISTER || r->type() == SYSTEM_SEGMENT_REGISTER, "sreg called with non-segment register.");
+        return r;
+    }
+    RegisterProxy* creg(x86_reg reg) {
+        auto r = this->reg(reg);
+        CPUE_ASSERT(r == nullptr || r->type() == CONTROL_REGISTER, "creg called with non-control register.");
+        return r;
+    }
 
 
     RFLAGS& rflags() { return m_rflags; }
@@ -283,7 +293,7 @@ public:
      * uses either 4-level paging or 5-level paging). The processor always sets IA32_EFER.LMA to CR0.PG & IA32_EFER.LME. Software
      * cannot directly modify IA32_EFER.LMA; an execution of WRMSR to the IA32_EFER MSR ignores bit 10 of its source operand.
      */
-    u8 efer_LMA() const { return m_cr0.c.PG & m_efer.c.LME; }
+    u8 efer_LMA() const { return cr0().c.PG & m_efer.c.LME; }
 
     MMU& mmu() { return m_mmu; }
     PIC& pic() { return m_pic; }
@@ -335,30 +345,35 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn);
     [[nodiscard]] InterruptRaisedOr<std::pair<SegmentSelector, u64>> do_stack_switch(u8 target_pl);
 
-    [[nodiscard]] bool is_alignment_check_enabled() const { return m_cr0.c.AM && m_rflags.AC && cpl() == 3; }
+    [[nodiscard]] bool is_alignment_check_enabled() const { return cr0().c.AM && m_rflags.c.AC && cpl() == 3; }
     [[nodiscard]] InterruptRaisedOr<void> do_canonicality_check(VirtualAddress const& vaddr);
 
     DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
 
-    template<typename R>
-    void update_rflags(ArithmeticResult<R> res) {
-        m_rflags.CF = res.has_cf_set;
-        m_rflags.OF = res.has_of_set;
-        m_rflags.SF = res.has_sf_set;
-        m_rflags.ZF = res.has_zf_set;
+    void update_rflags(ArithmeticResult res) {
+        m_rflags.c.CF = res.has_cf_set;
+        m_rflags.c.OF = res.has_of_set;
+        m_rflags.c.SF = res.has_sf_set;
+        m_rflags.c.ZF = res.has_zf_set;
     }
 
-    LogicalAddress logical_address(x86_op_mem const& mem) {
+    InterruptRaisedOr<LogicalAddress> logical_address(x86_op_mem const& mem) {
         CPUE_ASSERT(mem.segment != X86_REG_INVALID, "Trying to interpret memory address with invalid segment as logical address.");
-        u64 offset = mem.base + (mem.index * mem.scale) + mem.disp;
+        u64 offset = MAY_HAVE_RAISED(operand_mem_offset(mem));
         return LogicalAddress{*application_segment_register(mem.segment).value(), offset};
     }
-    VirtualAddress virtual_address(x86_op_mem const& mem) {
+    InterruptRaisedOr<VirtualAddress> virtual_address(x86_op_mem const& mem) {
         CPUE_ASSERT(mem.segment == X86_REG_INVALID, "Trying to interpret non-virtual address as virtual address.");
-        return mem.base + (mem.index * mem.scale) + mem.disp;
+        return VirtualAddress{MAY_HAVE_RAISED(operand_mem_offset(mem))};
+    }
+    InterruptRaisedOr<u64> operand_mem_offset(x86_op_mem const& mem) {
+        u64 offset = mem.base;
+        if (!one_of(mem.index, {X86_REG_INVALID, X86_REG_RIZ, X86_REG_EIZ})) {
+            offset += MAY_HAVE_RAISED(reg(mem.index)->read()) * mem.scale;
+        }
+        return offset + mem.disp;
     }
 
-    // TODO: Maybe make public
     std::optional<ApplicationSegmentRegister*> application_segment_register(x86_reg reg) {
         auto it = m_segment_register_alias_map.find(reg);
         if (it == m_segment_register_alias_map.end())
@@ -366,67 +381,38 @@ private:
         return m_segment_register_map[it->second];
     }
 
-    template<typename V>
-    constexpr std::unordered_map<x86_reg, Register<V>*>& get_gpreg_map() {
-        if constexpr (std::is_same_v<V, u64>) {
-            return m_gpreg64_map;
-        } else if constexpr (std::is_same_v<V, u32>) {
-            return m_gpreg32_map;
-        } else if constexpr (std::is_same_v<V, u16>) {
-            return m_gpreg16_map;
-        } else if constexpr (std::is_same_v<V, u8>) {
-            return m_gpreg8_map;
-        } else {
-            static_assert(always_false<V>, "Unsupported register type");
-        }
-    }
-
-    Register* m_register_lookup_table[] = {nullptr};
-
-    Register* reg(x86_reg reg) {
-        CPUE_ASSERT(reg < sizeof(m_register_lookup_table), "reg out of range.");
-        return m_register_lookup_table[reg];
-    }
-    Register* gpreg(x86_reg reg) {
-        auto r = this->reg(reg);
-        CPUE_ASSERT(r == nullptr || r->type() == GENERAL_PURPOSE_REGISTER, "gpreg called with non-gp register.");
-        return r;
-    }
-    Register* sreg(x86_reg reg) {
-        auto r = this->reg(reg);
-        CPUE_ASSERT(r == nullptr || r->type() == APPLICATION_SEGMENT_REGISTER || r->type() == SYSTEM_SEGMENT_REGISTER, "sreg called with non-segment register.");
-        return r;
-    }
 
 private:
+    [[nodiscard]] ByteWidth operand_byte_width(cs_x86_op const& operand) {
+        switch (operand.type) {
+            case X86_OP_REG: return reg(operand.reg)->byte_width();
+            case X86_OP_MEM: return ByteWidth(operand.size);
+            case X86_OP_IMM: return ByteWidth(operand.size);
+            case X86_OP_INVALID: fail("operand_read on invalid operand.");
+        }
+    }
     [[nodiscard]] InterruptRaisedOr<SizedValue> operand_read(cs_x86_op const& operand) {
         switch (operand.type) {
-            case X86_OP_REG: {
-                return reg(operand.reg)->read();
-                // switch (get_register_type(operand.reg)) {
-                //     case GENERAL_PURPOSE_REGISTER: return gpreg<T>(operand.reg).value()->read();
-                //     case APPLICATION_SEGMENT_REGISTER: return application_segment_register(operand.reg).value()->visible.segment_selector.value;
-                //     case CONTROL_REGISTER: TODO("operand_read: CONTROL_REGISTER.");
-                //     default: fail("operand_read called with unsupported register type");
-                // }
+            case X86_OP_REG: return reg(operand.reg)->read();
+            case X86_OP_MEM: {
+                auto do_mem_read = [&]<typename T>() -> InterruptRaisedOr<SizedValue> {
+                    return SizedValue(MAY_HAVE_RAISED(m_mmu.mem_read<T>(MAY_HAVE_RAISED(logical_address(operand.mem)))), ByteWidth(operand.size));
+                };
+                return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<SizedValue>, decltype(do_mem_read)>(do_mem_read);
             }
-            case X86_OP_MEM: return m_mmu.mem_read<T>(logical_address(operand.mem));
-            case X86_OP_IMM: return static_cast<T>(operand.imm);
+            case X86_OP_IMM: return SizedValue(operand.imm, ByteWidth(operand.size));
             case X86_OP_INVALID: fail("operand_read on invalid operand.");
         }
     }
     [[nodiscard]] InterruptRaisedOr<void> operand_write(cs_x86_op const& operand, SizedValue value) {
         switch (operand.type) {
-            case X86_OP_REG: {
-                return reg(operand.reg)->write(value);
-                // switch (get_register_type(operand.reg)) {
-                //     case GENERAL_PURPOSE_REGISTER: gpreg<T>(operand.reg).value()->write(value); return {};
-                //     case APPLICATION_SEGMENT_REGISTER: return load_segment_register(m_segment_register_alias_map[operand.reg], value);
-                //     case CONTROL_REGISTER: TODO("operand_write: CONTROL_REGISTER.");
-                //     default: fail("operand_write called with unsupported register type");
-                // }
+            case X86_OP_REG: return reg(operand.reg)->write(value);
+            case X86_OP_MEM: {
+                auto do_mem_write = [&]<typename T>() -> InterruptRaisedOr<void> {
+                    return m_mmu.mem_write<T>(MAY_HAVE_RAISED(logical_address(operand.mem)), value.as<T>());
+                };
+                return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<void>, decltype(do_mem_write)>(do_mem_write);
             }
-            case X86_OP_MEM: return m_mmu.mem_write<T>(logical_address(operand.mem), value);
             case X86_OP_IMM:
             case X86_OP_INVALID: fail("operand_write on invalid operand.");
         }
@@ -438,6 +424,8 @@ private:
 
         [[nodiscard]] InterruptRaisedOr<SizedValue> read() const { return m_cpu->operand_read(m_operand); }
         [[nodiscard]] InterruptRaisedOr<void> write(SizedValue const& value) const { return m_cpu->operand_write(m_operand, value); }
+
+        ByteWidth byte_width() const { return m_cpu->operand_byte_width(m_operand); }
 
         cs_x86_op const& operand() const { return m_operand; }
 
@@ -477,125 +465,84 @@ private:
     u64 m_r14_val = 0x0;
     u64 m_r15_val = 0x0;
 
-    Register<u64> m_rax = RegisterFactory::QWORD(&m_rax_val);
-    Register<u64> m_rbx = RegisterFactory::QWORD(&m_rbx_val);
-    Register<u64> m_rcx = RegisterFactory::QWORD(&m_rcx_val);
-    Register<u64> m_rdx = RegisterFactory::QWORD(&m_rdx_val);
-    Register<u64> m_rdi = RegisterFactory::QWORD(&m_rdi_val);
-    Register<u64> m_rsi = RegisterFactory::QWORD(&m_rsi_val);
-    Register<u64> m_rsp = RegisterFactory::QWORD(&m_rsp_val);
-    Register<u64> m_rbp = RegisterFactory::QWORD(&m_rbp_val);
-    Register<u64> m_r8 = RegisterFactory::QWORD(&m_r8_val);
-    Register<u64> m_r9 = RegisterFactory::QWORD(&m_r9_val);
-    Register<u64> m_r10 = RegisterFactory::QWORD(&m_r10_val);
-    Register<u64> m_r11 = RegisterFactory::QWORD(&m_r11_val);
-    Register<u64> m_r12 = RegisterFactory::QWORD(&m_r12_val);
-    Register<u64> m_r13 = RegisterFactory::QWORD(&m_r13_val);
-    Register<u64> m_r14 = RegisterFactory::QWORD(&m_r14_val);
-    Register<u64> m_r15 = RegisterFactory::QWORD(&m_r15_val);
+    GeneralPurposeRegisterProxy m_rax = GeneralPurposeRegisterProxy::QWORD(&m_rax_val, this);
+    GeneralPurposeRegisterProxy m_rbx = GeneralPurposeRegisterProxy::QWORD(&m_rbx_val, this);
+    GeneralPurposeRegisterProxy m_rcx = GeneralPurposeRegisterProxy::QWORD(&m_rcx_val, this);
+    GeneralPurposeRegisterProxy m_rdx = GeneralPurposeRegisterProxy::QWORD(&m_rdx_val, this);
+    GeneralPurposeRegisterProxy m_rdi = GeneralPurposeRegisterProxy::QWORD(&m_rdi_val, this);
+    GeneralPurposeRegisterProxy m_rsi = GeneralPurposeRegisterProxy::QWORD(&m_rsi_val, this);
+    GeneralPurposeRegisterProxy m_rsp = GeneralPurposeRegisterProxy::QWORD(&m_rsp_val, this);
+    GeneralPurposeRegisterProxy m_rbp = GeneralPurposeRegisterProxy::QWORD(&m_rbp_val, this);
+    GeneralPurposeRegisterProxy m_r8 = GeneralPurposeRegisterProxy::QWORD(&m_r8_val, this);
+    GeneralPurposeRegisterProxy m_r9 = GeneralPurposeRegisterProxy::QWORD(&m_r9_val, this);
+    GeneralPurposeRegisterProxy m_r10 = GeneralPurposeRegisterProxy::QWORD(&m_r10_val, this);
+    GeneralPurposeRegisterProxy m_r11 = GeneralPurposeRegisterProxy::QWORD(&m_r11_val, this);
+    GeneralPurposeRegisterProxy m_r12 = GeneralPurposeRegisterProxy::QWORD(&m_r12_val, this);
+    GeneralPurposeRegisterProxy m_r13 = GeneralPurposeRegisterProxy::QWORD(&m_r13_val, this);
+    GeneralPurposeRegisterProxy m_r14 = GeneralPurposeRegisterProxy::QWORD(&m_r14_val, this);
+    GeneralPurposeRegisterProxy m_r15 = GeneralPurposeRegisterProxy::QWORD(&m_r15_val, this);
 
-    Register<u32> m_eax = RegisterFactory::DWORD(&m_rax_val);
-    Register<u32> m_ebx = RegisterFactory::DWORD(&m_rbx_val);
-    Register<u32> m_ecx = RegisterFactory::DWORD(&m_rcx_val);
-    Register<u32> m_edx = RegisterFactory::DWORD(&m_rdx_val);
-    Register<u32> m_edi = RegisterFactory::DWORD(&m_rdi_val);
-    Register<u32> m_esi = RegisterFactory::DWORD(&m_rsi_val);
-    Register<u32> m_esp = RegisterFactory::DWORD(&m_rsp_val);
-    Register<u32> m_ebp = RegisterFactory::DWORD(&m_rbp_val);
-    Register<u32> m_r8d = RegisterFactory::DWORD(&m_r8_val);
-    Register<u32> m_r9d = RegisterFactory::DWORD(&m_r9_val);
-    Register<u32> m_r10d = RegisterFactory::DWORD(&m_r10_val);
-    Register<u32> m_r11d = RegisterFactory::DWORD(&m_r11_val);
-    Register<u32> m_r12d = RegisterFactory::DWORD(&m_r12_val);
-    Register<u32> m_r13d = RegisterFactory::DWORD(&m_r13_val);
-    Register<u32> m_r14d = RegisterFactory::DWORD(&m_r14_val);
-    Register<u32> m_r15d = RegisterFactory::DWORD(&m_r15_val);
+    GeneralPurposeRegisterProxy m_eax = GeneralPurposeRegisterProxy::DWORD(&m_rax_val, this);
+    GeneralPurposeRegisterProxy m_ebx = GeneralPurposeRegisterProxy::DWORD(&m_rbx_val, this);
+    GeneralPurposeRegisterProxy m_ecx = GeneralPurposeRegisterProxy::DWORD(&m_rcx_val, this);
+    GeneralPurposeRegisterProxy m_edx = GeneralPurposeRegisterProxy::DWORD(&m_rdx_val, this);
+    GeneralPurposeRegisterProxy m_edi = GeneralPurposeRegisterProxy::DWORD(&m_rdi_val, this);
+    GeneralPurposeRegisterProxy m_esi = GeneralPurposeRegisterProxy::DWORD(&m_rsi_val, this);
+    GeneralPurposeRegisterProxy m_esp = GeneralPurposeRegisterProxy::DWORD(&m_rsp_val, this);
+    GeneralPurposeRegisterProxy m_ebp = GeneralPurposeRegisterProxy::DWORD(&m_rbp_val, this);
+    GeneralPurposeRegisterProxy m_r8d = GeneralPurposeRegisterProxy::DWORD(&m_r8_val, this);
+    GeneralPurposeRegisterProxy m_r9d = GeneralPurposeRegisterProxy::DWORD(&m_r9_val, this);
+    GeneralPurposeRegisterProxy m_r10d = GeneralPurposeRegisterProxy::DWORD(&m_r10_val, this);
+    GeneralPurposeRegisterProxy m_r11d = GeneralPurposeRegisterProxy::DWORD(&m_r11_val, this);
+    GeneralPurposeRegisterProxy m_r12d = GeneralPurposeRegisterProxy::DWORD(&m_r12_val, this);
+    GeneralPurposeRegisterProxy m_r13d = GeneralPurposeRegisterProxy::DWORD(&m_r13_val, this);
+    GeneralPurposeRegisterProxy m_r14d = GeneralPurposeRegisterProxy::DWORD(&m_r14_val, this);
+    GeneralPurposeRegisterProxy m_r15d = GeneralPurposeRegisterProxy::DWORD(&m_r15_val, this);
 
-    Register<u16> m_ax = RegisterFactory::WORD(&m_rax_val);
-    Register<u16> m_bx = RegisterFactory::WORD(&m_rbx_val);
-    Register<u16> m_cx = RegisterFactory::WORD(&m_rcx_val);
-    Register<u16> m_dx = RegisterFactory::WORD(&m_rdx_val);
-    Register<u16> m_di = RegisterFactory::WORD(&m_rdi_val);
-    Register<u16> m_si = RegisterFactory::WORD(&m_rsi_val);
-    Register<u16> m_sp = RegisterFactory::WORD(&m_rsp_val);
-    Register<u16> m_bp = RegisterFactory::WORD(&m_rbp_val);
-    Register<u16> m_r8w = RegisterFactory::WORD(&m_r8_val);
-    Register<u16> m_r9w = RegisterFactory::WORD(&m_r9_val);
-    Register<u16> m_r10w = RegisterFactory::WORD(&m_r10_val);
-    Register<u16> m_r11w = RegisterFactory::WORD(&m_r11_val);
-    Register<u16> m_r12w = RegisterFactory::WORD(&m_r12_val);
-    Register<u16> m_r13w = RegisterFactory::WORD(&m_r13_val);
-    Register<u16> m_r14w = RegisterFactory::WORD(&m_r14_val);
-    Register<u16> m_r15w = RegisterFactory::WORD(&m_r15_val);
+    GeneralPurposeRegisterProxy m_ax = GeneralPurposeRegisterProxy::WORD(&m_rax_val, this);
+    GeneralPurposeRegisterProxy m_bx = GeneralPurposeRegisterProxy::WORD(&m_rbx_val, this);
+    GeneralPurposeRegisterProxy m_cx = GeneralPurposeRegisterProxy::WORD(&m_rcx_val, this);
+    GeneralPurposeRegisterProxy m_dx = GeneralPurposeRegisterProxy::WORD(&m_rdx_val, this);
+    GeneralPurposeRegisterProxy m_di = GeneralPurposeRegisterProxy::WORD(&m_rdi_val, this);
+    GeneralPurposeRegisterProxy m_si = GeneralPurposeRegisterProxy::WORD(&m_rsi_val, this);
+    GeneralPurposeRegisterProxy m_sp = GeneralPurposeRegisterProxy::WORD(&m_rsp_val, this);
+    GeneralPurposeRegisterProxy m_bp = GeneralPurposeRegisterProxy::WORD(&m_rbp_val, this);
+    GeneralPurposeRegisterProxy m_r8w = GeneralPurposeRegisterProxy::WORD(&m_r8_val, this);
+    GeneralPurposeRegisterProxy m_r9w = GeneralPurposeRegisterProxy::WORD(&m_r9_val, this);
+    GeneralPurposeRegisterProxy m_r10w = GeneralPurposeRegisterProxy::WORD(&m_r10_val, this);
+    GeneralPurposeRegisterProxy m_r11w = GeneralPurposeRegisterProxy::WORD(&m_r11_val, this);
+    GeneralPurposeRegisterProxy m_r12w = GeneralPurposeRegisterProxy::WORD(&m_r12_val, this);
+    GeneralPurposeRegisterProxy m_r13w = GeneralPurposeRegisterProxy::WORD(&m_r13_val, this);
+    GeneralPurposeRegisterProxy m_r14w = GeneralPurposeRegisterProxy::WORD(&m_r14_val, this);
+    GeneralPurposeRegisterProxy m_r15w = GeneralPurposeRegisterProxy::WORD(&m_r15_val, this);
 
-    Register<u8> m_ah = RegisterFactory::HIGH(&m_rax_val);
-    Register<u8> m_bh = RegisterFactory::HIGH(&m_rbx_val);
-    Register<u8> m_ch = RegisterFactory::HIGH(&m_rcx_val);
-    Register<u8> m_dh = RegisterFactory::HIGH(&m_rdx_val);
+    GeneralPurposeRegisterProxy m_ah = GeneralPurposeRegisterProxy::HIGH(&m_rax_val, this);
+    GeneralPurposeRegisterProxy m_bh = GeneralPurposeRegisterProxy::HIGH(&m_rbx_val, this);
+    GeneralPurposeRegisterProxy m_ch = GeneralPurposeRegisterProxy::HIGH(&m_rcx_val, this);
+    GeneralPurposeRegisterProxy m_dh = GeneralPurposeRegisterProxy::HIGH(&m_rdx_val, this);
 
-    Register<u8> m_al = RegisterFactory::LOW(&m_rax_val);
-    Register<u8> m_bl = RegisterFactory::LOW(&m_rbx_val);
-    Register<u8> m_cl = RegisterFactory::LOW(&m_rcx_val);
-    Register<u8> m_dl = RegisterFactory::LOW(&m_rdx_val);
-    Register<u8> m_dil = RegisterFactory::LOW(&m_rdi_val);
-    Register<u8> m_sil = RegisterFactory::LOW(&m_rsi_val);
-    Register<u8> m_spl = RegisterFactory::LOW(&m_rsp_val);
-    Register<u8> m_bpl = RegisterFactory::LOW(&m_rbp_val);
-    Register<u8> m_r8b = RegisterFactory::LOW(&m_r8_val);
-    Register<u8> m_r9b = RegisterFactory::LOW(&m_r9_val);
-    Register<u8> m_r10b = RegisterFactory::LOW(&m_r10_val);
-    Register<u8> m_r11b = RegisterFactory::LOW(&m_r11_val);
-    Register<u8> m_r12b = RegisterFactory::LOW(&m_r12_val);
-    Register<u8> m_r13b = RegisterFactory::LOW(&m_r13_val);
-    Register<u8> m_r14b = RegisterFactory::LOW(&m_r14_val);
-    Register<u8> m_r15b = RegisterFactory::LOW(&m_r15_val);
+    GeneralPurposeRegisterProxy m_al = GeneralPurposeRegisterProxy::LOW(&m_rax_val, this);
+    GeneralPurposeRegisterProxy m_bl = GeneralPurposeRegisterProxy::LOW(&m_rbx_val, this);
+    GeneralPurposeRegisterProxy m_cl = GeneralPurposeRegisterProxy::LOW(&m_rcx_val, this);
+    GeneralPurposeRegisterProxy m_dl = GeneralPurposeRegisterProxy::LOW(&m_rdx_val, this);
+    GeneralPurposeRegisterProxy m_dil = GeneralPurposeRegisterProxy::LOW(&m_rdi_val, this);
+    GeneralPurposeRegisterProxy m_sil = GeneralPurposeRegisterProxy::LOW(&m_rsi_val, this);
+    GeneralPurposeRegisterProxy m_spl = GeneralPurposeRegisterProxy::LOW(&m_rsp_val, this);
+    GeneralPurposeRegisterProxy m_bpl = GeneralPurposeRegisterProxy::LOW(&m_rbp_val, this);
+    GeneralPurposeRegisterProxy m_r8b = GeneralPurposeRegisterProxy::LOW(&m_r8_val, this);
+    GeneralPurposeRegisterProxy m_r9b = GeneralPurposeRegisterProxy::LOW(&m_r9_val, this);
+    GeneralPurposeRegisterProxy m_r10b = GeneralPurposeRegisterProxy::LOW(&m_r10_val, this);
+    GeneralPurposeRegisterProxy m_r11b = GeneralPurposeRegisterProxy::LOW(&m_r11_val, this);
+    GeneralPurposeRegisterProxy m_r12b = GeneralPurposeRegisterProxy::LOW(&m_r12_val, this);
+    GeneralPurposeRegisterProxy m_r13b = GeneralPurposeRegisterProxy::LOW(&m_r13_val, this);
+    GeneralPurposeRegisterProxy m_r14b = GeneralPurposeRegisterProxy::LOW(&m_r14_val, this);
+    GeneralPurposeRegisterProxy m_r15b = GeneralPurposeRegisterProxy::LOW(&m_r15_val, this);
 
-    u64 m_rip = 0x0000FFF0;
+    u64 m_rip_val = 0x0000FFF0; // Only readable
+    GeneralPurposeRegisterProxy m_rip = GeneralPurposeRegisterProxy::QWORD(&m_rip_val, this, REG_ACCESS_READ);
+    GeneralPurposeRegisterProxy m_eip = GeneralPurposeRegisterProxy::DWORD(&m_rip_val, this, REG_ACCESS_READ);
+    GeneralPurposeRegisterProxy m_ip = GeneralPurposeRegisterProxy::WORD(&m_rip_val, this, REG_ACCESS_READ);
 
-    // Look up table for general purpose registers
-    std::unordered_map<x86_reg, Register<u64>*> m_gpreg64_map = {{X86_REG_RAX, &m_rax}, {X86_REG_RBX, &m_rbx}, {X86_REG_RCX, &m_rcx}, {X86_REG_RDX, &m_rdx}, {X86_REG_RDI, &m_rdi},
-        {X86_REG_RSI, &m_rsi}, {X86_REG_RSP, &m_rsp}, {X86_REG_RBP, &m_rbp}, {X86_REG_R8, &m_r8}, {X86_REG_R9, &m_r9}, {X86_REG_R10, &m_r10}, {X86_REG_R11, &m_r11},
-        {X86_REG_R12, &m_r12}, {X86_REG_R13, &m_r13}, {X86_REG_R14, &m_r14}, {X86_REG_R15, &m_r15}};
-    std::unordered_map<x86_reg, Register<u32>*> m_gpreg32_map = {
-        {X86_REG_EAX, &m_eax},
-        {X86_REG_EBX, &m_ebx},
-        {X86_REG_ECX, &m_ecx},
-        {X86_REG_EDX, &m_edx},
-        {X86_REG_EDI, &m_edi},
-        {X86_REG_ESI, &m_esi},
-        {X86_REG_ESP, &m_esp},
-        {X86_REG_EBP, &m_ebp},
-        {X86_REG_R8D, &m_r8d},
-        {X86_REG_R9D, &m_r9d},
-        {X86_REG_R10D, &m_r10d},
-        {X86_REG_R11D, &m_r11d},
-        {X86_REG_R12D, &m_r12d},
-        {X86_REG_R13D, &m_r13d},
-        {X86_REG_R14D, &m_r14d},
-        {X86_REG_R15D, &m_r15d},
-    };
-    std::unordered_map<x86_reg, Register<u16>*> m_gpreg16_map = {
-        {X86_REG_AX, &m_ax},
-        {X86_REG_BX, &m_bx},
-        {X86_REG_CX, &m_cx},
-        {X86_REG_DX, &m_dx},
-        {X86_REG_DI, &m_di},
-        {X86_REG_SI, &m_si},
-        {X86_REG_SP, &m_sp},
-        {X86_REG_BP, &m_bp},
-        {X86_REG_R8W, &m_r8w},
-        {X86_REG_R9W, &m_r9w},
-        {X86_REG_R10W, &m_r10w},
-        {X86_REG_R11W, &m_r11w},
-        {X86_REG_R12W, &m_r12w},
-        {X86_REG_R13W, &m_r13w},
-        {X86_REG_R14W, &m_r14w},
-        {X86_REG_R15W, &m_r15w},
-    };
-    std::unordered_map<x86_reg, Register<u8>*> m_gpreg8_map = {{X86_REG_AH, &m_ah}, {X86_REG_AL, &m_al}, {X86_REG_BH, &m_bh}, {X86_REG_BL, &m_bl}, {X86_REG_CH, &m_ch},
-        {X86_REG_CL, &m_cl}, {X86_REG_DH, &m_dh}, {X86_REG_DL, &m_dl}, {X86_REG_DIL, &m_dil}, {X86_REG_SIL, &m_sil}, {X86_REG_SPL, &m_spl}, {X86_REG_BPL, &m_bpl},
-        {X86_REG_R8B, &m_r8b}, {X86_REG_R9B, &m_r9b}, {X86_REG_R10B, &m_r10b}, {X86_REG_R11B, &m_r11b}, {X86_REG_R12B, &m_r12b}, {X86_REG_R13B, &m_r13b}, {X86_REG_R14B, &m_r14b},
-        {X86_REG_R15B, &m_r15b}};
 
 
     /**
@@ -630,29 +577,81 @@ private:
         {X86_REG_GS, SegmentRegisterAlias::GS},
         {X86_REG_FS, SegmentRegisterAlias::FS},
     };
+    ApplicationSegmentRegisterProxy m_cs_reg = ApplicationSegmentRegisterProxy(&m_cs, SegmentRegisterAlias::CS, this);
+    ApplicationSegmentRegisterProxy m_ds_reg = ApplicationSegmentRegisterProxy(&m_ds, SegmentRegisterAlias::DS, this);
+    ApplicationSegmentRegisterProxy m_ss_reg = ApplicationSegmentRegisterProxy(&m_ss, SegmentRegisterAlias::SS, this);
+    ApplicationSegmentRegisterProxy m_es_reg = ApplicationSegmentRegisterProxy(&m_es, SegmentRegisterAlias::ES, this);
+    ApplicationSegmentRegisterProxy m_fs_reg = ApplicationSegmentRegisterProxy(&m_fs, SegmentRegisterAlias::FS, this);
+    ApplicationSegmentRegisterProxy m_gs_reg = ApplicationSegmentRegisterProxy(&m_gs, SegmentRegisterAlias::GS, this);
 
 
     // RFLAGS
     RFLAGS m_rflags;
 
-    // Control Registers
-    u64 m_cr0_val = 0x0;
-    u64 m_cr2_val = 0x0;
-    u64 m_cr3_val = 0x0;
-    u64 m_cr4_val = 0x0;
-    u64 m_cr8_val = 0x0;
-
-    // TODO: use GRegister
-    CR0 m_cr0 = {.value = 0x0};
-    // This control register contains the linear (virtual) address which triggered a page fault, available in the page fault's interrupt handler.
-    VirtualAddress m_cr2;
-    CR3 m_cr3 = {.value = 0x0};
-    CR4 m_cr4 = {.value = 0x0};
-    CR8 m_cr8 = {.value = 0x0};
     /**
+     * Control Registers.
      * CR1, CR5-7, CR9-15:
      * Reserved, the cpu will throw a #ud exception when trying to access them.
      */
+    u64 m_cr0_val = 0x0;
+    u64 m_cr1_val = 0x0;
+    // // This control register contains the linear (virtual) address which triggered a page fault, available in the page fault's interrupt handler.
+    u64 m_cr2_val = 0x0;
+    u64 m_cr3_val = 0x0;
+    u64 m_cr4_val = 0x0;
+    u64 m_cr5_val = 0x0;
+    u64 m_cr6_val = 0x0;
+    u64 m_cr7_val = 0x0;
+    u64 m_cr8_val = 0x0;
+    u64 m_cr9_val = 0x0;
+    u64 m_cr10_val = 0x0;
+    u64 m_cr11_val = 0x0;
+    u64 m_cr12_val = 0x0;
+    u64 m_cr13_val = 0x0;
+    u64 m_cr14_val = 0x0;
+    u64 m_cr15_val = 0x0;
+
+    u64 _old_cr0_val = 0x0;
+    ControlRegisterProxy m_cr0_reg = ControlRegisterProxy(&m_cr0_val, this, REG_ACCESS_READ | REG_ACCESS_WRITE,
+        RegisterCallbacks{
+            .before_write = [](void* data) -> InterruptRaisedOr<void> {
+                auto self = static_cast<CPU*>(data);
+                self->_old_cr0_val = self->m_cr0_val;
+                return {};
+            },
+            .after_write = [](void* data) -> InterruptRaisedOr<void> {
+                // Invalidate TLB if PG bit was changed.
+                auto self = static_cast<CPU*>(data);
+                auto xored_cr0_val = self->m_cr0_val ^ self->_old_cr0_val;
+                if (CR0{.value = xored_cr0_val}.c.PG)
+                    self->m_mmu.tlb().invalidate_all();
+                return {};
+            },
+            .data = this,
+        });
+    ControlRegisterProxy m_cr1_reg = ControlRegisterProxy(&m_cr1_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr2_reg = ControlRegisterProxy(&m_cr2_val, this);
+    ControlRegisterProxy m_cr3_reg = ControlRegisterProxy(&m_cr3_val, this, REG_ACCESS_READ | REG_ACCESS_WRITE,
+        RegisterCallbacks{
+            .after_write = [](void* data) -> InterruptRaisedOr<void> {
+                auto tlb = static_cast<TLB*>(data);
+                tlb->invalidate_all();
+                return {};
+            },
+            .data = &m_mmu.tlb(),
+        });
+    ControlRegisterProxy m_cr4_reg = ControlRegisterProxy(&m_cr4_val, this);
+    ControlRegisterProxy m_cr5_reg = ControlRegisterProxy(&m_cr5_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr6_reg = ControlRegisterProxy(&m_cr6_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr7_reg = ControlRegisterProxy(&m_cr7_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr8_reg = ControlRegisterProxy(&m_cr8_val, this);
+    ControlRegisterProxy m_cr9_reg = ControlRegisterProxy(&m_cr9_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr10_reg = ControlRegisterProxy(&m_cr10_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr11_reg = ControlRegisterProxy(&m_cr11_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr12_reg = ControlRegisterProxy(&m_cr12_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr13_reg = ControlRegisterProxy(&m_cr13_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr14_reg = ControlRegisterProxy(&m_cr14_val, this, REG_ACCESS_NONE);
+    ControlRegisterProxy m_cr15_reg = ControlRegisterProxy(&m_cr15_val, this, REG_ACCESS_NONE);
 
 
     /**
@@ -704,78 +703,26 @@ private:
         &m_tr,
     };
 
-private:
-#define PARENS      ()
-#define EXPAND(...) __VA_ARGS__
 
-#define ARGS1() operand_a
-#define ARGS2() operand_a, operand_aa
-#define ARGS3() operand_a, operand_aa, operand_aaa
-
-#define IIF(...) __VA_ARGS__
-#define IIF0(...)
-#define IF(c, ...) IIF##c(__VA_ARGS__)
-
-#define DISPATCH_OPS_IMPL(count, cur, ...)            \
-    IF(__VA_OPT__(0), DISPATCH_OPS_IMPL2(count, cur)) \
-    __VA_OPT__(DISPATCH_OPS_IMPLX(count, cur, __VA_ARGS__))
-#define DISPATCH_OPS_IMPL2(count, cur) return func(ARGS##count());
-#define DISPATCH_OPS_IMPLX(count, cur, op, ...)                         \
-    switch (op.size) {                                                  \
-        case 1: {                                                       \
-            auto operand_##cur = Operand<u8>(this, op);                 \
-            DISPATCH_OPS_IMPL_AGAIN PARENS(count, cur##a, __VA_ARGS__); \
-        };                                                              \
-        case 2: {                                                       \
-            auto operand_##cur = Operand<u16>(this, op);                \
-            DISPATCH_OPS_IMPL_AGAIN PARENS(count, cur##a, __VA_ARGS__); \
-        };                                                              \
-        case 4: {                                                       \
-            auto operand_##cur = Operand<u32>(this, op);                \
-            DISPATCH_OPS_IMPL_AGAIN PARENS(count, cur##a, __VA_ARGS__); \
-        };                                                              \
-        case 8: {                                                       \
-            auto operand_##cur = Operand<u64>(this, op);                \
-            DISPATCH_OPS_IMPL_AGAIN PARENS(count, cur##a, __VA_ARGS__); \
-        };                                                              \
-    }
-#define DISPATCH_OPS_IMPL_AGAIN()                    DISPATCH_OPS_IMPL
-#define DISPATCH_OPS1(first_op)                      EXPAND(DISPATCH_OPS_IMPL(1, a, first_op))
-#define DISPATCH_OPS2(first_op, second_op)           EXPAND(EXPAND(DISPATCH_OPS_IMPL(2, a, first_op, second_op)))
-#define DISPATCH_OPS3(first_op, second_op, third_op) EXPAND(EXPAND(EXPAND(DISPATCH_OPS_IMPL(3, a, first_op, second_op, third_op))))
-    template<typename Func>
-    InterruptRaisedOr<void> with_operands1(cs_x86_op& first_op, Func&& func) {
-        DISPATCH_OPS1(first_op);
-        fail();
-    }
-    template<typename Func>
-    InterruptRaisedOr<void> with_operands2(cs_x86_op& first_op, cs_x86_op& second_op, Func&& func) {
-        DISPATCH_OPS2(first_op, second_op);
-        fail();
-    }
-    template<typename Func>
-    InterruptRaisedOr<void> with_operands3(cs_x86_op& first_op, cs_x86_op& second_op, cs_x86_op& third_op, Func&& func) {
-        DISPATCH_OPS3(first_op, second_op, third_op);
-        fail();
-    }
-#undef PARENS
-#undef EXPAND
-#undef ARGS1
-#undef ARGS2
-#undef ARGS3
-#undef IIF
-#undef IIF0
-#undef IF
-#undef DISPATCH_OPS_IMPL
-#undef DISPATCH_OPS_IMPL2
-#undef DISPATCH_OPS_IMPLX
-#undef DISPATCH_OPS_IMPL_AGAIN
-#undef DISPATCH_OPS1
-#undef DISPATCH_OPS2
-#undef DISPATCH_OPS3
-
+    RegisterProxy* m_register_map[247] = {
+        nullptr, &m_ah, &m_al, &m_ax, &m_bh, &m_bl, &m_bp, &m_bpl, &m_bx, &m_ch, &m_cl, &m_cs_reg, &m_cx, &m_dh, &m_di, &m_dil, &m_dl, &m_ds_reg, &m_dx, &m_eax, &m_ebp, &m_ebx,
+        &m_ecx, &m_edi, &m_edx, nullptr, &m_eip, nullptr, &m_es_reg, &m_esi, &m_esp, nullptr, &m_fs_reg, &m_gs_reg, &m_ip, &m_rax, &m_rbp, &m_rbx, &m_rcx, &m_rdi, &m_rdx, &m_rip,
+        nullptr, &m_rsi, &m_rsp, &m_si, &m_sil, &m_sp, &m_spl, &m_ss_reg, &m_cr0_reg, &m_cr1_reg, &m_cr2_reg, &m_cr3_reg, &m_cr4_reg, &m_cr5_reg, &m_cr6_reg, &m_cr7_reg, &m_cr8_reg,
+        &m_cr9_reg, &m_cr10_reg, &m_cr11_reg, &m_cr12_reg, &m_cr13_reg, &m_cr14_reg, &m_cr15_reg, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8, &m_r9, &m_r10, &m_r11, &m_r12, &m_r13, &m_r14, &m_r15,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8b, &m_r9b, &m_r10b, &m_r11b, &m_r12b, &m_r13b, &m_r14b, &m_r15b, &m_r8d, &m_r9d,
+        &m_r10d, &m_r11d, &m_r12d, &m_r13d, &m_r14d, &m_r15d, &m_r8w, &m_r9w, &m_r10w, &m_r11w, &m_r12w, &m_r13w, &m_r14w, &m_r15w, nullptr, nullptr, nullptr, nullptr,
+        nullptr, // <-- mark the end of the list of registers
+    };
 
 private:
+    [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<void> handle_ADD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_BOUND(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_DEC(cs_x86 const&);
@@ -803,6 +750,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> handle_LGDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_LIDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_LLDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<void> handle_LTR(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_LOOP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_MOV(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_MOVSX(cs_x86 const&);
@@ -814,11 +762,9 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> handle_OR(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_POP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_POPF(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_POPFD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_POPFQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_PUSH(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_PUSHF(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_PUSHFD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_PUSHFQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_RET(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<void> handle_ROL(cs_x86 const&);

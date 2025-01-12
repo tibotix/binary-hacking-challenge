@@ -5,7 +5,7 @@ namespace CPUE {
 
 
 bool ICU::intr_pin_enabled() const {
-    return m_cpu->m_rflags.IF;
+    return m_cpu->m_rflags.c.IF;
 }
 
 }

@@ -30,18 +30,18 @@ void CPU::reset() {
     m_rsi_val = 0x0;
     m_rsp_val = 0x0;
     m_rbp_val = 0x0;
-    m_rip = 0x0000FFF0;
+    m_rip_val = 0x0000FFF0;
     m_r8_val = m_r9_val = m_r10_val = m_r11_val = m_r12_val = m_r13_val = m_r14_val = m_r15_val = 0x0;
 
     m_cs = _default_cs_segment_register;
     m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
 
     m_rflags = instance<RFLAGS, u64>(0x2);
-    m_cr0 = {.value = 0x60000010};
-    m_cr2 = 0x0_va;
-    m_cr3 = {.value = 0x0};
-    m_cr4 = {.value = 0x0};
-    m_cr8 = {.value = 0x0};
+    m_cr0_val = 0x60000010;
+    m_cr2_val = 0x0;
+    m_cr3_val = 0x0;
+    m_cr4_val = 0x0;
+    m_cr8_val = 0x0;
 
     m_efer = {.value = 0x0};
 
@@ -58,19 +58,19 @@ void CPU::reset() {
 auto CPU::paging_mode() const -> PagingMode {
     // If CR0.PG = 0, paging is not used. The logical processor treats all linear addresses as if they were physical
     // addresses.
-    if (m_cr0.c.PG == 0)
+    if (cr0().c.PG == 0)
         return PAGING_MODE_NONE;
     // If CR4.PAE = 0, 32-bit paging is used.
-    if (m_cr4.c.PAE == 0)
+    if (cr4().c.PAE == 0)
         return PAGING_MODE_32BIT;
     // If CR4.PAE = 1 and IA32_EFER.LME = 0, PAE paging is used.
     if (m_efer.c.LME == 0)
         return PAGING_MODE_PAE;
     // If CR4.PAE = 1, IA32_EFER.LME = 1, and CR4.LA57 = 0, 4-level paging is used.
-    if (m_cr4.c.LA57 == 0)
+    if (cr4().c.LA57 == 0)
         return PAGING_MODE_4LEVEL;
     // If CR4.PAE = 1, IA32_EFER.LME = 1, and CR4.LA57 = 1, 5-level paging is used.
-    if (m_cr4.c.LA57 == 1)
+    if (cr4().c.LA57 == 1)
         return PAGING_MODE_5LEVEL;
     fail("Ambiguous paging mode.");
 }
@@ -250,7 +250,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * changed and no stack switch occurs.
      */
     auto old_ss = m_ss.visible.segment_selector;
-    auto old_sp = m_rsp.read();
+    auto old_sp = m_rsp_val;
     if (dest_is_conforming && dest_dpl < cpl()) {
         std::tie(old_ss, old_sp) = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
     }
@@ -263,11 +263,11 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     MAY_HAVE_RAISED(stack_push(raw_bytes<u64>(&m_rflags)));
 
     MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
-    MAY_HAVE_RAISED(stack_push(m_rip));
+    MAY_HAVE_RAISED(stack_push(m_rip_val));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
     MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, descriptor.segment_selector, dest_segment_descriptor));
-    m_rip = dest_segment_descriptor.base() + descriptor.offset();
+    m_rip_val = dest_segment_descriptor.base() + descriptor.offset();
 
     /**
      * When accessing an exception or interrupt handler through either an interrupt gate or a trap gate, the processor
@@ -277,7 +277,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * ensures that no single-step exception will be delivered after delivery to the handler. A subsequent IRET instruction
      * restores the TF (and VM, RF, and NT) flags to the values in the saved contents of the EFLAGS register on the stack
      */
-    m_rflags.TF = m_rflags.VM = m_rflags.RF = m_rflags.NT = 0;
+    m_rflags.c.TF = m_rflags.c.VM = m_rflags.c.RF = m_rflags.c.NT = 0;
 
     /**
      * The only difference between an interrupt gate and a trap gate is the way the processor handles the IF flag in the
@@ -287,7 +287,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * Accessing a handler procedure through a trap gate does not affect the IF flag.
      */
     if (descriptor.access.descriptor_type() == DescriptorType::INTERRUPT_GATE) {
-        m_rflags.IF = 0;
+        m_rflags.c.IF = 0;
     }
 
     return {};
@@ -348,11 +348,11 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
     }
 
     MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
-    MAY_HAVE_RAISED(stack_push(m_rip));
+    MAY_HAVE_RAISED(stack_push(m_rip_val));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
     MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, call_gate_descriptor.segment_selector, dest_segment_descriptor));
-    m_rip = dest_segment_descriptor.base() + call_gate_descriptor.offset();
+    m_rip_val = dest_segment_descriptor.base() + call_gate_descriptor.offset();
     return {};
 }
 
@@ -390,12 +390,12 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
     //  4. Temporarily saves the current values of the SS and RSP registers.
     auto old_ss = m_ss;
-    auto old_sp = m_rsp.read();
+    auto old_sp = m_rsp_val;
     // The new SS is forced to NULL and the SS selector’s RPL field is forced to the new CPL.
     // we can do this cause in 64-bit mode the processor does not perform runtime NULL-selector checks
     m_ss.visible.segment_selector.c.index = 0x0;
     m_ss.visible.segment_selector.c.rpl = target_pl;
-    m_rsp.write(new_sp);
+    m_rsp_val = new_sp;
     //  6. Pushes the temporarily saved values for the SS and RSP registers (for the calling procedure) onto the new stack
     //  7. Copies the number of parameter specified in the parameter count field of the call gate from the calling
     //     procedure’s stack to the new stack. If the count is 0, no parameters are copied.
@@ -541,17 +541,18 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 
 
-InterruptRaisedOr<void> CPU::stack_push(u64 value) {
+InterruptRaisedOr<void> CPU::stack_push(u64 value, TranslationIntention intention) {
     TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
-    if (m_rsp.read() < 8)
+    if (m_rsp_val < 8)
         return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
-    m_rsp.write(m_rsp.read() - 8);
-    MAY_HAVE_RAISED(mmu().mem_write64(stack_pointer(), value));
-    return {};
+    m_rsp_val -= 8;
+    return mmu().mem_write64(stack_pointer(), value, intention);
 }
 
-InterruptRaisedOr<u64> CPU::stack_pop() {
-    TODO("stack_pop");
+InterruptRaisedOr<u64> CPU::stack_pop(TranslationIntention intention) {
+    auto value = MAY_HAVE_RAISED(mmu().mem_read64(stack_pointer(), intention));
+    m_rsp_val += 8;
+    return value;
 }
 
 
