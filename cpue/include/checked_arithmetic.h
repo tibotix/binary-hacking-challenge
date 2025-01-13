@@ -102,7 +102,7 @@ constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, Siz
 
 template<unsigned_integral R, typename T>
 requires(std::is_same_v<R, T>) constexpr ArithmeticResult CPUE_checked_single_umul(R const first, T const summand) {
-    return CPUE_checked_single_uadd(SizedValue(first), SizedValue(summand));
+    return CPUE_checked_single_umul(SizedValue(first), SizedValue(summand));
 }
 
 template<unsigned_integral R, typename... T>
@@ -112,29 +112,28 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
 
     constexpr R MAX_VAL = std::numeric_limits<R>::max();
 
-    int i = 0;
     R res = first;
 
     for (const auto f : {factors...}) {
-        // Fail if including this additional factor would exceed MAX_VAL
-        size_t max_factor = MAX_VAL / res;
-        if (f > max_factor)
-            fail("Integer overflow in multiplication.");
-        res *= f;
+        auto r = CPUE_checked_single_umul(res, f);
+        if (r.has_cf_set)
+            fail("Integer overflow in multiplikation.");
+        res = r.value.template as<R>();
     }
+
     return res;
 }
 
 
 constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+    TODO("Not yet implemented!");
     ArithmeticResult res;
     return res;
 }
 
 
 constexpr ArithmeticResult CPUE_checked_single_udiv(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+    TODO("Not yet implemented!");
     ArithmeticResult res;
     return res;
 }
