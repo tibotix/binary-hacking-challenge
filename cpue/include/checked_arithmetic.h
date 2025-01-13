@@ -22,6 +22,7 @@ struct ArithmeticResult {
     constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), has_sf_set(false), has_zf_set(false) {}
 };
 
+// NOTE: SizedValue is a helper struct which include multiple small functions to gain details about the operands
 constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, SizedValue const& summand) {
     ArithmeticResult res;
     res.value = first;
@@ -75,16 +76,33 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first,
     return res;
 }
 
+// NOTE: Will the flags always be visible, if we convert the type?
 
+// The OF and CF flags are set to 0 if the upper half of the result is 0; otherwise, they are set to 1.
+// The SF, ZF, AF, and PF flags are undefined.
+constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
+    ArithmeticResult res;
+    res.value = first;
 
+    res.value = res.value * summand;
 
-constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+    auto topBits = res.value >> 32;
+
+    if( topBits == 0 ) { 
+        res.has_cf_set = 0; 
+        res.has_of_set = 0;
+    }
+    else { 
+        res.has_cf_set = 1; 
+        res.has_of_set = 1;
+    }
+
+    return res;
 }
 
-
-constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+template<unsigned_integral R, typename T>
+requires(std::is_same_v<R, T>) constexpr ArithmeticResult CPUE_checked_single_umul(R const first, T const summand) {
+    return CPUE_checked_single_uadd(SizedValue(first), SizedValue(summand));
 }
 
 template<unsigned_integral R, typename... T>
@@ -108,8 +126,17 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
 }
 
 
+constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
+    TODO();
+    ArithmeticResult res;
+    return res;
+}
+
+
 constexpr ArithmeticResult CPUE_checked_single_udiv(SizedValue const& first, SizedValue const& summand) {
     TODO();
+    ArithmeticResult res;
+    return res;
 }
 
 
