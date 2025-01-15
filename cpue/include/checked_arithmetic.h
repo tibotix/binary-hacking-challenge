@@ -5,7 +5,6 @@
 #include "sized_value.h"
 
 
-
 namespace CPUE {
 
 struct ArithmeticResult {
@@ -76,26 +75,30 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first,
     return res;
 }
 
-// NOTE: Will the flags always be visible, if we convert the type?
-
 // The OF and CF flags are set to 0 if the upper half of the result is 0; otherwise, they are set to 1.
 // The SF, ZF, AF, and PF flags are undefined.
+// FIXME: Flags are not set correctly
 constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
     ArithmeticResult res;
-    res.value = first;
+    uint64_t product = first.value() * summand.value();
 
-    res.value = res.value * summand;
+    uint64_t maxValue = first.max_val();
+    uint64_t highBits = product >> first.bit_width();
 
-    auto topBits = res.value >> 32;
+    // Set Carry Flag (CF) - if High-order bits are non-zero indicates unsigned overflow
+    res.has_cf_set = (highBits != 0);
 
-    if( topBits == 0 ) { 
-        res.has_cf_set = 0; 
-        res.has_of_set = 0;
-    }
-    else { 
-        res.has_cf_set = 1; 
-        res.has_of_set = 1;
-    }
+    // Set Overflow Flag (OF) - Signed overflow if the signs of inputs match but differ from the result
+    bool sign_first = first.sign_bit();
+    bool sign_second = summand.sign_bit();
+    bool sign_result = ((product >> (first.bit_width() - 1)) & 1);
+
+    res.has_of_set = (sign_first == sign_second) && (sign_first != sign_result);
+
+    //NOTE: vorschlag von chat
+    /*res.value = SizedValue(product, first.bit_width()); // Ensure the result fits into the same operand size*/
+    
+    res.value = product;
 
     return res;
 }

@@ -293,7 +293,17 @@ InterruptRaisedOr<void> CPU::handle_MOVZX(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Zero-Extend
 InterruptRaisedOr<void> CPU::handle_MUL(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+    auto res = CPUE_checked_single_umul(first_val, second_val);
+
+    update_rflags(res);
+    return first_op.write(res.value);
 } //	Unsigned Multiply
 InterruptRaisedOr<void> CPU::handle_NOP(cs_x86 const& insn_detail) {
     return {};
