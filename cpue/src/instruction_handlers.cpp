@@ -263,25 +263,31 @@ InterruptRaisedOr<void> CPU::handle_LOOP(cs_x86 const& insn_detail) {
     TODO();
 } //	Loop According to ECX Counter
 InterruptRaisedOr<void> CPU::handle_MOV(cs_x86 const& insn_detail) {
-    /**
-     * TODO:
-     * Attempting to set any reserved bits
-     * in CR0[31:0] is ignored. Attempting to set any reserved bits in CR0[63:32] results in a general-protection excep-
-     * tion, #GP(0). When PCIDs are not enabled, bits 2:0 and bits 11:5 of CR3 are not used and attempts to set them
-     * are ignored. Attempting to set any reserved bits in CR3[63:MAXPHYADDR] results in #GP(0). Attempting to set
-     * any reserved bits in CR4 results in #GP(0).
-     * Which reserved bit violations generate #GP(0) additionally:
-     * Attempting to write a non-zero value into the reserved bits of the MXCSR register.
-     * Writing to a reserved bit in an MSR.
-     * If an attempt is made to set a reserved bit in CR3, CR4 or CR8.
-     */
-    auto first_op = Operand(this, insn_detail.operands[0]);
-    auto second_op = Operand(this, insn_detail.operands[1]);
+    // Prevent the MOV instruction from attempting to load the CS register
+    if (insn_detail.operands[0].type == X86_OP_REG && insn_detail.operands[0].reg == X86_REG_CS) {
+        fail("Cannot load CS register using the MOV instruction. Use far JMP, CALL, or RET instead.");
+    }
 
-    auto first_val = MAY_HAVE_RAISED(second_op.read());
-    MAY_HAVE_RAISED(first_op.write(first_val));
+    // Retrieve operands (destination and source)
+    auto first_op = Operand(this, insn_detail.operands[0]); // Destination
+    auto second_op = Operand(this, insn_detail.operands[1]); // Source
 
-    TODO();
+    // Read the value from the source operand
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+
+    // Ensure the operands are the same size
+    if (sizeof(first_op) != sizeof(second_op)) {
+        fail("Operands must have the same size.");
+    }
+
+    // Write the value to the destination operand
+    MAY_HAVE_RAISED(first_op.write(second_val));
+
+    return {};
 } //	Move
 InterruptRaisedOr<void> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
     TODO();
