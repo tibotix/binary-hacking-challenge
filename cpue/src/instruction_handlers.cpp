@@ -207,43 +207,26 @@ InterruptRaisedOr<void> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
     TODO();
 } //	Interrupt Return
 InterruptRaisedOr<void> CPU::handle_JMP(cs_x86 const& insn_detail) {
-
-    // Operand containing the target address.
     auto first_op = Operand(this, insn_detail.operands[0]);
 
-    // Calculate the jump address based on the type of operand.
-    uint64_t target_address = 0;
+    TODO_NOFAIL("handle short/far jumps and task switch");
 
-    switch (first_op.operand().type) {
-        case X86_OP_IMM: {
-            // Direct jump: the target address is an immediate value (relative offset).
-            auto imm_value = MAY_HAVE_RAISED(first_op.read());
-            target_address = rip() + imm_value.value();  // Relative offset to RIP.
-            break;
+    // near jumps
+    auto near_jump_dest = [&]() -> InterruptRaisedOr<u64> {
+        switch (first_op.operand().type) {
+            // relative offset
+            case X86_OP_IMM: return rip() + MAY_HAVE_RAISED(first_op.read()).value();
+            // absolute offset
+            case X86_OP_MEM:
+            case X86_OP_REG: return MAY_HAVE_RAISED(first_op.read());
+            case X86_OP_INVALID: fail("Invalid type given!");
         }
+    };
 
-        case X86_OP_MEM: {
-            // Indirect jump: address is stored in a memory location.
-            auto mem_address = MAY_HAVE_RAISED(operand_mem_offset(first_op.operand().mem));
-            auto offset = MAY_HAVE_RAISED(first_op.read());
-            break;
-        }
-
-        case X86_OP_REG: {
-            // Indirect jump: address is stored in a register.
-            auto reg_value = MAY_HAVE_RAISED(first_op.read());
-            target_address = reg_value.value();
-            break;
-        }
-
-        case X86_OP_INVALID: {
-            fail("Invalid type given!");    
-            break;
-        }
-    }
+    auto dest = MAY_HAVE_RAISED(near_jump_dest());
 
     // Update the instruction pointer (RIP).
-    set_rip(target_address);
+    set_rip(dest);
 
     return {}; // Successfully executed the jump.
 } // Jump
@@ -318,7 +301,7 @@ InterruptRaisedOr<void> CPU::handle_MOV(cs_x86 const& insn_detail) {
         second_val = sign_extend(second_val, first_val.byte_width());
 
     // Ensure the operands are the same size
-    if (sizeof(first_val) != sizeof(second_val)) {
+    if (first_val.bit_width() != second_val.bit_width()) {
         fail("Operands must have the same size.");
     }
 
@@ -334,6 +317,7 @@ InterruptRaisedOr<void> CPU::handle_MOVZX(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Zero-Extend
 InterruptRaisedOr<void> CPU::handle_MUL(cs_x86 const& insn_detail) {
+    // TODO: fix this
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
