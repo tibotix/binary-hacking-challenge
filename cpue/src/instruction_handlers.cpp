@@ -4,7 +4,8 @@
 namespace CPUE {
 
 // TODO: use dispatch array, and build it in constexpr, use nullptr for not implemented and pointer to member function otherwise
-InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_insn(cs_insn const& insn) {
+    CPUE_TRACE("Handling instruction: {} {}", insn.mnemonic, insn.op_str);
     auto const& detail = insn.detail->x86;
 #define CASE(name) \
     case x86_insn::X86_INS_##name: return handle_##name(detail); break;
@@ -14,6 +15,7 @@ InterruptRaisedOr<void> CPU::handle_insn(cs_insn const& insn) {
         CASE(BOUND)
         CASE(DEC)
         CASE(DIV)
+        CASE(HLT)
         CASE(IDIV)
         CASE(IMUL)
         CASE(INC)
@@ -109,7 +111,7 @@ InterruptRaisedOr<void> CPU::do_privileged_instruction_check(u8 pl) {
  * Handler Implementations:
  */
 
-InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ADD(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
@@ -122,7 +124,7 @@ InterruptRaisedOr<void> CPU::handle_ADD(cs_x86 const& insn_detail) {
     update_rflags(res);
     return first_op.write(res.value);
 } //	Add
-InterruptRaisedOr<void> CPU::handle_BOUND(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_BOUND(cs_x86 const& insn_detail) {
     // TODO: probably don't implement this insn
     TODO("Only handle interrupt if out of bounds");
     static Interrupt i = {
@@ -132,22 +134,26 @@ InterruptRaisedOr<void> CPU::handle_BOUND(cs_x86 const& insn_detail) {
     };
     return handle_interrupt(i);
 } //	Check Array Index Against Bounds
-InterruptRaisedOr<void> CPU::handle_DEC(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
     TODO();
 } //    Decrement By 1
-InterruptRaisedOr<void> CPU::handle_DIV(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_DIV(cs_x86 const& insn_detail) {
     TODO();
 } //	Unsigned Divide
-InterruptRaisedOr<void> CPU::handle_IDIV(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_HLT(cs_x86 const& insn_detail) {
+    TODO_NOFAIL("encountered a HLT instruction. We use this instruction to exit the emulator (although normally it would behave quite differently)");
+    shutdown();
+} //	Halt
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IDIV(cs_x86 const& insn_detail) {
     TODO();
 } //	Signed Divide
-InterruptRaisedOr<void> CPU::handle_IMUL(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IMUL(cs_x86 const& insn_detail) {
     TODO();
 } //	Signed Multiply
-InterruptRaisedOr<void> CPU::handle_INC(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INC(cs_x86 const& insn_detail) {
     TODO();
 } //	Increment by 1
-InterruptRaisedOr<void> CPU::handle_INT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT(cs_x86 const& insn_detail) {
     // TODO: increment m_rip, because the return address is the next insn
     auto first_op = Operand(this, insn_detail.operands[0]);
     Interrupt i = {
@@ -156,18 +162,20 @@ InterruptRaisedOr<void> CPU::handle_INT(cs_x86 const& insn_detail) {
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    return handle_interrupt(i);
+    MAY_HAVE_RAISED(handle_interrupt(i));
+    return DONT_INCREMENT_IP;
 } // 	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INT1(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT1(cs_x86 const& insn_detail) {
     static Interrupt i = {
         .vector = 1,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INT1_INSN,
     };
-    return handle_interrupt(i);
+    MAY_HAVE_RAISED(handle_interrupt(i));
+    return INCREMENT_IP;
 } //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INT3(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT3(cs_x86 const& insn_detail) {
     TODO_NOFAIL("increment rip");
     static Interrupt i = {
         .vector = 3,
@@ -175,9 +183,10 @@ InterruptRaisedOr<void> CPU::handle_INT3(cs_x86 const& insn_detail) {
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    return handle_interrupt(i);
+    MAY_HAVE_RAISED(handle_interrupt(i));
+    return DONT_INCREMENT_IP;
 } //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INTO(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INTO(cs_x86 const& insn_detail) {
     TODO_NOFAIL("increment rip");
     static Interrupt i = {
         .vector = 4,
@@ -188,48 +197,48 @@ InterruptRaisedOr<void> CPU::handle_INTO(cs_x86 const& insn_detail) {
     if (m_rflags.c.OF) {
         return handle_interrupt(i);
     }
-    return {};
+    return DONT_INCREMENT_IP;
 } //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INVLPG(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INVLPG(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Invalidate TLB Entries
-InterruptRaisedOr<void> CPU::handle_IRET(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IRET(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_IRETD(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IRETD(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_JMP(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JMP(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump
-InterruptRaisedOr<void> CPU::handle_JNE(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JNE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Not Equal
-InterruptRaisedOr<void> CPU::handle_JE(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JE(cs_x86 const& insn_detail) {
     if (m_rflags.c.ZF)
         TODO_NOFAIL("JMP");
     TODO();
 } //	Jump Equal
-InterruptRaisedOr<void> CPU::handle_JGE(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JGE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Greater or Equal
-InterruptRaisedOr<void> CPU::handle_JG(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JG(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Greater
-InterruptRaisedOr<void> CPU::handle_JLE(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JLE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Lower or Equal
-InterruptRaisedOr<void> CPU::handle_JL(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JL(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Lower
-InterruptRaisedOr<void> CPU::handle_LEA(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEA(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
@@ -239,30 +248,30 @@ InterruptRaisedOr<void> CPU::handle_LEA(cs_x86 const& insn_detail) {
 
     return first_op.write(SizedValue(offset, first_op.byte_width()));
 } //	Load Effective Address
-InterruptRaisedOr<void> CPU::handle_LEAVE(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEAVE(cs_x86 const& insn_detail) {
     TODO();
 } //	High Level Procedure Exit
-InterruptRaisedOr<void> CPU::handle_LGDT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LGDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Global/Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LIDT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LIDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Global/Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LLDT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LLDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Local Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LTR(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LTR(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Task Register
-InterruptRaisedOr<void> CPU::handle_LOOP(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LOOP(cs_x86 const& insn_detail) {
     // TODO: no high priority
     TODO();
 } //	Loop According to ECX Counter
-InterruptRaisedOr<void> CPU::handle_MOV(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOV(cs_x86 const& insn_detail) {
     /**
      * TODO:
      * Attempting to set any reserved bits
@@ -283,16 +292,16 @@ InterruptRaisedOr<void> CPU::handle_MOV(cs_x86 const& insn_detail) {
 
     TODO();
 } //	Move
-InterruptRaisedOr<void> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Sign-Extension
-InterruptRaisedOr<void> CPU::handle_MOVSXD(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVSXD(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Sign-Extension
-InterruptRaisedOr<void> CPU::handle_MOVZX(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVZX(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Zero-Extend
-InterruptRaisedOr<void> CPU::handle_MUL(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MUL(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
@@ -305,10 +314,10 @@ InterruptRaisedOr<void> CPU::handle_MUL(cs_x86 const& insn_detail) {
     update_rflags(res);
     return first_op.write(res.value);
 } //	Unsigned Multiply
-InterruptRaisedOr<void> CPU::handle_NOP(cs_x86 const& insn_detail) {
-    return {};
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_NOP(cs_x86 const& insn_detail) {
+    return INCREMENT_IP;
 } //	No Operation
-InterruptRaisedOr<void> CPU::handle_NOT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_NOT(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
     auto value = MAY_HAVE_RAISED(first_op.read());
@@ -316,23 +325,23 @@ InterruptRaisedOr<void> CPU::handle_NOT(cs_x86 const& insn_detail) {
 
     return first_op.write(not_value);
 } //	One's Complement Negation
-InterruptRaisedOr<void> CPU::handle_OR(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_OR(cs_x86 const& insn_detail) {
     TODO();
 } //	Logical Inclusive OR
-InterruptRaisedOr<void> CPU::handle_POP(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_POP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
     auto value = MAY_HAVE_RAISED(stack_pop(INTENTION_HANDLE_INSTRUCTION));
 
     return first_op.write(SizedValue(value));
 } //	Pop a Value From the Stack
-InterruptRaisedOr<void> CPU::handle_POPF(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_POPF(cs_x86 const& insn_detail) {
     TODO();
 } //	Pop Stack Into lower 16 bits of RFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POPFQ(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_POPFQ(cs_x86 const& insn_detail) {
     TODO();
 } //	Pop Stack Into RFLAGS Register
-InterruptRaisedOr<void> CPU::handle_PUSH(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSH(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
     auto value = MAY_HAVE_RAISED(first_op.read());
@@ -340,62 +349,62 @@ InterruptRaisedOr<void> CPU::handle_PUSH(cs_x86 const& insn_detail) {
     return stack_push(value.as<u64>());
 
 } //	Push Word, Doubleword, or Quadword Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHF(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSHF(cs_x86 const& insn_detail) {
     return stack_push(m_rflags.value & 0x000000000000FFFF);
 } //	Push lower 16 bits of RFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHFQ(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSHFQ(cs_x86 const& insn_detail) {
     return stack_push(m_rflags.value & 0x0000000000FCFFFF);
 } //	Push RFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_RET(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_RET(cs_x86 const& insn_detail) {
     TODO();
 } //	Return From Procedure
-InterruptRaisedOr<void> CPU::handle_ROL(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ROL(cs_x86 const& insn_detail) {
     TODO();
 } //	Rotate
-InterruptRaisedOr<void> CPU::handle_ROR(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ROR(cs_x86 const& insn_detail) {
     TODO();
 } //	Rotate
-InterruptRaisedOr<void> CPU::handle_SAL(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SAL(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SAR(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SAR(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SGDT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SGDT(cs_x86 const& insn_detail) {
     TODO();
 } //	Store Global Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SHL(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SHL(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SHLD(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SHLD(cs_x86 const& insn_detail) {
     TODO();
 } //	Double Precision Shift Left
-InterruptRaisedOr<void> CPU::handle_SHLX(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SHLX(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SHR(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SHR(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SIDT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SIDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Store Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SLDT(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SLDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Store Local Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_STI(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_STI(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Set Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_SUB(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
     TODO();
 } //	Subtract
-InterruptRaisedOr<void> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Swap GS Base Register
-InterruptRaisedOr<void> CPU::handle_TEST(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_TEST(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
@@ -412,24 +421,24 @@ InterruptRaisedOr<void> CPU::handle_TEST(cs_x86 const& insn_detail) {
     bool first_val_sign_bit = first_val.sign_bit();
     res.has_sf_set = first_val_sign_bit;
 
-    return {};
+    return INCREMENT_IP;
 
 } //	Logical Compare
-InterruptRaisedOr<void> CPU::handle_XCHG(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_XCHG(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
 
-    first_op.write(second_val);
-    second_op.write(first_val);
-    //XCAG does not change a flag.
+    MAY_HAVE_RAISED(first_op.write(second_val));
+    MAY_HAVE_RAISED(second_op.write(first_val));
+    //XCHG does not change a flag.
 
-    return {};
+    return INCREMENT_IP;
 
-} //
-InterruptRaisedOr<void> CPU::handle_XOR(cs_x86 const& insn_detail) {
+} // Exchange
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_XOR(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
@@ -446,12 +455,11 @@ InterruptRaisedOr<void> CPU::handle_XOR(cs_x86 const& insn_detail) {
         res.has_zf_set = true;
     res.has_cf_set = false;
     res.has_of_set = false;
-    bool first_val_sign_bit = first_val.sign_bit();
-    res.has_sf_set = first_val_sign_bit;
+    res.has_sf_set = first_val.sign_bit();
 
-    return first_op.write(first_val);
-
-} //
+    MAY_HAVE_RAISED(first_op.write(first_val));
+    return INCREMENT_IP;
+} // XOR
 
 
 }

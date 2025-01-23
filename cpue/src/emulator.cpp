@@ -14,14 +14,18 @@ void Emulator::start() {
     // configure long-mode and init kernel
     u64 top = 0;
     UEFI uefi{&cpu};
+    CPUE_TRACE("preparing long mode...");
     uefi.prepare_long_mode(top);
+    CPUE_TRACE("initializing kernel...");
     CPUE_ASSERT(m_kernel.init(cpu, top), "Failed to initialize kernel");
 
     // load user elf
+    CPUE_TRACE("Loading user elf...");
     Loader loader{cpu};
     loader.load_user_elf(&m_binary, top);
 
     // start kernel (set rip, etc..)
+    CPUE_TRACE("Starting kernel...");
     m_kernel.start(cpu, m_binary.entry_point());
 
     // create VT100 terminal and start it if requested

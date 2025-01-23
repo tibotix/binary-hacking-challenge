@@ -34,6 +34,7 @@ void UEFI::setup_paging(u64& top) {
 
     // Identity map all available RAM, but at most 4MB
     auto pages = std::min(m_cpu->mmu().available_pages(), static_cast<size_t>(std::ceil(4_mb / PAGE_SIZE)));
+    CPUE_TRACE("We have {} available 4KB Pages -> map {} of them.", m_cpu->mmu().available_pages(), pages);
     u64 total_size = pages * PAGE_SIZE;
     m_loader.create_region_vas({.base = 0x0, .size = total_size, .flags = REGION_WRITABLE, .data = nullptr}, top, Loader::MappingStrategies::identity);
 

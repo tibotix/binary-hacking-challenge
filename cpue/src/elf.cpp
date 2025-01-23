@@ -1,5 +1,6 @@
 #include "elf.h"
 
+#include "logging.h"
 
 namespace CPUE {
 
@@ -15,7 +16,7 @@ void ELF::lazy_load_regions() {
         if (pseg->get_type() != ELFIO::PT_LOAD)
             continue;
         // Non-readable segments are simply not mapped
-        if (pseg->get_flags() & ELFIO::PF_R)
+        if (!(pseg->get_flags() & ELFIO::PF_R))
             continue;
 
         Region region = {

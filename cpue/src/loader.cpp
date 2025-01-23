@@ -23,8 +23,10 @@ void Loader::load_region(Region const& region, u64& top) {
     CPUE_ASSERT(IS_PAGE_ALIGNED(top), "top is not page aligned.");
 
     // create page table structures for region VAS.
-    if (!create_region_vas(region, top))
-        fail("Trying to load a Region into already mapped VAS.");
+    // TODO: fix this (reintroduce this protection mechanism) - maybe add allow_overwrite flag
+    create_region_vas(region, top);
+    // if (!create_region_vas(region, top))
+    //     fail("Trying to load a Region into already mapped VAS.");
 
     TranslationContext ctx = {
         .op = MemoryOp::OP_WRITE,
@@ -52,6 +54,8 @@ void Loader::load_region(Region const& region, u64& top) {
 
 bool Loader::create_region_vas(Region const& region, u64& top, u64 (*initial_mapping_strategy)(u64)) {
     CPUE_ASSERT(IS_PAGE_ALIGNED(top), "top is not page aligned.");
+
+    CPUE_TRACE("create_region_vas for range: 0x{:x} - 0x{:x}", PAGE_ALIGN(region.base.addr), PAGE_ALIGN_CEIL(region.base.addr + region.size));
 
     bool created_new_ptes = false;
 
@@ -86,14 +90,17 @@ bool Loader::create_region_vas(Region const& region, u64& top, u64 (*initial_map
 
             CPUE_ASSERT(result.pml4e != nullptr, "create_region_vas: pml4e == nullptr.");
             if (result.pdpte == nullptr) {
+                CPUE_TRACE("Creating new pdpt @ 0x{:x}", top);
                 // update pml4 entry
                 result.pml4e->value = top | 7;
                 top += 0x1000;
             } else if (result.pde == nullptr) {
+                CPUE_TRACE("Creating new page directory @ 0x{:x}", top);
                 // update pdpte entry
                 result.pdpte->value = top | 7;
                 top += 0x1000;
             } else if (result.pte == nullptr) {
+                CPUE_TRACE("Creating new page table @ 0x{:x}", top);
                 // update pde entry
                 result.pde->value = top | 7;
                 top += 0x1000;

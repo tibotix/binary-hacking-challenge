@@ -61,6 +61,11 @@ public:
         SUPERVISOR_MODE,
     };
 
+    enum IPIncrementBehavior {
+        INCREMENT_IP,
+        DONT_INCREMENT_IP,
+    };
+
     enum PagingMode { PAGING_MODE_NONE, PAGING_MODE_32BIT, PAGING_MODE_PAE, PAGING_MODE_4LEVEL, PAGING_MODE_5LEVEL };
 
     union RFLAGS {
@@ -227,7 +232,9 @@ public:
         printf("Shutting down...");
         exit(0);
     }
-    [[nodiscard]] InterruptRaisedOr<void> handle_insn(cs_insn const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_insn(cs_insn const&);
+
+    std::string dump_full_state() const;
 
     void reset();
 
@@ -394,32 +401,8 @@ private:
             case X86_OP_INVALID: fail("operand_read on invalid operand.");
         }
     }
-    [[nodiscard]] InterruptRaisedOr<SizedValue> operand_read(cs_x86_op const& operand) {
-        switch (operand.type) {
-            case X86_OP_REG: return reg(operand.reg)->read();
-            case X86_OP_MEM: {
-                auto do_mem_read = [&]<typename T>() -> InterruptRaisedOr<SizedValue> {
-                    return SizedValue(MAY_HAVE_RAISED(m_mmu.mem_read<T>(MAY_HAVE_RAISED(logical_address(operand.mem)))), ByteWidth(operand.size));
-                };
-                return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<SizedValue>, decltype(do_mem_read)>(do_mem_read);
-            }
-            case X86_OP_IMM: return SizedValue(operand.imm, ByteWidth(operand.size));
-            case X86_OP_INVALID: fail("operand_read on invalid operand.");
-        }
-    }
-    [[nodiscard]] InterruptRaisedOr<void> operand_write(cs_x86_op const& operand, SizedValue value) {
-        switch (operand.type) {
-            case X86_OP_REG: return reg(operand.reg)->write(value);
-            case X86_OP_MEM: {
-                auto do_mem_write = [&]<typename T>() -> InterruptRaisedOr<void> {
-                    return m_mmu.mem_write<T>(MAY_HAVE_RAISED(logical_address(operand.mem)), value.as<T>());
-                };
-                return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<void>, decltype(do_mem_write)>(do_mem_write);
-            }
-            case X86_OP_IMM:
-            case X86_OP_INVALID: fail("operand_write on invalid operand.");
-        }
-    }
+    [[nodiscard]] InterruptRaisedOr<SizedValue> operand_read(cs_x86_op const& operand);
+    [[nodiscard]] InterruptRaisedOr<void> operand_write(cs_x86_op const& operand, SizedValue value);
 
     class Operand {
     public:
@@ -726,67 +709,68 @@ private:
 
 private:
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
-    [[nodiscard]] InterruptRaisedOr<void> handle_ADD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_BOUND(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_DEC(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_DIV(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_IDIV(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_IMUL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_INC(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_INT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_INT1(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_INT3(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_INTO(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_INVLPG(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_IRET(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_IRETD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_IRETQ(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JMP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JNE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JGE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JG(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JLE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_JL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LEA(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LEAVE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LGDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LIDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LLDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LTR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_LOOP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_MOV(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_MOVSX(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_MOVSXD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_MOVZX(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_MUL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_NOP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_NOT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_OR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_POP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_POPF(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_POPFQ(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_PUSH(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_PUSHF(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_PUSHFQ(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_RET(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_ROL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_ROR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SAL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SAR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SGDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SHL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SHLD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SHLX(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SHR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SIDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SLDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_STI(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SUB(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_SWAPGS(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_TEST(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_XCHG(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<void> handle_XOR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ADD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_BOUND(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DEC(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DIV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_HLT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IDIV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IMUL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INC(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INT1(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INT3(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INTO(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INVLPG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IRET(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IRETD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IRETQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JMP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JNE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JGE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JLE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LEA(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LEAVE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LGDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LIDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LLDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LTR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVSX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVSXD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVZX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MUL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_NOP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_NOT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_OR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_POP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_POPF(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_POPFQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_PUSH(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_PUSHF(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_PUSHFQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_RET(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ROL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ROR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SAL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SAR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SGDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHLD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHLX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SIDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SLDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_STI(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SUB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SWAPGS(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_TEST(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_XCHG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_XOR(cs_x86 const&);
 };
 
 }

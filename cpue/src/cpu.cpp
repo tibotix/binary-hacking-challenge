@@ -2,6 +2,8 @@
 #include "cpu.h"
 #include "tss.h"
 
+#include <sstream>
+#include <iomanip>
 
 namespace CPUE {
 
@@ -83,14 +85,62 @@ auto CPU::execution_mode() const -> ExecutionMode {
 }
 
 
+std::string CPU::dump_full_state() const {
+    std::stringstream ss;
+
+    auto dump = [&ss](const char* msg, u64 value) -> void {
+        ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << value << "\n";
+    };
+
+    dump("RAX", m_rax_val);
+    dump("RBX", m_rbx_val);
+    dump("RCX", m_rcx_val);
+    dump("RDX", m_rdx_val);
+    dump("RSI", m_rsi_val);
+    dump("RDI", m_rdi_val);
+    dump("RBP", m_rbp_val);
+    dump("RSP", m_rsp_val);
+    dump("R8", m_r8_val);
+    dump("R9", m_r9_val);
+    dump("R10", m_r10_val);
+    dump("R11", m_r11_val);
+    dump("R12", m_r12_val);
+    dump("R13", m_r13_val);
+    dump("R14", m_r14_val);
+    dump("R15", m_r15_val);
+    dump("RIP", m_rip_val);
+    dump("RFLAGS", m_rflags.value);
+    dump("EFER", m_rflags.value);
+    dump("CS", m_cs.visible.segment_selector.value);
+    dump("SS", m_ss.visible.segment_selector.value);
+    dump("DS", m_ds.visible.segment_selector.value);
+    dump("ES", m_es.visible.segment_selector.value);
+    dump("FS", m_fs.visible.segment_selector.value);
+    dump("GS", m_gs.visible.segment_selector.value);
+
+    return ss.str();
+}
+
+
 void CPU::interpreter_loop() {
+    u8 ip_increment = 0;
     for (;;) {
         m_state = STATE_FETCH_INSTRUCTION;
-        if (auto insn = m_disassembler.next_insn(); !insn.raised()) {
+        if (auto int_or_insn = m_disassembler.next_insn(); !int_or_insn.raised()) {
             m_state = STATE_HANDLE_INSTRUCTION;
-            TODO_NOFAIL("Handle insn");
 
-            // handle_insn()
+            auto insn = int_or_insn.release_value();
+
+            // by default, increment ip to next insn
+            // TODO: don't increment when handling FAULT_EXCEPTION
+            // TODO: refactor this
+            ip_increment = insn.size;
+
+            auto res = handle_insn(insn);
+            // If this instruction executed successfully (without any interrupt), and instructs us to not increment ip, reset increment_ip.
+            if (!res.raised() && res.release_value() == DONT_INCREMENT_IP)
+                ip_increment = 0;
+            CPUE_TRACE("State: \n{}", dump_full_state());
         }
 
         // Handle interrupts
@@ -128,6 +178,8 @@ void CPU::interpreter_loop() {
             // It doesn't matter if this raises, because no matter what we always process all pending interrupts.
             (void)handle_interrupt(i);
         }
+
+        m_rip_val += ip_increment;
     }
 }
 
@@ -565,6 +617,7 @@ InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) 
         // explicitly use the SS segment register), a stack fault (#SS) is generated. In either case, a null error code is
         // produced.
         TODO_NOFAIL("raise #GP or #SS");
+        CPUE_TRACE("Canonicality Check failed for vaddr {:x}", vaddr.addr);
         return raise_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
     }
     return {};
@@ -575,6 +628,33 @@ DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) cons
         case 0: return m_gdtr;
         case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
         default: fail();
+    }
+}
+
+InterruptRaisedOr<SizedValue> CPU::operand_read(cs_x86_op const& operand) {
+    switch (operand.type) {
+        case X86_OP_REG: return reg(operand.reg)->read();
+        case X86_OP_MEM: {
+            auto do_mem_read = [&]<typename T>() -> InterruptRaisedOr<SizedValue> {
+                return SizedValue(MAY_HAVE_RAISED(m_mmu.mem_read<T>(MAY_HAVE_RAISED(logical_address(operand.mem)))), ByteWidth(operand.size));
+            };
+            return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<SizedValue>, decltype(do_mem_read)>(do_mem_read);
+        }
+        case X86_OP_IMM: return SizedValue(operand.imm, ByteWidth(operand.size));
+        case X86_OP_INVALID: fail("operand_read on invalid operand.");
+    }
+}
+InterruptRaisedOr<void> CPU::operand_write(cs_x86_op const& operand, SizedValue value) {
+    switch (operand.type) {
+        case X86_OP_REG: return reg(operand.reg)->write(value);
+        case X86_OP_MEM: {
+            auto do_mem_write = [&]<typename T>() -> InterruptRaisedOr<void> {
+                return m_mmu.mem_write<T>(MAY_HAVE_RAISED(logical_address(operand.mem)), value.as<T>());
+            };
+            return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<void>, decltype(do_mem_write)>(do_mem_write);
+        }
+        case X86_OP_IMM:
+        case X86_OP_INVALID: fail("operand_write on invalid operand.");
     }
 }
 

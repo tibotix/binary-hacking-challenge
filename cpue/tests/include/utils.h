@@ -16,6 +16,8 @@ T const& make_const_ref(T t) {
 }
 
 static cs_insn const asm_disassemble(std::string const& code) {
+    // TODO: Fix this for BUILD_TYPE=Release
+
     CPUE_ASSERT(code.size() > 0, "empty string");
     csh handle;
     cs_insn* insn;
