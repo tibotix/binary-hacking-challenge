@@ -389,7 +389,17 @@ InterruptRaisedOr<void> CPU::handle_STI(cs_x86 const& insn_detail) {
     TODO();
 } //	Set Interrupt Flag
 InterruptRaisedOr<void> CPU::handle_SUB(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+    auto res = CPUE_checked_single_usub(first_val, second_val);
+
+    update_rflags(res);
+    return first_op.write(res.value);
 } //	Subtract
 InterruptRaisedOr<void> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
