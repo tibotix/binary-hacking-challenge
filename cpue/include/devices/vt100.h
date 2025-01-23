@@ -9,14 +9,8 @@ namespace CPUE {
 
 class VT100 final : public UARTDevice {
 public:
-    VT100() {
-        // Disable terminal buffering and echoing
-        struct termios t {};
-        tcgetattr(STDIN_FILENO, &t);
-        t.c_lflag &= ~ICANON;
-        t.c_lflag &= ~ECHO;
-        tcsetattr(STDIN_FILENO, TCSANOW, &t);
-    }
+    VT100() = default;
+    ~VT100() override { stop_loop_thread(); }
 
     void rx(char const c) override {
         putchar(c);
@@ -29,11 +23,30 @@ public:
             std::scoped_lock _(m_mutex);
             m_should_stop = true;
         }
-        m_thread.join();
+        if (m_thread.joinable())
+            m_thread.join();
     }
 
 private:
+    void disable_terminal_echo() const {
+        // Disable terminal buffering and echoing
+        struct termios t {};
+        tcgetattr(STDIN_FILENO, &t);
+        t.c_lflag &= ~ICANON;
+        t.c_lflag &= ~ECHO;
+        tcsetattr(STDIN_FILENO, TCSANOW, &t);
+    }
+    void enable_terminal_echo() const {
+        // Enable terminal buffering and echoing
+        struct termios t {};
+        tcgetattr(STDIN_FILENO, &t);
+        t.c_lflag |= ICANON;
+        t.c_lflag |= ECHO;
+        tcsetattr(STDIN_FILENO, TCSANOW, &t);
+    }
     void loop() {
+        disable_terminal_echo();
+
         char c;
         while (({
             std::scoped_lock _(m_mutex);
@@ -42,6 +55,8 @@ private:
             if ((c = getchar()) != EOF)
                 tx(c);
         }
+
+        enable_terminal_echo();
     }
     std::mutex m_mutex;
     bool m_should_stop = false;

@@ -8,6 +8,7 @@ void UEFI::prepare_long_mode(u64& top) {
     setup_paging(top);
     setup_gdt(top);
     setup_idt(top);
+    setup_stack(top);
     reserve_scratch_space(top);
 }
 
@@ -28,70 +29,53 @@ void UEFI::setup_paging(u64& top) {
     // Setup page tables
     m_cpu->m_cr3_val = 0x0;
 
-    // Map all available RAM
-    // map at most 2MB
+    // Make space for PML4
+    top += 0x1000;
+
+    // Identity map all available RAM, but at most 4MB
     auto pages = std::min(m_cpu->mmu().available_pages(), static_cast<size_t>(std::ceil(4_mb / PAGE_SIZE)));
-    u64 total_size = pages * 8 + std::ceil((pages * 8 * 8) / (512)) + std::ceil((pages * 8 * 8 * 8) / (512 * 512)) + 4_kb;
-    CPUE_ASSERT(m_cpu->mmu().physmem_size() >= total_size, "setup_paging: Out of memory.");
-    u64 pml4_base = 0x0;
-    u64 pdpte_base = 0x0;
-    u64 pdt_base = 0x0;
-    top = 0x1000; // the first 4K bytes are reserved for pml4 entries.
-    for (u64 i = 0; i < pages; ++i) {
-        if (i % (512 * 512 * 512) == 0) {
-            // create pdpte at base
-            pdpte_base = top;
-            CPUE_ASSERT(!m_cpu->mmu().mem_write64(pdpte_base, top + 0x1000 | 3).raised(), "exception while setting up paging.");
-            // update pml4 entry
-            CPUE_ASSERT(!m_cpu->mmu().mem_write64(pml4_base + (i / (512 * 512 * 512)), pdpte_base | 3).raised(), "exception while setting up paging.");
-            top += 0x1000;
-        }
-        if (i % (512 * 512) == 0) {
-            // create pdt at base
-            pdt_base = top;
-            CPUE_ASSERT(!m_cpu->mmu().mem_write64(pdt_base, top + 0x1000 | 3).raised(), "exception while setting up paging.");
-            // update pdpte entry
-            CPUE_ASSERT(!m_cpu->mmu().mem_write64(pdpte_base + (i / (512 * 512)), pdt_base | 3).raised(), "exception while setting up paging.");
-            top += 0x1000;
-        }
-        if (i % 512 == 0) {
-            // update pdt entry
-            CPUE_ASSERT(!m_cpu->mmu().mem_write64(pdt_base + (i / (512)), top | 3).raised(), "exception while setting up paging.");
-        }
-        // create pte at base
-        CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, i * PAGE_SIZE | 3).raised(), "exception while setting up paging.");
-        top += 0x8;
-    }
+    u64 total_size = pages * PAGE_SIZE;
+    m_loader.create_region_vas({.base = 0x0, .size = total_size, .flags = REGION_WRITABLE, .data = nullptr}, top, Loader::MappingStrategies::identity);
 
     // Enable Paging
     cr0.c.PG = 1;
     m_cpu->m_cr0_val = cr0.value;
 }
 void UEFI::setup_gdt(u64& top) {
-    // This will set up a temporary GDT to jump to enter long mode
+    // This will set up a temporary GDT to use in long mode
 
-    top = PAGE_ALIGN_CEIL(top);
+    top = 0x4000;
     CPUE_ASSERT(m_cpu->mmu().physmem_size() >= top + 512 * 8, "setup_idt: Out of memory");
     u64 gdt_base = top;
 
     u64 code_flags = 0b10100000 | 0xF; // GRAN_4K | LONG_MODE | 0xF
-    u64 code_access = 0b10011010; // PRESENT | NOT_SYS | EXEC | RW
-    u64 code_segment_descriptor = (code_flags << 48) | (code_access << 40) | 0x000000ffff;
+    u64 ring0_code_access = 0b10011010; // PRESENT | NOT_SYS | EXEC | RW - DPL: 0x0
+    u64 ring0_code_segment_descriptor = (code_flags << 48) | (ring0_code_access << 40) | 0x000000ffff; // Base: 0x0 - Limit: 0xffff
+    u64 ring3_code_access = 0b11111010; // PRESENT | NOT_SYS | EXEC | RW - DPL: 0x11
+    u64 ring3_code_segment_descriptor = (code_flags << 48) | (ring3_code_access << 40) | 0x000000ffff; // Base: 0x0 - Limit: 0xffff
     u64 data_flags = 0b11000000 | 0xF; // GRAN_4K | SZ_32 | 0xF
-    u64 data_access = 0b10010010; // PRESENT | NOT_SYS | RW
-    u64 data_segment_descriptor = (data_flags << 48) | (data_access << 40) | 0x000000ffff;
+    u64 ring0_data_access = 0b10010010; // PRESENT | NOT_SYS | RW - DPL: 0x0
+    u64 ring0_data_segment_descriptor = (data_flags << 48) | (ring0_data_access << 40) | 0x000000ffff; // Base: 0x0 - Limit: 0xffff
+    u64 ring3_data_access = 0b11110010; // PRESENT | NOT_SYS | RW - DPL: 0x11
+    u64 ring3_data_segment_descriptor = (data_flags << 48) | (ring3_data_access << 40) | 0x000000ffff; // Base: 0x0 - Limit: 0xffff
 
     // Null segment descriptor
     CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, 0x0).raised(), "exception while setting up GDT.");
     top += 0x8;
-    // Code segment descriptor
-    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, code_segment_descriptor).raised(), "exception while setting up GDT.");
+    // Ring0 Code segment descriptor
+    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, ring0_code_segment_descriptor).raised(), "exception while setting up GDT.");
     top += 0x8;
-    // Data segment descriptor
-    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, data_segment_descriptor).raised(), "exception while setting up GDT.");
+    // Ring0 Data/Stack segment descriptor
+    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, ring0_data_segment_descriptor).raised(), "exception while setting up GDT.");
     top += 0x8;
-    // Make space for additional entries (3+507+2entries pointer = 512)
-    for (int i = 0; i < 507; ++i) {
+    // Ring3 Code segment descriptor
+    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, ring3_code_segment_descriptor).raised(), "exception while setting up GDT.");
+    top += 0x8;
+    // Ring3 Data/Stack segment descriptor
+    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, ring3_data_segment_descriptor).raised(), "exception while setting up GDT.");
+    top += 0x8;
+    // Make space for additional entries (5+505+2entries pointer = 512)
+    for (int i = 0; i < 505; ++i) {
         CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, 0x0).raised(), "exception while setting up GDT.");
         top += 0x8;
     }
@@ -103,14 +87,19 @@ void UEFI::setup_gdt(u64& top) {
     CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, gdt_base).raised(), "exception while setting up GDT.");
     top += 0x8;
 
-    TODO_NOFAIL("lgdt [gdt_pointer]");
+    // TODO: maybe use actual lgdt [gdt_pointer] insn
+    m_cpu->m_gdtr = {.base = gdt_base, .limit = gdt_limit};
+
+    // TODO: refactor these, maybe use actual move cs, ... insn
+    CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::CS, SegmentSelector(1 << 3)).raised(), "exception while loading CS.");
+    CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::DS, SegmentSelector(2 << 3)).raised(), "exception while loading DS.");
 }
 
 
 void UEFI::setup_idt(u64& top) {
-    // This will set up a temporary IDT to jump to enter long mode
+    // This will set up a temporary IDT to use in long mode
 
-    top = PAGE_ALIGN_CEIL(top);
+    top = 0x5000;
     CPUE_ASSERT(m_cpu->mmu().physmem_size() >= top + 512 * 8, "setup_idt: Out of memory");
     u64 idt_base = top;
 
@@ -128,12 +117,21 @@ void UEFI::setup_idt(u64& top) {
     CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up GDT.");
     top += 0x8;
 
+    TODO_NOFAIL("cli");
     TODO_NOFAIL("lidt [idt_pointer]");
 }
 
+void UEFI::setup_stack(u64& top) {
+    top = 0x6000;
+    CPUE_ASSERT(m_cpu->mmu().physmem_size() >= top, "setup_stack: Out of memory");
+
+    TODO_NOFAIL("mov ss, 2");
+    TODO_NOFAIL("mov rsp, 0x6000");
+}
+
 void UEFI::reserve_scratch_space(u64& top) {
-    top = PAGE_ALIGN_CEIL(top);
-    top += PAGE_SIZE * 2;
+    top = 0x7000;
+    top += PAGE_SIZE * 1;
     CPUE_ASSERT(m_cpu->mmu().physmem_size() >= top, "reserve_scratch_space: Out of memory");
 }
 

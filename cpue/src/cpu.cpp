@@ -491,7 +491,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         // The processor loads the segment selector into the segment register if the DPL is numerically greater
         // than or equal to both the CPL and the RPL. Otherwise, a general-protection fault is generated and the segment
         // register is not loaded.
-        if (!(descriptor.access.c.dpl <= cpl() && descriptor.access.c.dpl <= selector.c.rpl)) {
+        if (!(descriptor.access.c.dpl >= cpl() && descriptor.access.c.dpl >= selector.c.rpl)) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }

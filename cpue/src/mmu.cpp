@@ -331,8 +331,9 @@ InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, Tra
     ApplicationSegmentDescriptor const& descriptor = laddr.segment_register.hidden.cached_descriptor;
     if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT) {
         CPUE_ASSERT(descriptor.l == 1, "Only 64-bit code segments are supported");
-        CPUE_ASSERT(descriptor.l == 1 && descriptor.db == 1, "#GP");
     }
+    if (descriptor.l == 1 && descriptor.db == 1)
+        return m_cpu->raise_interrupt(Exceptions::GP(error_code));
 
     // 2.   Examines the segment descriptor to check the access rights and range of the segment to ensure that the
     //      segment is accessible and that the offset is within the limits of the segment.

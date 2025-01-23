@@ -32,6 +32,9 @@ public:
     friend GeneralPurposeRegisterProxy;
     friend ControlRegisterProxy;
     friend ApplicationSegmentRegisterProxy;
+    friend class NoKernel;
+    friend class EmulatedKernel;
+    friend class CustomKernel;
     explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
         reset();
     }

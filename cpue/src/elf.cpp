@@ -1,0 +1,57 @@
+#include "elf.h"
+
+
+namespace CPUE {
+
+
+void ELF::lazy_load_regions() {
+    lazy_load();
+    if (m_regions_loaded)
+        return;
+
+    m_regions.reserve(m_reader.segments.size());
+    for (auto& pseg : m_reader.segments) {
+        // only load PT_LOAD segments into memory
+        if (pseg->get_type() != ELFIO::PT_LOAD)
+            continue;
+        // Non-readable segments are simply not mapped
+        if (pseg->get_flags() & ELFIO::PF_R)
+            continue;
+
+        Region region = {
+            .base = pseg->get_virtual_address(),
+            // TODO: fix the different sizes
+            .size = pseg->get_file_size(), // pseg->get_memory_size
+            .flags = get_region_flags_for_segment(*pseg),
+            .data = (u8*)pseg->get_data(),
+        };
+        if (region.base > m_vas_range.first)
+            m_vas_range.first = region.base.addr;
+        if (region.base + region.size > m_vas_range.second)
+            m_vas_range.second = (region.base + region.size).addr;
+        m_regions.push_back(region);
+    }
+
+    m_regions_loaded = true;
+}
+
+void ELF::lazy_load() {
+    if (m_is_loaded)
+        return;
+    if (!m_reader.load(m_filename))
+        fail("Error while trying to load ELF file");
+    m_is_loaded = true;
+}
+
+u64 ELF::get_region_flags_for_segment(ELFIO::segment& segment) const {
+    u64 flags = 0x0;
+    u64 segment_flags = segment.get_flags();
+    if (segment_flags & ELFIO::PF_X)
+        flags |= REGION_EXECUTABLE;
+    if (segment_flags & ELFIO::PF_W)
+        flags |= REGION_WRITABLE;
+    return flags;
+}
+
+
+}

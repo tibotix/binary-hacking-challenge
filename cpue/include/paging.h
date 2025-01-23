@@ -34,6 +34,9 @@ constexpr u64 PAGE_NUMBER_MASK = (((u64)1 << (VIRTUAL_ADDR_BITS - 12)) - 1) << 1
 constexpr u64 MAXPHYADDR = 36;
 static_assert(MAXPHYADDR <= 36, "MAXPHYADDR must be <= 36");
 
+constexpr bool IS_PAGE_ALIGNED(u64 value) {
+    return ((value & ~PAGE_NUMBER_MASK) & VIRTUAL_ADDR_MASK) == 0;
+}
 constexpr u64 PAGE_ALIGN(u64 value) {
     return value & PAGE_NUMBER_MASK;
 }
