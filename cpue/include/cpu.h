@@ -245,6 +245,7 @@ public:
     }
 
     u64 rip() const { return m_rip_val; }
+    void set_rip(u64 index) { m_rip_val = index; } 
 
 
     CR0 cr0() const { return {.value = m_cr0_val}; }

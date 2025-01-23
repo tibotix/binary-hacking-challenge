@@ -207,8 +207,46 @@ InterruptRaisedOr<void> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
     TODO();
 } //	Interrupt Return
 InterruptRaisedOr<void> CPU::handle_JMP(cs_x86 const& insn_detail) {
-    TODO();
-} //	Jump
+
+    // Operand containing the target address.
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    // Calculate the jump address based on the type of operand.
+    uint64_t target_address = 0;
+
+    switch (first_op.operand().type) {
+        case X86_OP_IMM: {
+            // Direct jump: the target address is an immediate value (relative offset).
+            auto imm_value = MAY_HAVE_RAISED(first_op.read());
+            target_address = rip() + imm_value.value();  // Relative offset to RIP.
+            break;
+        }
+
+        case X86_OP_MEM: {
+            // Indirect jump: address is stored in a memory location.
+            auto mem_address = MAY_HAVE_RAISED(operand_mem_offset(first_op.operand().mem));
+            auto offset = MAY_HAVE_RAISED(first_op.read());
+            break;
+        }
+
+        case X86_OP_REG: {
+            // Indirect jump: address is stored in a register.
+            auto reg_value = MAY_HAVE_RAISED(first_op.read());
+            target_address = reg_value.value();
+            break;
+        }
+
+        case X86_OP_INVALID: {
+            fail("Invalid type given!");    
+            break;
+        }
+    }
+
+    // Update the instruction pointer (RIP).
+    set_rip(target_address);
+
+    return {}; // Successfully executed the jump.
+} // Jump
 InterruptRaisedOr<void> CPU::handle_JNE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Not Equal
@@ -280,14 +318,11 @@ InterruptRaisedOr<void> CPU::handle_MOV(cs_x86 const& insn_detail) {
         second_val = sign_extend(second_val, first_val.byte_width());
 
     // Ensure the operands are the same size
-    if (sizeof(first_op) != sizeof(second_op)) {
+    if (sizeof(first_val) != sizeof(second_val)) {
         fail("Operands must have the same size.");
     }
 
-    // Write the value to the destination operand
-    MAY_HAVE_RAISED(first_op.write(second_val));
-
-    return {};
+    return first_op.write(second_val);
 } //	Move
 InterruptRaisedOr<void> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
     TODO();
@@ -354,6 +389,7 @@ InterruptRaisedOr<void> CPU::handle_PUSHFQ(cs_x86 const& insn_detail) {
 } //	Push RFLAGS Register Onto the Stack
 InterruptRaisedOr<void> CPU::handle_RET(cs_x86 const& insn_detail) {
     TODO();
+
 } //	Return From Procedure
 InterruptRaisedOr<void> CPU::handle_ROL(cs_x86 const& insn_detail) {
     TODO();
