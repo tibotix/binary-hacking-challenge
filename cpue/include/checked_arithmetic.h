@@ -5,7 +5,6 @@
 #include "sized_value.h"
 
 
-
 namespace CPUE {
 
 struct ArithmeticResult {
@@ -22,6 +21,7 @@ struct ArithmeticResult {
     constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), has_sf_set(false), has_zf_set(false) {}
 };
 
+// NOTE: SizedValue is a helper struct which include multiple small functions to gain details about the operands
 constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, SizedValue const& summand) {
     ArithmeticResult res;
     res.value = first;
@@ -75,16 +75,37 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first,
     return res;
 }
 
+// The OF and CF flags are set to 0 if the upper half of the result is 0; otherwise, they are set to 1.
+// The SF, ZF, AF, and PF flags are undefined.
+// FIXME: Flags are not set correctly
+constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
+    ArithmeticResult res;
+    uint64_t product = first.value() * summand.value();
 
+    uint64_t maxValue = first.max_val();
+    uint64_t highBits = product >> first.bit_width();
 
+    // Set Carry Flag (CF) - if High-order bits are non-zero indicates unsigned overflow
+    res.has_cf_set = (highBits != 0);
 
-constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+    // Set Overflow Flag (OF) - Signed overflow if the signs of inputs match but differ from the result
+    bool sign_first = first.sign_bit();
+    bool sign_second = summand.sign_bit();
+    bool sign_result = ((product >> (first.bit_width() - 1)) & 1);
+
+    res.has_of_set = (sign_first == sign_second) && (sign_first != sign_result);
+
+    //NOTE: vorschlag von chat
+    /*res.value = SizedValue(product, first.bit_width()); // Ensure the result fits into the same operand size*/
+    
+    res.value = product;
+
+    return res;
 }
 
-
-constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+template<unsigned_integral R, typename T>
+requires(std::is_same_v<R, T>) constexpr ArithmeticResult CPUE_checked_single_umul(R const first, T const summand) {
+    return CPUE_checked_single_umul(SizedValue(first), SizedValue(summand));
 }
 
 template<unsigned_integral R, typename... T>
@@ -94,22 +115,30 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
 
     constexpr R MAX_VAL = std::numeric_limits<R>::max();
 
-    int i = 0;
     R res = first;
 
     for (const auto f : {factors...}) {
-        // Fail if including this additional factor would exceed MAX_VAL
-        size_t max_factor = MAX_VAL / res;
-        if (f > max_factor)
-            fail("Integer overflow in multiplication.");
-        res *= f;
+        auto r = CPUE_checked_single_umul(res, f);
+        if (r.has_cf_set)
+            fail("Integer overflow in multiplikation.");
+        res = r.value.template as<R>();
     }
+
+    return res;
+}
+
+
+constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
+    TODO("Not yet implemented!");
+    ArithmeticResult res;
     return res;
 }
 
 
 constexpr ArithmeticResult CPUE_checked_single_udiv(SizedValue const& first, SizedValue const& summand) {
-    TODO();
+    TODO("Not yet implemented!");
+    ArithmeticResult res;
+    return res;
 }
 
 

@@ -40,3 +40,21 @@ TEST_CASE("CPUE_checked_single_uadd", "[checked_arithmetic]") {
     REQUIRE(res.has_cf_set == true);
     REQUIRE(res.has_of_set == false);
 }
+
+
+TEST_CASE("CPUE_checked_single_umul", "[checked_arithmetic]") {
+    auto prod = CPUE_checked_single_umul<u8, u8>(127, 2);
+    REQUIRE(prod.has_cf_set == false);
+    REQUIRE(prod.has_of_set == true);
+
+    prod = CPUE_checked_single_umul<u8, u8>(127, 10);
+    REQUIRE(prod.has_cf_set == true);
+    REQUIRE(prod.has_of_set == true);
+
+    prod = CPUE_checked_single_umul<u8, u8>(1, 2);
+    REQUIRE(prod.has_cf_set == false);
+    REQUIRE(prod.has_of_set == false);
+
+    // TODO: add case to check product 0b1111111, which should not have flags set
+
+}

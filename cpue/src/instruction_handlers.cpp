@@ -293,7 +293,17 @@ InterruptRaisedOr<void> CPU::handle_MOVZX(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Zero-Extend
 InterruptRaisedOr<void> CPU::handle_MUL(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+    auto res = CPUE_checked_single_umul(first_val, second_val);
+
+    update_rflags(res);
+    return first_op.write(res.value);
 } //	Unsigned Multiply
 InterruptRaisedOr<void> CPU::handle_NOP(cs_x86 const& insn_detail) {
     return {};
@@ -386,13 +396,61 @@ InterruptRaisedOr<void> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
     TODO();
 } //	Swap GS Base Register
 InterruptRaisedOr<void> CPU::handle_TEST(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+
+    first_val = first_val & second_val;
+
+    ArithmeticResult res{};
+    res.has_of_set = false;
+    res.has_cf_set = false;
+    if (first_val == 0)
+        res.has_zf_set = true;
+    bool first_val_sign_bit = first_val.sign_bit();
+    res.has_sf_set = first_val_sign_bit;
+
+    return {};
+
 } //	Logical Compare
 InterruptRaisedOr<void> CPU::handle_XCHG(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+
+    first_op.write(second_val);
+    second_op.write(first_val);
+    //XCAG does not change a flag.
+
+    return {};
+
 } //
 InterruptRaisedOr<void> CPU::handle_XOR(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+
+    first_val = first_val ^ second_val;
+
+    //update flags
+    ArithmeticResult res{};
+    if (first_val == 0)
+        res.has_zf_set = true;
+    res.has_cf_set = false;
+    res.has_of_set = false;
+    bool first_val_sign_bit = first_val.sign_bit();
+    res.has_sf_set = first_val_sign_bit;
+
+    return first_op.write(first_val);
+
 } //
 
 
