@@ -122,7 +122,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ADD(cs_x86 const& insn_d
     auto res = CPUE_checked_single_uadd(first_val, second_val);
 
     update_rflags(res);
-    return first_op.write(res.value);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return INCREMENT_IP;
 } //	Add
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_BOUND(cs_x86 const& insn_detail) {
     // TODO: probably don't implement this insn
@@ -216,8 +218,29 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IRETQ(cs_x86 const& insn
     TODO();
 } //	Interrupt Return
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JMP(cs_x86 const& insn_detail) {
-    TODO();
-} //	Jump
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    TODO_NOFAIL("handle short/far jumps and task switch");
+
+    // near jumps
+    auto near_jump_dest = [&]() -> InterruptRaisedOr<u64> {
+        switch (first_op.operand().type) {
+            // relative offset
+            case X86_OP_IMM: return rip() + MAY_HAVE_RAISED(first_op.read()).value();
+            // absolute offset
+            case X86_OP_MEM:
+            case X86_OP_REG: return MAY_HAVE_RAISED(first_op.read());
+            case X86_OP_INVALID: fail("Invalid type given!");
+        }
+    };
+
+    auto dest = MAY_HAVE_RAISED(near_jump_dest());
+
+    // Update the instruction pointer (RIP).
+    set_rip(dest);
+
+    return INCREMENT_IP; // Successfully executed the jump.
+} // Jump
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JNE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Not Equal
@@ -246,7 +269,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEA(cs_x86 const& insn_d
         return raise_integral_interrupt(Exceptions::UD());
     auto offset = MAY_HAVE_RAISED(operand_mem_offset(second_op.operand().mem));
 
-    return first_op.write(SizedValue(offset, first_op.byte_width()));
+    MAY_HAVE_RAISED(first_op.write(SizedValue(offset, first_op.byte_width())));
+
+    return INCREMENT_IP;
 } //	Load Effective Address
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEAVE(cs_x86 const& insn_detail) {
     TODO();
@@ -284,13 +309,31 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOV(cs_x86 const& insn_d
      * Writing to a reserved bit in an MSR.
      * If an attempt is made to set a reserved bit in CR3, CR4 or CR8.
      */
-    auto first_op = Operand(this, insn_detail.operands[0]);
-    auto second_op = Operand(this, insn_detail.operands[1]);
 
-    auto first_val = MAY_HAVE_RAISED(second_op.read());
-    MAY_HAVE_RAISED(first_op.write(first_val));
+    // Prevent the MOV instruction from attempting to load the CS register
+    if (insn_detail.operands[0].type == X86_OP_REG && insn_detail.operands[0].reg == X86_REG_CS) {
+        fail("Cannot load CS register using the MOV instruction. Use far JMP, CALL, or RET instead.");
+    }
 
-    TODO();
+    // Retrieve operands (destination and source)
+    auto first_op = Operand(this, insn_detail.operands[0]); // Destination
+    auto second_op = Operand(this, insn_detail.operands[1]); // Source
+
+    // Read the value from the source operand
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+
+    // Ensure the operands are the same size
+    if (first_val.bit_width() != second_val.bit_width()) {
+        fail("Operands must have the same size.");
+    }
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+
+    return INCREMENT_IP;
 } //	Move
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
     TODO();
@@ -302,6 +345,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVZX(cs_x86 const& insn
     TODO();
 } //	Move With Zero-Extend
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MUL(cs_x86 const& insn_detail) {
+    // TODO: fix this
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
@@ -312,7 +356,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MUL(cs_x86 const& insn_d
     auto res = CPUE_checked_single_umul(first_val, second_val);
 
     update_rflags(res);
-    return first_op.write(res.value);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return INCREMENT_IP;
 } //	Unsigned Multiply
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_NOP(cs_x86 const& insn_detail) {
     return INCREMENT_IP;
@@ -323,7 +369,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_NOT(cs_x86 const& insn_d
     auto value = MAY_HAVE_RAISED(first_op.read());
     auto not_value = SizedValue(~value.value(), value.byte_width());
 
-    return first_op.write(not_value);
+    MAY_HAVE_RAISED(first_op.write(not_value));
+
+    return INCREMENT_IP;
 } //	One's Complement Negation
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_OR(cs_x86 const& insn_detail) {
     TODO();
@@ -333,7 +381,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_POP(cs_x86 const& insn_d
 
     auto value = MAY_HAVE_RAISED(stack_pop(INTENTION_HANDLE_INSTRUCTION));
 
-    return first_op.write(SizedValue(value));
+    MAY_HAVE_RAISED(first_op.write(SizedValue(value)));
+
+    return INCREMENT_IP;
 } //	Pop a Value From the Stack
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_POPF(cs_x86 const& insn_detail) {
     TODO();
@@ -346,17 +396,20 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSH(cs_x86 const& insn_
 
     auto value = MAY_HAVE_RAISED(first_op.read());
 
-    return stack_push(value.as<u64>());
-
+    MAY_HAVE_RAISED(stack_push(value.as<u64>()));
+    return INCREMENT_IP;
 } //	Push Word, Doubleword, or Quadword Onto the Stack
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSHF(cs_x86 const& insn_detail) {
-    return stack_push(m_rflags.value & 0x000000000000FFFF);
+    MAY_HAVE_RAISED(stack_push(m_rflags.value & 0x000000000000FFFF));
+    return INCREMENT_IP;
 } //	Push lower 16 bits of RFLAGS Register Onto the Stack
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSHFQ(cs_x86 const& insn_detail) {
-    return stack_push(m_rflags.value & 0x0000000000FCFFFF);
+    MAY_HAVE_RAISED(stack_push(m_rflags.value & 0x0000000000FCFFFF));
+    return INCREMENT_IP;
 } //	Push RFLAGS Register Onto the Stack
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_RET(cs_x86 const& insn_detail) {
     TODO();
+
 } //	Return From Procedure
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ROL(cs_x86 const& insn_detail) {
     TODO();
@@ -398,7 +451,19 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_STI(cs_x86 const& insn_d
     TODO();
 } //	Set Interrupt Flag
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+    auto res = CPUE_checked_single_usub(first_val, second_val);
+
+    update_rflags(res);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return INCREMENT_IP;
 } //	Subtract
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());

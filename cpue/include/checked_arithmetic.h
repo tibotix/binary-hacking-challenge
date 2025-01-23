@@ -1,6 +1,5 @@
 #pragma once
 
-#include <limits>
 #include "common.h"
 #include "sized_value.h"
 
@@ -75,9 +74,9 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_uadd(R const first,
     return res;
 }
 
+// NOTE:
 // The OF and CF flags are set to 0 if the upper half of the result is 0; otherwise, they are set to 1.
 // The SF, ZF, AF, and PF flags are undefined.
-// FIXME: Flags are not set correctly
 constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, SizedValue const& summand) {
     ArithmeticResult res;
     uint64_t product = first.value() * summand.value();
@@ -113,8 +112,6 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
     // Consider calculation invalid if we are only multiplying one number
     static_assert(sizeof...(factors) > 0, "You have to multiply at least two numbers together.");
 
-    constexpr R MAX_VAL = std::numeric_limits<R>::max();
-
     R res = first;
 
     for (const auto f : {factors...}) {
@@ -127,13 +124,54 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
     return res;
 }
 
-
+// NOTE:
+// Two memory operands cannot be used in one instruction.
+// OF and CF flags to indicate an overflow in the signed or unsigned result, respectively. 
+// The SF flag indicates the sign of the signed result
+// OF, SF, ZF, and CF flags
 constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
-    TODO("Not yet implemented!");
     ArithmeticResult res;
+
+    res.value = first.value() - summand.value();
+
+    if (summand.value() > first.value())
+        res.has_cf_set = true;
+
+    // Setting SIGN-BIT, extract it from res
+    res.has_sf_set = res.value.sign_bit();
+
+    // Setting OVERFLOW-BIT
+    if (first.sign_bit() != summand.sign_bit() && first.sign_bit() != res.value.sign_bit())
+        res.has_of_set = true;
+
+    // Set ZERO-BIT
+    if (res.value == 0)
+        res.has_zf_set = true;
+
     return res;
 }
 
+template<unsigned_integral R, typename T>
+requires(std::is_same_v<R, T>) constexpr ArithmeticResult CPUE_checked_single_usub(R const first, T const summand) {
+    return CPUE_checked_single_usub(SizedValue(first), SizedValue(summand));
+}
+
+template<unsigned_integral R, typename... T>
+requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_usub(R const first, T const... factors) {
+    // Consider calculation invalid if we are only multiplying one number
+    static_assert(sizeof...(factors) > 0, "You have to subtract at least two numbers together.");
+
+    R res = first;
+
+    for (const auto f : {factors...}) {
+        auto r = CPUE_checked_single_usub(res, f);
+        if (r.has_cf_set)
+            fail("Integer overflow in subtraction.");
+        res = r.value.template as<R>();
+    }
+
+    return res;
+}
 
 constexpr ArithmeticResult CPUE_checked_single_udiv(SizedValue const& first, SizedValue const& summand) {
     TODO("Not yet implemented!");
