@@ -26,3 +26,8 @@ nasm -f elf64 -o simple_add.o simple_add.asm
 ld -o simple_add -no-pie -static simple_add.o
 # with --section-start=.text=... to set base address
 ```
+
+run with
+```sh
+./build/cpue -v --kernel=none --no-serial ./golden_files/demo
+```

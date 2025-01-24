@@ -134,7 +134,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_BOUND(cs_x86 const& insn
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
     };
-    return handle_interrupt(i);
+    MAY_HAVE_RAISED(handle_interrupt(i));
+
+    return INCREMENT_IP;
 } //	Check Array Index Against Bounds
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
     TODO();
@@ -197,7 +199,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INTO(cs_x86 const& insn_
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
     if (m_rflags.c.OF) {
-        return handle_interrupt(i);
+        MAY_HAVE_RAISED(handle_interrupt(i));
     }
     return DONT_INCREMENT_IP;
 } //	Call to Interrupt Procedure
@@ -220,34 +222,17 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IRETQ(cs_x86 const& insn
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JMP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
-    TODO_NOFAIL("handle short/far jumps and task switch");
-
-    // near jumps
-    auto near_jump_dest = [&]() -> InterruptRaisedOr<u64> {
-        switch (first_op.operand().type) {
-            // relative offset
-            case X86_OP_IMM: return rip() + MAY_HAVE_RAISED(first_op.read()).value();
-            // absolute offset
-            case X86_OP_MEM:
-            case X86_OP_REG: return MAY_HAVE_RAISED(first_op.read());
-            case X86_OP_INVALID: fail("Invalid type given!");
-        }
-    };
-
-    auto dest = MAY_HAVE_RAISED(near_jump_dest());
-
-    // Update the instruction pointer (RIP).
-    set_rip(dest);
-
-    return INCREMENT_IP; // Successfully executed the jump.
+    TODO_NOFAIL("Check for far jumps.");
+    m_rip_val = MAY_HAVE_RAISED(first_op.read()).value();
+    return DONT_INCREMENT_IP;
 } // Jump
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JNE(cs_x86 const& insn_detail) {
     TODO();
 } //	Jump Not Equal
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JE(cs_x86 const& insn_detail) {
     if (m_rflags.c.ZF)
-        TODO_NOFAIL("JMP");
-    TODO();
+        return handle_JMP(insn_detail);
+    return INCREMENT_IP;
 } //	Jump Equal
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JGE(cs_x86 const& insn_detail) {
     TODO();
@@ -268,6 +253,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEA(cs_x86 const& insn_d
     if (second_op.operand().type != X86_OP_MEM)
         return raise_integral_interrupt(Exceptions::UD());
     auto offset = MAY_HAVE_RAISED(operand_mem_offset(second_op.operand().mem));
+    CPUE_TRACE("lea: offset: {:x}", offset);
 
     MAY_HAVE_RAISED(first_op.write(SizedValue(offset, first_op.byte_width())));
 
@@ -309,25 +295,22 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOV(cs_x86 const& insn_d
      * Writing to a reserved bit in an MSR.
      * If an attempt is made to set a reserved bit in CR3, CR4 or CR8.
      */
-
-    // Prevent the MOV instruction from attempting to load the CS register
-    if (insn_detail.operands[0].type == X86_OP_REG && insn_detail.operands[0].reg == X86_REG_CS) {
-        fail("Cannot load CS register using the MOV instruction. Use far JMP, CALL, or RET instead.");
-    }
-
-    // Retrieve operands (destination and source)
     auto first_op = Operand(this, insn_detail.operands[0]); // Destination
     auto second_op = Operand(this, insn_detail.operands[1]); // Source
 
+    // Prevent the MOV instruction from attempting to load the CS register
+    if (first_op.operand().type == X86_OP_REG && first_op.operand().reg == X86_REG_CS) {
+        fail("Cannot load CS register using the MOV instruction. Use far JMP, CALL, or RET instead.");
+    }
+
     // Read the value from the source operand
-    auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
 
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.byte_width());
+        second_val = sign_extend(second_val, first_op.byte_width());
 
     // Ensure the operands are the same size
-    if (first_val.bit_width() != second_val.bit_width()) {
+    if (first_op.byte_width() != second_op.byte_width()) {
         fail("Operands must have the same size.");
     }
 
