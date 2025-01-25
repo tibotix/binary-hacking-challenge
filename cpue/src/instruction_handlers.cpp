@@ -482,20 +482,15 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_TEST(cs_x86 const& insn_
     auto second_op = Operand(this, insn_detail.operands[1]);
 
     auto first_val = MAY_HAVE_RAISED(first_op.read());
-    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    auto second_val = sign_extend(MAY_HAVE_RAISED(second_op.read()), first_val.byte_width());
 
     auto anded_value = first_val & second_val;
 
-    ArithmeticResult res{};
-    res.has_of_set = false;
-    res.has_cf_set = false;
-    if (first_val == 0)
-        res.has_zf_set = true;
-    bool first_val_sign_bit = first_val.sign_bit();
-    res.has_sf_set = first_val_sign_bit;
+    // The OF and CF flags are set to 0. The SF, ZF, and PF flags are set according to the result (see the “Operation” section above). The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(anded_value);
 
     return INCREMENT_IP;
-
 } //	Logical Compare
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_XCHG(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
@@ -522,15 +517,11 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_XOR(cs_x86 const& insn_d
 
     auto xored_value = first_val ^ second_val;
 
-    //update flags
-    ArithmeticResult res{};
-    if (first_val == 0)
-        res.has_zf_set = true;
-    res.has_cf_set = false;
-    res.has_of_set = false;
-    res.has_sf_set = first_val.sign_bit();
+    // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result. The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(xored_value);
 
-    MAY_HAVE_RAISED(first_op.write(first_val));
+    MAY_HAVE_RAISED(first_op.write(xored_value));
     return INCREMENT_IP;
 } // XOR
 
