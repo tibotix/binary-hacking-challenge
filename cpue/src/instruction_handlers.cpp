@@ -91,13 +91,17 @@ requires(sizeof(R) >= sizeof(T)) constexpr R zero_extend(T value) {
 }
 template<unsigned_integral R, unsigned_integral T>
 requires(sizeof(R) >= sizeof(T)) constexpr R sign_extend(T value) {
+    if (sizeof(T) * 8 >= 64)
+        return value;
     if (sign_bit(value))
-        return (static_cast<R>(-1) << sizeof(T)) | value;
+        return (static_cast<R>(-1) << sizeof(T) * 8) | value;
     return value;
 }
-constexpr SizedValue sign_extend(SizedValue const& value, ByteWidth width) {
+static SizedValue sign_extend(SizedValue const& value, ByteWidth width) {
+    if (value.byte_width() >= ByteWidth::WIDTH_QWORD)
+        return value;
     if (value.sign_bit())
-        return {(value.max_val() << value.bit_width()) | value.value(), width};
+        return {(width.bitmask() << value.bit_width()) | value.value(), width};
     return value;
 }
 
