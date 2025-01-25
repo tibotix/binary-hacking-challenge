@@ -722,6 +722,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ADD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_BOUND(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_CMP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DEC(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DIV(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_HLT(cs_x86 const&);

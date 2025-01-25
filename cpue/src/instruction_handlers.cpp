@@ -13,6 +13,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_insn(cs_insn const& insn
     switch (insn.id) {
         CASE(ADD)
         CASE(BOUND)
+        CASE(CMP)
         CASE(DEC)
         CASE(DIV)
         CASE(HLT)
@@ -143,6 +144,20 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_BOUND(cs_x86 const& insn
 
     return INCREMENT_IP;
 } //	Check Array Index Against Bounds
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_CMP(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = sign_extend(second_val, first_val.byte_width());
+    auto res = CPUE_checked_single_usub(first_val, second_val);
+
+    update_rflags(res);
+
+    return INCREMENT_IP;
+} //    Compare Two Operands
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
     TODO();
 } //    Decrement By 1
