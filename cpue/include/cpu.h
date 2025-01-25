@@ -373,9 +373,15 @@ private:
     }
 
     InterruptRaisedOr<LogicalAddress> logical_address(x86_op_mem const& mem) {
-        CPUE_ASSERT(mem.segment != X86_REG_INVALID, "Trying to interpret memory address with invalid segment as logical address.");
+        auto seg = [&]() -> x86_reg {
+            if (mem.segment != X86_REG_INVALID)
+                return mem.segment;
+            if (one_of(mem.base, {X86_REG_RSP, X86_REG_ESP, X86_REG_SP, X86_REG_RBP, X86_REG_EBP, X86_REG_BP}))
+                return X86_REG_SS;
+            return X86_REG_DS;
+        }();
         u64 offset = MAY_HAVE_RAISED(operand_mem_offset(mem));
-        return LogicalAddress{*application_segment_register(mem.segment).value(), offset};
+        return LogicalAddress{*application_segment_register(seg).value(), offset};
     }
     InterruptRaisedOr<VirtualAddress> virtual_address(x86_op_mem const& mem) {
         CPUE_ASSERT(mem.segment == X86_REG_INVALID, "Trying to interpret non-virtual address as virtual address.");
