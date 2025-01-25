@@ -27,6 +27,18 @@ ld -o simple_add -no-pie -static simple_add.o
 # with --section-start=.text=... to set base address
 ```
 
+example c code:
+```c
+void _start() {
+	__asm("hlt");
+}
+```
+
+compile it with tcc
+```sh
+tcc -o simple -nostdlib -static simple.c
+```
+
 run with
 ```sh
 ./build/cpue -v --kernel=none --no-serial ./golden_files/demo
