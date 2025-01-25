@@ -417,7 +417,6 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSHFQ(cs_x86 const& ins
 } //	Push RFLAGS Register Onto the Stack
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_RET(cs_x86 const& insn_detail) {
     TODO();
-
 } //	Return From Procedure
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ROL(cs_x86 const& insn_detail) {
     TODO();
