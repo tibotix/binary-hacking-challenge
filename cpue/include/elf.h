@@ -13,7 +13,6 @@ namespace CPUE {
 class ELF {
 public:
     explicit ELF(std::string const& filename) : m_filename(filename){};
-    ELF(ELF const& other) = default;
 
     bool is_elf64() {
         lazy_load();
