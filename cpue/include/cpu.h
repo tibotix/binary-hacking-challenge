@@ -364,8 +364,12 @@ private:
     void update_rflags(ArithmeticResult res) {
         m_rflags.c.CF = res.has_cf_set;
         m_rflags.c.OF = res.has_of_set;
-        m_rflags.c.SF = res.has_sf_set;
-        m_rflags.c.ZF = res.has_zf_set;
+        update_rflags(res.value);
+    }
+    void update_rflags(SizedValue const& value) {
+        m_rflags.c.SF = value.sign_bit();
+        m_rflags.c.ZF = value.value() == 0x0;
+        // TODO: PF
     }
 
     InterruptRaisedOr<LogicalAddress> logical_address(x86_op_mem const& mem) {

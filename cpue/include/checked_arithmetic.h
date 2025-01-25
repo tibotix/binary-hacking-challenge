@@ -10,14 +10,14 @@ struct ArithmeticResult {
     SizedValue value;
     bool has_of_set;
     bool has_cf_set;
-    bool has_sf_set;
-    bool has_zf_set;
+    // bool has_sf_set;
+    // bool has_zf_set;
     /* Is used for BCD-Type arithmetic,
      * which we don't include
      * bool has_af_set;
     */
 
-    constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false), has_sf_set(false), has_zf_set(false) {}
+    constexpr ArithmeticResult() : has_of_set(false), has_cf_set(false) {}
 };
 
 // NOTE: SizedValue is a helper struct which include multiple small functions to gain details about the operands
@@ -36,17 +36,9 @@ constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, Siz
         res.has_cf_set = true;
     res.value += summand;
 
-    // Setting SIGN-BIT, extract it from res
-    bool res_sign_bit = res.value.sign_bit();
-    res.has_sf_set = res_sign_bit;
-
     // Setting OVERFLOW-BIT
-    if (first_sign_bit == summand_sign_bit && first_sign_bit != res_sign_bit)
+    if (first_sign_bit == summand_sign_bit && first_sign_bit != res.value.sign_bit())
         res.has_of_set = true;
-
-    // Set ZERO-BIT
-    if (res.value == 0)
-        res.has_zf_set = true;
 
     return res;
 }
@@ -96,7 +88,7 @@ constexpr ArithmeticResult CPUE_checked_single_umul(SizedValue const& first, Siz
 
     //NOTE: vorschlag von chat
     /*res.value = SizedValue(product, first.bit_width()); // Ensure the result fits into the same operand size*/
-    
+
     res.value = product;
 
     return res;
@@ -126,7 +118,7 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
 
 // NOTE:
 // Two memory operands cannot be used in one instruction.
-// OF and CF flags to indicate an overflow in the signed or unsigned result, respectively. 
+// OF and CF flags to indicate an overflow in the signed or unsigned result, respectively.
 // The SF flag indicates the sign of the signed result
 // OF, SF, ZF, and CF flags
 constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
@@ -137,16 +129,9 @@ constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, Siz
     if (summand.value() > first.value())
         res.has_cf_set = true;
 
-    // Setting SIGN-BIT, extract it from res
-    res.has_sf_set = res.value.sign_bit();
-
     // Setting OVERFLOW-BIT
     if (first.sign_bit() != summand.sign_bit() && first.sign_bit() != res.value.sign_bit())
         res.has_of_set = true;
-
-    // Set ZERO-BIT
-    if (res.value == 0)
-        res.has_zf_set = true;
 
     return res;
 }
