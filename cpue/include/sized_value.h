@@ -15,28 +15,40 @@ public:
         set(value);
         return *this;
     }
+    constexpr SizedValue& operator=(SizedValue const& value) = default;
 
     constexpr SizedValue& operator+=(u64 value) {
         set(m_value + value);
         return *this;
     }
+    constexpr SizedValue& operator+=(SizedValue const& value) { return operator+=(value.m_value); }
     constexpr SizedValue& operator-=(u64 value) {
         set(m_value - value);
         return *this;
     }
-    constexpr SizedValue operator+(u64 value) { return SizedValue(m_value + value, m_width); }
-    constexpr SizedValue operator-(u64 value) { return SizedValue(m_value - value, m_width); }
+    constexpr SizedValue& operator-=(SizedValue const& value) { return operator-=(value.m_value); }
+
+    constexpr SizedValue operator+(u64 value) { return {m_value + value, m_width}; }
+    constexpr SizedValue operator-(u64 value) { return {m_value - value, m_width}; }
+    constexpr SizedValue operator|(u64 value) { return {m_value | value, m_width}; }
+    constexpr SizedValue operator&(u64 value) { return {m_value & value, m_width}; }
+    constexpr SizedValue operator~() { return {~m_value, m_width}; }
+    constexpr SizedValue operator^(u64 value) { return {m_value ^ value, m_width}; }
+    constexpr SizedValue operator+(SizedValue const& value) { return operator+(value.m_value); }
+    constexpr SizedValue operator-(SizedValue const& value) { return operator-(value.m_value); }
+    constexpr SizedValue operator|(SizedValue const& value) { return operator|(value.m_value); }
+    constexpr SizedValue operator&(SizedValue const& value) { return operator&(value.m_value); }
+    constexpr SizedValue operator^(SizedValue const& value) { return operator^(value.m_value); }
 
     constexpr bool operator>(u64 value) const { return m_value > value; }
     constexpr bool operator>=(u64 value) const { return m_value >= value; }
     constexpr bool operator<(u64 value) const { return m_value < value; }
     constexpr bool operator<=(u64 value) const { return m_value <= value; }
-    constexpr bool operator==(SizedValue const& other) const { return m_value == other.m_value; }
+    constexpr bool operator==(u64 value) const { return m_value == value; }
+    constexpr bool operator==(SizedValue const& other) const { return operator==(other.m_value); }
 
     constexpr u64 operator>>(int pos) const { return m_value >> pos; }
     constexpr u64 operator<<(int pos) const { return m_value << pos; }
-
-    constexpr operator u64() const { return m_value; }
 
 
     constexpr u64 value() const { return m_value; }

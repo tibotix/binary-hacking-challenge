@@ -37,7 +37,7 @@ InterruptRaisedOr<SizedValue> ApplicationSegmentRegisterProxy::do_read() const {
     return m_seg_ptr->visible.segment_selector.value;
 }
 InterruptRaisedOr<void> ApplicationSegmentRegisterProxy::do_write(SizedValue const& value) {
-    return m_cpu->load_segment_register(m_seg_alias, SegmentSelector(value));
+    return m_cpu->load_segment_register(m_seg_alias, SegmentSelector(value.value()));
 }
 
 

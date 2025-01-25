@@ -31,7 +31,7 @@ constexpr ArithmeticResult CPUE_checked_single_uadd(SizedValue const& first, Siz
     bool summand_sign_bit = summand.sign_bit();
 
     // Set Carry-Flag if including this summand would exceed MAX_VAL
-    size_t max_summand = MAX_VAL - res.value;
+    size_t max_summand = MAX_VAL - res.value.value();
     if (summand > max_summand)
         res.has_cf_set = true;
     res.value += summand;

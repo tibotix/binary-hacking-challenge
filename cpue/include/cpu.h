@@ -382,9 +382,9 @@ private:
         return VirtualAddress{MAY_HAVE_RAISED(operand_mem_offset(mem))};
     }
     InterruptRaisedOr<u64> operand_mem_offset(x86_op_mem const& mem) {
-        u64 offset = mem.base != X86_REG_INVALID ? MAY_HAVE_RAISED(reg(mem.base)->read()) : 0x0;
+        u64 offset = mem.base != X86_REG_INVALID ? MAY_HAVE_RAISED(reg(mem.base)->read()).value() : 0x0;
         if (!one_of(mem.index, {X86_REG_INVALID, X86_REG_RIZ, X86_REG_EIZ})) {
-            offset += MAY_HAVE_RAISED(reg(mem.index)->read()) * mem.scale;
+            offset += MAY_HAVE_RAISED(reg(mem.index)->read()).value() * mem.scale;
         }
         return offset + mem.disp;
     }
