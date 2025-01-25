@@ -123,11 +123,11 @@ void UEFI::setup_idt(u64& top) {
 }
 
 void UEFI::setup_stack(u64& top) {
-    top = 0x6000;
+    top = 0x6000 + 0xff0;
     CPUE_ASSERT(m_cpu->mmu().physmem_size() >= top, "setup_stack: Out of memory");
 
-    TODO_NOFAIL("mov ss, 2");
-    TODO_NOFAIL("mov rsp, 0x6000");
+    CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::SS, SegmentSelector(2 << 3)).raised(), "exception while loading SS.");
+    m_cpu->m_rsp_val = top;
 }
 
 void UEFI::reserve_scratch_space(u64& top) {
