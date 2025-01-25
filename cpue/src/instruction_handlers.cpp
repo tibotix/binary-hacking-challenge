@@ -404,7 +404,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSH(cs_x86 const& insn_
 
     auto value = MAY_HAVE_RAISED(first_op.read());
 
-    MAY_HAVE_RAISED(stack_push(value.as<u64>()));
+    MAY_HAVE_RAISED(stack_push(value.value()));
     return INCREMENT_IP;
 } //	Push Word, Doubleword, or Quadword Onto the Stack
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_PUSHF(cs_x86 const& insn_detail) {
