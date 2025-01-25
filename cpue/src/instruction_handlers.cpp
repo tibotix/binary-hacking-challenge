@@ -42,6 +42,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_insn(cs_insn const& insn
         CASE(LTR)
         CASE(LOOP)
         CASE(MOV)
+        CASE(MOVABS)
         CASE(MOVSX)
         CASE(MOVSXD)
         CASE(MOVZX)
@@ -318,6 +319,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOV(cs_x86 const& insn_d
 
     return INCREMENT_IP;
 } //	Move
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVABS(cs_x86 const& insn_detail) {
+    return handle_MOV(insn_detail);
+} //	Move With Sign-Extension
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
     TODO();
 } //	Move With Sign-Extension
