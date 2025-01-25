@@ -268,7 +268,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEA(cs_x86 const& insn_d
     if (second_op.operand().type != X86_OP_MEM)
         return raise_integral_interrupt(Exceptions::UD());
     auto offset = MAY_HAVE_RAISED(operand_mem_offset(second_op.operand().mem));
-    CPUE_TRACE("lea: offset: {:x}", offset);
+    offset &= bytemask(insn_detail.addr_size);
 
     MAY_HAVE_RAISED(first_op.write(SizedValue(offset, first_op.byte_width())));
 
