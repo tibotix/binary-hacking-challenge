@@ -363,7 +363,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_NOT(cs_x86 const& insn_d
     auto first_op = Operand(this, insn_detail.operands[0]);
 
     auto value = MAY_HAVE_RAISED(first_op.read());
-    auto not_value = SizedValue(~value.value(), value.byte_width());
+    auto not_value = ~value;
 
     MAY_HAVE_RAISED(first_op.write(not_value));
 
@@ -484,7 +484,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_TEST(cs_x86 const& insn_
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
 
-    first_val = first_val & second_val;
+    auto anded_value = first_val & second_val;
 
     ArithmeticResult res{};
     res.has_of_set = false;
@@ -520,7 +520,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_XOR(cs_x86 const& insn_d
     if (second_op.operand().type == X86_OP_IMM)
         second_val = sign_extend(second_val, first_val.byte_width());
 
-    first_val = first_val ^ second_val;
+    auto xored_value = first_val ^ second_val;
 
     //update flags
     ArithmeticResult res{};
