@@ -324,11 +324,6 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOV(cs_x86 const& insn_d
     if (second_op.operand().type == X86_OP_IMM)
         second_val = sign_extend(second_val, first_op.byte_width());
 
-    // Ensure the operands are the same size
-    if (first_op.byte_width() != second_op.byte_width()) {
-        fail("Operands must have the same size.");
-    }
-
     MAY_HAVE_RAISED(first_op.write(second_val));
 
     return INCREMENT_IP;
