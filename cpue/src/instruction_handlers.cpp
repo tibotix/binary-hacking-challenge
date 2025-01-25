@@ -232,7 +232,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JMP(cs_x86 const& insn_d
     return DONT_INCREMENT_IP;
 } // Jump
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JNE(cs_x86 const& insn_detail) {
-    TODO();
+    if (!m_rflags.c.ZF)
+        return handle_JMP(insn_detail);
+    return INCREMENT_IP;
 } //	Jump Not Equal
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JE(cs_x86 const& insn_detail) {
     if (m_rflags.c.ZF)
@@ -240,16 +242,24 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JE(cs_x86 const& insn_de
     return INCREMENT_IP;
 } //	Jump Equal
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JGE(cs_x86 const& insn_detail) {
-    TODO();
+    if (m_rflags.c.SF == m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return INCREMENT_IP;
 } //	Jump Greater or Equal
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JG(cs_x86 const& insn_detail) {
-    TODO();
+    if (!m_rflags.c.ZF && m_rflags.c.SF == m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return INCREMENT_IP;
 } //	Jump Greater
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JLE(cs_x86 const& insn_detail) {
-    TODO();
+    if (m_rflags.c.ZF && m_rflags.c.SF != m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return INCREMENT_IP;
 } //	Jump Lower or Equal
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_JL(cs_x86 const& insn_detail) {
-    TODO();
+    if (m_rflags.c.SF != m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return INCREMENT_IP;
 } //	Jump Lower
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LEA(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
