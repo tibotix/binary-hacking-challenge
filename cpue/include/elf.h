@@ -30,10 +30,11 @@ public:
     bool is_static() {
         lazy_load();
         for (auto& psec : m_reader.sections) {
-            if (psec->get_type() == ELFIO::PT_DYNAMIC)
-                return true;
+            if (psec->get_type() == ELFIO::SHT_DYNAMIC) {
+                return false;
+            }
         }
-        return false;
+        return true;
     }
     u64 entry_point() {
         lazy_load();
