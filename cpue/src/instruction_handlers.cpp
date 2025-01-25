@@ -370,7 +370,19 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_NOT(cs_x86 const& insn_d
     return INCREMENT_IP;
 } //	One's Complement Negation
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_OR(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = sign_extend(MAY_HAVE_RAISED(second_op.read()), first_val.byte_width());
+
+    auto ored_value = first_val | second_val;
+
+    // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result. The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(ored_value);
+
+    return INCREMENT_IP;
 } //	Logical Inclusive OR
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_POP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
