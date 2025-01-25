@@ -550,7 +550,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     if (alias == SegmentRegisterAlias::SS) {
         // PRIVILEGE LEVEL CHECKING WHEN LOADING THE SS REGISTER
         // If the RPL and DPL are not equal to the CPL, a general-protection exception (#GP) is generated.
-        if (!(descriptor.access.c.dpl == cpl() == selector.c.rpl)) {
+        if (!(selector.c.rpl == cpl() && descriptor.access.c.dpl == cpl())) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
