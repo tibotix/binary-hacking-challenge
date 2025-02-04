@@ -105,20 +105,21 @@ void UEFI::setup_idt(u64& top) {
 
     // Just fill it with 510 entries
     for (int i = 0; i < 510; ++i) {
-        CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, 0x0).raised(), "exception while setting up GDT.");
+        CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, 0x0).raised(), "exception while setting up IDT.");
         top += 0x8;
     }
 
     // IDT Pointer (2byte limit + 8byte linear base address)
     u64 idt_pointer = top;
     u16 idt_limit = top - idt_base - 1;
-    CPUE_ASSERT(!m_cpu->mmu().mem_write16(top, idt_limit).raised(), "exception while setting up GDT.");
+    CPUE_ASSERT(!m_cpu->mmu().mem_write16(top, idt_limit).raised(), "exception while setting up IDT.");
     top += 0x2;
-    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up GDT.");
+    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up IDT.");
     top += 0x8;
 
-    TODO_NOFAIL("lidt [idt_pointer]");
     CPUE_ASSERT(!m_cpu->handle_CLI({}).raised(), "exception while setting up IDT");
+    // TODO: maybe use actual lidt [idt_pointer] insn
+    m_cpu->m_idtr = {.base = idt_base, .limit = idt_limit};
 }
 
 void UEFI::setup_stack(u64& top) {
