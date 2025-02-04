@@ -13,6 +13,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_insn(cs_insn const& insn
     switch (insn.id) {
         CASE(ADD)
         CASE(BOUND)
+        CASE(CLI)
         CASE(CMP)
         CASE(DEC)
         CASE(DIV)
@@ -144,6 +145,18 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_BOUND(cs_x86 const& insn
 
     return INCREMENT_IP;
 } //	Check Array Index Against Bounds
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_CLI(cs_x86 const& insn_detail) {
+    if (cr0().c.PE) {
+        m_rflags.c.IF = 0;
+    } else if (m_rflags.c.IOPL >= cpl()) {
+        m_rflags.c.IF = 0;
+    } else if (/*VME Mode*/ (m_rflags.c.VM && cr4().c.VME) || /*PVI Mode*/ (!m_rflags.c.VM && cpl() == 3 && cr4().c.PVI)) {
+        m_rflags.c.VIF = 0;
+    } else {
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    }
+    return INCREMENT_IP;
+} //    Clear Interrupt Flag
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_CMP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
@@ -475,8 +488,16 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SLDT(cs_x86 const& insn_
     TODO();
 } //	Store Local Descriptor Table Register
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_STI(cs_x86 const& insn_detail) {
-    MAY_HAVE_RAISED(do_privileged_instruction_check());
-    TODO();
+    if (cr0().c.PE) {
+        m_rflags.c.IF = 1;
+    } else if (m_rflags.c.IOPL >= cpl()) {
+        m_rflags.c.IF = 1;
+    } else if ((/*VME Mode*/ (m_rflags.c.VM && cr4().c.VME) || /*PVI Mode*/ (!m_rflags.c.VM && cpl() == 3 && cr4().c.PVI)) && !m_rflags.c.VIP) {
+        m_rflags.c.VIF = 1;
+    } else {
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    }
+    return INCREMENT_IP;
 } //	Set Interrupt Flag
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);

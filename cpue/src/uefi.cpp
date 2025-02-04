@@ -118,8 +118,8 @@ void UEFI::setup_idt(u64& top) {
     CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up GDT.");
     top += 0x8;
 
-    TODO_NOFAIL("cli");
     TODO_NOFAIL("lidt [idt_pointer]");
+    CPUE_ASSERT(!m_cpu->handle_CLI({}).raised(), "exception while setting up IDT");
 }
 
 void UEFI::setup_stack(u64& top) {

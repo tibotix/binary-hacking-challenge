@@ -18,6 +18,8 @@ void NoKernel::start(CPU& cpu, u64 user_binary_entry_point) {
     // NOTE: UEFI has already set up a small stack for us and populated rsp with it.
     //       For simplicity, we use this stack for now.
 
+    CPUE_ASSERT(!cpu.handle_STI({}).raised(), "exception in STI.");
+
     // begin execution at user_binary_entry_point
     // TODO: maybe use jmp insn
     cpu.m_rip_val = user_binary_entry_point;
