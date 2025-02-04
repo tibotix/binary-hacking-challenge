@@ -20,7 +20,7 @@ public:
     ~Disassembler() { cs_free(m_insn, 1); }
 
 public:
-    InterruptRaisedOr<cs_insn const> next_insn();
+    InterruptRaisedOr<cs_insn> next_insn();
 
 private:
     CPU* m_cpu;
