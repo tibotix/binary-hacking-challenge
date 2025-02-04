@@ -18,10 +18,13 @@ void ELF::lazy_load_regions() {
         // Non-readable segments are simply not mapped
         if (!(pseg->get_flags() & ELFIO::PF_R))
             continue;
+        // MemSize == 0 segments don't take space in memory -> we don't map them
+        if (pseg->get_memory_size() == 0)
+            continue;
 
         Region region = {
-            .base = pseg->get_virtual_address(),
-            // TODO: fix the different sizes
+            .base = pseg->get_virtual_address() & ~((u64)pseg->get_align() - 1),
+            // TODO: fix the different sizes (NOBITS)
             .size = pseg->get_file_size(), // pseg->get_memory_size
             .flags = get_region_flags_for_segment(*pseg),
             .data = (u8*)pseg->get_data(),
