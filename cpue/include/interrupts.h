@@ -333,7 +333,7 @@ public:
     static constexpr Interrupt UD() { return {VEC_UD, InterruptType::FAULT_EXCEPTION, InterruptClass::BENIGN, InterruptSource::INTERNAL}; }
     static constexpr Interrupt NM() { return {VEC_NM, InterruptType::FAULT_EXCEPTION, InterruptClass::BENIGN, InterruptSource::INTERNAL}; }
     static constexpr Interrupt DF(ErrorCode error_code = ZERO_ERROR_CODE_NOEXT) {
-        return {VEC_DF, InterruptType::ABORT_EXCEPTION, InterruptClass::BENIGN, InterruptSource::INTERNAL, error_code};
+        return {VEC_DF, InterruptType::ABORT_EXCEPTION, InterruptClass::DOUBLE_FAULT, InterruptSource::INTERNAL, error_code};
     }
     static constexpr Interrupt TS(ErrorCode error_code) { return {VEC_TS, InterruptType::FAULT_EXCEPTION, InterruptClass::CONTRIBUTORY, InterruptSource::INTERNAL, error_code}; }
     static constexpr Interrupt NP(ErrorCode error_code) { return {VEC_NP, InterruptType::FAULT_EXCEPTION, InterruptClass::CONTRIBUTORY, InterruptSource::INTERNAL, error_code}; }
