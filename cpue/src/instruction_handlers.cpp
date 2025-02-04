@@ -12,7 +12,6 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_insn(cs_insn const& insn
 
     switch (insn.id) {
         CASE(ADD)
-        CASE(BOUND)
         CASE(CLI)
         CASE(CMP)
         CASE(DEC)
@@ -133,18 +132,6 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_ADD(cs_x86 const& insn_d
 
     return INCREMENT_IP;
 } //	Add
-InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_BOUND(cs_x86 const& insn_detail) {
-    // TODO: probably don't implement this insn
-    TODO("Only handle interrupt if out of bounds");
-    static Interrupt i = {
-        .vector = 5,
-        .type = InterruptType::SOFTWARE_INTERRUPT,
-        .iclass = InterruptClass::BENIGN,
-    };
-    MAY_HAVE_RAISED(handle_interrupt(i));
-
-    return INCREMENT_IP;
-} //	Check Array Index Against Bounds
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_CLI(cs_x86 const& insn_detail) {
     if (cr0().c.PE) {
         m_rflags.c.IF = 0;

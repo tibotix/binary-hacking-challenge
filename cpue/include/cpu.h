@@ -725,7 +725,6 @@ private:
     u64 next_insn_rip() const { return m_next_insn_rip; }
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ADD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_BOUND(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_CLI(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_CMP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DEC(cs_x86 const&);
