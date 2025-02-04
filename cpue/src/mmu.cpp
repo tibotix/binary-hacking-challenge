@@ -434,33 +434,6 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
     return expanded_descriptor;
 }
 
-// template<unsigned_integral T>
-// InterruptRaisedOr<T> MMU::mem_read(LogicalAddress const& laddr, TranslationIntention intention) {
-//     TranslationContext ctx = {
-//         .op = MemoryOp::OP_READ,
-//         .width = get_byte_width<T>(),
-//         .intention = intention,
-//     };
-//     auto const paddr = MAY_HAVE_RAISED(la_to_pa(laddr, ctx));
-//     // TODO: make return type BigEndian<T> or LittleEndian<T>
-//     if (auto opt = MAY_HAVE_RAISED(m_mmio.try_mmio_read<T>(paddr)); opt.has_value())
-//         return opt->value;
-//     return *paddr_ptr<T>(paddr);
-// }
-//
-// template<unsigned_integral T>
-// InterruptRaisedOr<T> MMU::mem_read(VirtualAddress const& vaddr, TranslationIntention intention) {
-//     TranslationContext ctx = {
-//         .op = MemoryOp::OP_READ,
-//         .width = get_byte_width<T>(),
-//         .intention = intention,
-//     };
-//     auto const paddr = MAY_HAVE_RAISED(va_to_pa(vaddr, ctx));
-//     // TODO: make return type BigEndian<T> or LittleEndian<T>
-//     if (auto opt = MAY_HAVE_RAISED(m_mmio.try_mmio_read<T>(paddr)); opt.has_value())
-//         return opt->value;
-//     return *paddr_ptr<T>(paddr);
-// }
 InterruptRaisedOr<u64> MMU::mem_read64(LogicalAddress const& laddr, TranslationIntention intention) {
     return mem_read<u64>(laddr, intention);
 }
@@ -486,33 +459,6 @@ InterruptRaisedOr<u8> MMU::mem_read8(VirtualAddress const& vaddr, TranslationInt
     return mem_read<u8>(vaddr, intention);
 }
 
-// template<unsigned_integral T>
-// InterruptRaisedOr<void> MMU::mem_write(LogicalAddress const& laddr, T const& value, TranslationIntention intention) {
-//     TranslationContext ctx = {
-//         .op = MemoryOp::OP_WRITE,
-//         .width = get_byte_width<T>(),
-//         .intention = intention,
-//     };
-//     auto const paddr = MAY_HAVE_RAISED(la_to_pa(laddr, ctx));
-//     if (MAY_HAVE_RAISED(m_mmio.try_mmio_write<T>(paddr, value)))
-//         return {};
-//     *paddr_ptr<T>(paddr) = value;
-//     return {};
-// }
-//
-// template<unsigned_integral T>
-// InterruptRaisedOr<void> MMU::mem_write(VirtualAddress const& vaddr, T const& value, TranslationIntention intention) {
-//     TranslationContext ctx = {
-//         .op = MemoryOp::OP_WRITE,
-//         .width = get_byte_width<T>(),
-//         .intention = intention,
-//     };
-//     auto const paddr = MAY_HAVE_RAISED(va_to_pa(vaddr, ctx));
-//     if (MAY_HAVE_RAISED(m_mmio.try_mmio_write<T>(paddr, value)))
-//         return {};
-//     *paddr_ptr<T>(paddr) = value;
-//     return {};
-// }
 InterruptRaisedOr<void> MMU::mem_write64(LogicalAddress const& laddr, u64 value, TranslationIntention intention) {
     return mem_write<u64>(laddr, value, intention);
 }
