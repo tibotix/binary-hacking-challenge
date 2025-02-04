@@ -229,7 +229,7 @@ public:
 
     void interpreter_loop();
     [[noreturn]] void shutdown() {
-        printf("Shutting down...");
+        printf("Shutting down...\n");
         exit(0);
     }
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_insn(cs_insn const&);
