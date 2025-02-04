@@ -5,12 +5,19 @@ namespace CPUE {
 
 
 void UEFI::prepare_long_mode(u64& top) {
+    print_sys_info();
     setup_paging(top);
     setup_gdt(top);
     setup_idt(top);
     setup_stack(top);
     reserve_scratch_space(top);
 }
+
+void UEFI::print_sys_info() {
+    CPUE_INFO("System Information:");
+    CPUE_INFO("Available RAM: 0x{:x}B ({}MB)", m_cpu->mmu().available_pages() * PAGE_SIZE, (m_cpu->mmu().available_pages() * PAGE_SIZE) / 1024 / 1024);
+}
+
 
 void UEFI::setup_paging(u64& top) {
     // This will set up Identity-mapped paging

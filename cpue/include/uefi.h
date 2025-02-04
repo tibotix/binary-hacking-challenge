@@ -15,6 +15,7 @@ public:
     void prepare_long_mode(u64& top);
 
 private:
+    void print_sys_info();
     void setup_paging(u64& top);
     void setup_gdt(u64& top);
     void setup_idt(u64& top);
