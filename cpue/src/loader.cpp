@@ -104,7 +104,6 @@ bool Loader::create_region_vas(Region const& region, u64& top, u64 (*initial_map
                 result.pde->value = top | 7;
                 top += 0x1000;
             }
-            created_new_ptes = true;
         }
     }
 
