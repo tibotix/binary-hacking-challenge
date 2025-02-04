@@ -24,8 +24,7 @@ void ELF::lazy_load_regions() {
 
         Region region = {
             .base = pseg->get_virtual_address() & ~((u64)pseg->get_align() - 1),
-            // TODO: fix the different sizes (NOBITS)
-            .size = pseg->get_file_size(), // pseg->get_memory_size
+            .size = pseg->get_file_size(),
             .flags = get_region_flags_for_segment(*pseg),
             .data = (u8*)pseg->get_data(),
         };
