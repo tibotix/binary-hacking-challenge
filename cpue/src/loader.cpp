@@ -15,18 +15,16 @@ void Loader::load_elf(ELF* elf, u64& top, bool user_elf) {
         Region r = region;
         if (user_elf)
             r.flags |= REGION_USER;
-        load_region(r, top);
+        load_region(r, top, !user_elf);
     }
 }
 
-void Loader::load_region(Region const& region, u64& top) {
+void Loader::load_region(Region const& region, u64& top, bool allow_overwrite) {
     CPUE_ASSERT(IS_PAGE_ALIGNED(top), "top is not page aligned.");
 
     // create page table structures for region VAS.
-    // TODO: fix this (reintroduce this protection mechanism) - maybe add allow_overwrite flag
-    create_region_vas(region, top);
-    // if (!create_region_vas(region, top))
-    //     fail("Trying to load a Region into already mapped VAS.");
+    if (!create_region_vas(region, top) && !allow_overwrite)
+        fail("Trying to load a Region into already mapped VAS.");
 
     TranslationContext ctx = {
         .op = MemoryOp::OP_WRITE,
@@ -80,6 +78,7 @@ bool Loader::create_region_vas(Region const& region, u64& top, u64 (*initial_map
                 // we found a pte, but it is still zero
                 // -> initialize page frame number with given strategy.
                 result.pte->value = initial_mapping_strategy(current_page.addr & PAGE_NUMBER_MASK) | region.flags | 1;
+                created_new_ptes = true;
                 continue;
             }
 

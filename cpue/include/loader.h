@@ -32,7 +32,7 @@ public:
     void load_user_elf(ELF* elf, u64& top) { load_elf(elf, top, true); }
     void load_supervisor_elf(ELF* elf, u64& top) { load_elf(elf, top, false); }
 
-    void load_region(Region const& region, u64& top);
+    void load_region(Region const& region, u64& top, bool allow_overwrite = true);
     /**
      * This function creates the necessary page-table structures to map the Region [region]
      * into VAS (Virtual-Address-Space).
