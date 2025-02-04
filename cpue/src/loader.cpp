@@ -110,43 +110,6 @@ bool Loader::create_region_vas(Region const& region, u64& top, u64 (*initial_map
     }
 
     return created_new_ptes;
-
-#if 0
-    // Map all available RAM
-    // map at most 2MB
-    auto pages = std::min(m_cpu.mmu().available_pages(), static_cast<size_t>(std::ceil(4_mb / PAGE_SIZE)));
-    u64 total_size = pages * 8 + std::ceil((pages * 8 * 8) / (512)) + std::ceil((pages * 8 * 8 * 8) / (512 * 512)) + 4_kb;
-    CPUE_ASSERT(m_cpu.mmu().physmem_size() >= total_size, "setup_paging: Out of memory.");
-    u64 pml4_base = 0x0;
-    u64 pdpte_base = 0x0;
-    u64 pdt_base = 0x0;
-    top = 0x1000; // the first 4K bytes are reserved for pml4 entries.
-    for (u64 i = 0; i < pages; ++i) {
-        if (i % (512 * 512 * 512) == 0) {
-            // create pdpte at base
-            pdpte_base = top;
-            CPUE_ASSERT(!m_cpu.mmu().mem_write64(pdpte_base, top + 0x1000 | 3).raised(), "exception while setting up paging.");
-            // update pml4 entry
-            CPUE_ASSERT(!m_cpu.mmu().mem_write64(pml4_base + (i / (512 * 512 * 512)), pdpte_base | 3).raised(), "exception while setting up paging.");
-            top += 0x1000;
-        }
-        if (i % (512 * 512) == 0) {
-            // create pdt at base
-            pdt_base = top;
-            CPUE_ASSERT(!m_cpu.mmu().mem_write64(pdt_base, top + 0x1000 | 3).raised(), "exception while setting up paging.");
-            // update pdpte entry
-            CPUE_ASSERT(!m_cpu.mmu().mem_write64(pdpte_base + (i / (512 * 512)), pdt_base | 3).raised(), "exception while setting up paging.");
-            top += 0x1000;
-        }
-        if (i % 512 == 0) {
-            // update pdt entry
-            CPUE_ASSERT(!m_cpu.mmu().mem_write64(pdt_base + (i / (512)), top | 3).raised(), "exception while setting up paging.");
-        }
-        // create pte at base
-        CPUE_ASSERT(!m_cpu.mmu().mem_write64(top, i * PAGE_SIZE | 3).raised(), "exception while setting up paging.");
-        top += 0x8;
-    }
-#endif
 };
 
 
