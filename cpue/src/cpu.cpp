@@ -123,7 +123,8 @@ std::string CPU::dump_full_state() const {
 
 
 void CPU::interpreter_loop() {
-    u8 ip_increment = 0;
+    u64 old_ip = 0;
+    u64 next_ip = 0;
     for (;;) {
         m_state = STATE_FETCH_INSTRUCTION;
         if (auto int_or_insn = m_disassembler.next_insn(); !int_or_insn.raised()) {
@@ -131,15 +132,17 @@ void CPU::interpreter_loop() {
 
             auto insn = int_or_insn.release_value();
 
-            // by default, increment ip to next insn
-            // TODO: don't increment when handling FAULT_EXCEPTION
-            // TODO: refactor this
-            ip_increment = insn.size;
+            // update next insn ip
+            m_next_insn_rip = m_rip_val + insn.size;
+            // by default, set ip to next insn
+            old_ip = m_rip_val;
+            next_ip = m_next_insn_rip;
 
             auto res = handle_insn(insn);
-            // If this instruction executed successfully (without any interrupt), and instructs us to not increment ip, reset increment_ip.
-            if (!res.raised() && res.release_value() == DONT_INCREMENT_IP)
-                ip_increment = 0;
+            // If this instruction executed successfully (without any interrupt), and instructs us to not increment ip, simply use the ip that is currently set.
+            if (!res.raised() && res.release_value() == DONT_INCREMENT_IP) {
+                next_ip = m_rip_val;
+            }
             CPUE_TRACE("State: \n{}", dump_full_state());
         }
 
@@ -175,11 +178,15 @@ void CPU::interpreter_loop() {
                 }
             }
 
+            // If handled interrupt is of type FAULT_EXCEPTION, reset next_ip to ip that raised this interrupt.
+            if (i.type == InterruptType::FAULT_EXCEPTION)
+                next_ip = old_ip;
+
             // It doesn't matter if this raises, because no matter what we always process all pending interrupts.
             (void)handle_interrupt(i);
         }
 
-        m_rip_val += ip_increment;
+        m_rip_val = next_ip;
     }
 }
 

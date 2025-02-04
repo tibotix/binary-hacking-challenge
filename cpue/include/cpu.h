@@ -540,6 +540,9 @@ private:
     GeneralPurposeRegisterProxy m_eip = GeneralPurposeRegisterProxy::DWORD(&m_rip_val, this, REG_ACCESS_READ);
     GeneralPurposeRegisterProxy m_ip = GeneralPurposeRegisterProxy::WORD(&m_rip_val, this, REG_ACCESS_READ);
 
+    // IP of next instruction to be handled, provided for instruction handlers that need to know this
+    u64 m_next_insn_rip;
+
 
 
     /**
@@ -719,6 +722,7 @@ private:
     };
 
 private:
+    u64 next_insn_rip() const { return m_next_insn_rip; }
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ADD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_BOUND(cs_x86 const&);

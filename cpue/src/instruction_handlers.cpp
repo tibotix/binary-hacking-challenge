@@ -178,7 +178,6 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INC(cs_x86 const& insn_d
     TODO();
 } //	Increment by 1
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT(cs_x86 const& insn_detail) {
-    // TODO: increment m_rip, because the return address is the next insn
     auto first_op = Operand(this, insn_detail.operands[0]);
     Interrupt i = {
         .vector = MAY_HAVE_RAISED(first_op.read()).as<InterruptVector>(),
@@ -186,6 +185,9 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT(cs_x86 const& insn_d
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
+
+    // update rip to next instruction, because return address is next insn, so that handle_interrupt can use it
+    m_rip_val = next_insn_rip();
     MAY_HAVE_RAISED(handle_interrupt(i));
     return DONT_INCREMENT_IP;
 } // 	Call to Interrupt Procedure
@@ -196,28 +198,32 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT1(cs_x86 const& insn_
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INT1_INSN,
     };
+    // update rip to next instruction, because return address is next insn, so that handle_interrupt can use it
+    m_rip_val = next_insn_rip();
     MAY_HAVE_RAISED(handle_interrupt(i));
-    return INCREMENT_IP;
+    return DONT_INCREMENT_IP;
 } //	Call to Interrupt Procedure
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INT3(cs_x86 const& insn_detail) {
-    TODO_NOFAIL("increment rip");
     static Interrupt i = {
         .vector = 3,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
+    // update rip to next instruction, because return address is next insn, so that handle_interrupt can use it
+    m_rip_val = next_insn_rip();
     MAY_HAVE_RAISED(handle_interrupt(i));
     return DONT_INCREMENT_IP;
 } //	Call to Interrupt Procedure
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_INTO(cs_x86 const& insn_detail) {
-    TODO_NOFAIL("increment rip");
     static Interrupt i = {
         .vector = 4,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
+    // update rip to next instruction, because return address is next insn, so that handle_interrupt can use it
+    m_rip_val = next_insn_rip();
     if (m_rflags.c.OF) {
         MAY_HAVE_RAISED(handle_interrupt(i));
     }
