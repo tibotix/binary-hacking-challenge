@@ -42,6 +42,8 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_insn(cs_insn const& insn
         CASE(LLDT)
         CASE(LTR)
         CASE(LOOP)
+        CASE(LOOPE)
+        CASE(LOOPNE)
         CASE(MOV)
         CASE(MOVABS)
         CASE(MOVSX)
@@ -315,8 +317,74 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LTR(cs_x86 const& insn_d
     TODO();
 } //	Load Task Register
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LOOP(cs_x86 const& insn_detail) {
-    // TODO: no high priority
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto ctr_reg_alias = [&]() -> x86_reg {
+        switch (insn_detail.addr_size) {
+            case 8: return X86_REG_RCX;
+            case 4: return X86_REG_ECX;
+            default: return X86_REG_CX;
+        }
+    }();
+    auto ctr_reg = reg(ctr_reg_alias);
+
+    auto new_ctr_val = MAY_HAVE_RAISED(ctr_reg->read()) - 1;
+    MAY_HAVE_RAISED(ctr_reg->write(new_ctr_val));
+
+    if (new_ctr_val != 0) {
+        auto dest_rip = MAY_HAVE_RAISED(first_op.read()).value();
+        MAY_HAVE_RAISED(do_canonicality_check(dest_rip));
+        m_rip_val = dest_rip;
+        return DONT_INCREMENT_IP;
+    }
+    return INCREMENT_IP;
+} //	Loop According to ECX Counter
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LOOPE(cs_x86 const& insn_detail) {
+    // TODO: deduplicate this (and LOOPNE)
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto ctr_reg_alias = [&]() -> x86_reg {
+        switch (insn_detail.addr_size) {
+            case 8: return X86_REG_RCX;
+            case 4: return X86_REG_ECX;
+            default: return X86_REG_CX;
+        }
+    }();
+    auto ctr_reg = reg(ctr_reg_alias);
+
+    auto new_ctr_val = MAY_HAVE_RAISED(ctr_reg->read()) - 1;
+    MAY_HAVE_RAISED(ctr_reg->write(new_ctr_val));
+
+    if (m_rflags.c.ZF && new_ctr_val != 0) {
+        auto dest_rip = MAY_HAVE_RAISED(first_op.read()).value();
+        MAY_HAVE_RAISED(do_canonicality_check(dest_rip));
+        m_rip_val = dest_rip;
+        return DONT_INCREMENT_IP;
+    }
+    return INCREMENT_IP;
+} //	Loop According to ECX Counter
+InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_LOOPNE(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto ctr_reg_alias = [&]() -> x86_reg {
+        switch (insn_detail.addr_size) {
+            case 8: return X86_REG_RCX;
+            case 4: return X86_REG_ECX;
+            default: return X86_REG_CX;
+        }
+    }();
+    auto ctr_reg = reg(ctr_reg_alias);
+
+    auto new_ctr_val = MAY_HAVE_RAISED(ctr_reg->read()) - 1;
+    MAY_HAVE_RAISED(ctr_reg->write(new_ctr_val));
+
+    if (!m_rflags.c.ZF && new_ctr_val != 0) {
+        auto dest_rip = MAY_HAVE_RAISED(first_op.read()).value();
+        MAY_HAVE_RAISED(do_canonicality_check(dest_rip));
+        m_rip_val = dest_rip;
+        return DONT_INCREMENT_IP;
+    }
+    return INCREMENT_IP;
 } //	Loop According to ECX Counter
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MOV(cs_x86 const& insn_detail) {
     /**

@@ -755,6 +755,8 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LLDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LTR(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOPE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOPNE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOV(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVABS(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVSX(cs_x86 const&);
