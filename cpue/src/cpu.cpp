@@ -223,7 +223,10 @@ InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
     switch (action) {
         case NIA_HANDLE_SERIALLY: return {};
         case NIA_GENERATE_DOUBLE_FAULT: return raise_interrupt(Exceptions::DF(ZERO_ERROR_CODE_NOEXT));
-        case NIA_SHUTDOWN: shutdown();
+        case NIA_SHUTDOWN: {
+            CPUE_WARN("Got a Triple-Fault -> shutting down...");
+            shutdown();
+        }
         default: fail();
     }
 }
