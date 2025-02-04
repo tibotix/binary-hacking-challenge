@@ -21,7 +21,6 @@ void NoKernel::start(CPU& cpu, u64 user_binary_entry_point) {
     CPUE_ASSERT(!cpu.handle_STI({}).raised(), "exception in STI.");
 
     // begin execution at user_binary_entry_point
-    // TODO: maybe use jmp insn
     cpu.m_rip_val = user_binary_entry_point;
 };
 
@@ -48,7 +47,6 @@ void CustomKernel::start(CPU& cpu, u64 user_binary_entry_point) {
     CPUE_ASSERT(!cpu.reg(X86_REG_RDI)->write(SizedValue(user_binary_entry_point)).raised(), "Error while writing to RDI the user_binary_entry_point.");
 
     // begin execution at kernel entry point
-    // TODO: maybe change this to execute the jmp instruction
     cpu.m_rip_val = m_kernel_img.entry_point();
 };
 

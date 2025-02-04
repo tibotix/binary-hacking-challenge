@@ -91,7 +91,6 @@ void UEFI::setup_gdt(u64& top) {
     // TODO: maybe use actual lgdt [gdt_pointer] insn
     m_cpu->m_gdtr = {.base = gdt_base, .limit = gdt_limit};
 
-    // TODO: refactor these, maybe use actual move cs, ... insn
     CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::CS, SegmentSelector(1 << 3)).raised(), "exception while loading CS.");
     CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::DS, SegmentSelector(2 << 3)).raised(), "exception while loading DS.");
 }

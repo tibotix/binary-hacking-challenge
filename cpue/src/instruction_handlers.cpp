@@ -178,7 +178,7 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_DIV(cs_x86 const& insn_d
     TODO();
 } //	Unsigned Divide
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_HLT(cs_x86 const& insn_detail) {
-    TODO_NOFAIL("encountered a HLT instruction. We use this instruction to exit the emulator (although normally it would behave quite differently)");
+    CPUE_INFO("encountered a HLT instruction. We use this instruction to exit the emulator (although normally it would behave quite differently)");
     shutdown();
 } //	Halt
 InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_IDIV(cs_x86 const& insn_detail) {
@@ -384,6 +384,8 @@ InterruptRaisedOr<CPU::IPIncrementBehavior> CPU::handle_MUL(cs_x86 const& insn_d
     if (second_op.operand().type == X86_OP_IMM)
         second_val = sign_extend(second_val, first_val.byte_width());
     auto res = CPUE_checked_single_umul(first_val, second_val);
+
+    TODO("handle_MUL split registers to make 128bits");
 
     update_rflags(res);
     MAY_HAVE_RAISED(first_op.write(res.value));
