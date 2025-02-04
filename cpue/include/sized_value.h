@@ -7,7 +7,7 @@ namespace CPUE {
 class SizedValue {
 public:
     SizedValue() = default;
-    template<unsigned_integral T>
+    template<integral T>
     constexpr explicit SizedValue(T value) : m_value(value), m_width(get_byte_width<T>()) {}
     constexpr SizedValue(u64 value, ByteWidth width) : m_value(value & bytemask(width)), m_width(width) {}
 
@@ -55,7 +55,14 @@ public:
 
     template<unsigned_integral T>
     constexpr T as() const {
-        return static_cast<T>(value());
+        return static_cast<T>(m_value);
+    }
+    template<signed_integral T>
+    constexpr T as() const {
+        if (m_value > std::numeric_limits<decltype(m_value)>::max()) {
+            return -static_cast<T>(~m_value) - 1;
+        }
+        return static_cast<T>(m_value);
     }
 
     constexpr u8 sign_bit() const { return (m_value >> (bit_width() - 1)) & 1; }

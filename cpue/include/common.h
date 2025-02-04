@@ -105,11 +105,21 @@ static constexpr R raw_bytes(T* instance) {
     return *((R*)instance);
 }
 
-template<typename T>
-concept is_unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
 template<typename T>
+concept is_integral = std::is_integral_v<T>;
+template<typename T>
+concept integral = is_integral<T>;
+
+template<typename T>
+concept is_unsigned_integral = is_integral<T> && std::is_unsigned_v<T>;
+template<typename T>
 concept unsigned_integral = is_unsigned_integral<T>;
+
+template<typename T>
+concept is_signed_integral = is_integral<T> && std::is_signed_v<T>;
+template<typename T>
+concept signed_integral = is_signed_integral<T>;
 
 
 template<typename T>
