@@ -61,9 +61,9 @@ public:
         SUPERVISOR_MODE,
     };
 
-    enum IPIncrementBehavior {
-        INCREMENT_IP,
-        DONT_INCREMENT_IP,
+    enum IPContinuationBehavior {
+        CONTINUE_IP,
+        RESET_IP,
     };
 
     enum PagingMode { PAGING_MODE_NONE, PAGING_MODE_32BIT, PAGING_MODE_PAE, PAGING_MODE_4LEVEL, PAGING_MODE_5LEVEL };
@@ -232,7 +232,7 @@ public:
         printf("Shutting down...\n");
         exit(0);
     }
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_insn(cs_insn const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_insn(cs_insn const&);
 
     std::string dump_full_state() const;
 
@@ -540,9 +540,6 @@ private:
     GeneralPurposeRegisterProxy m_eip = GeneralPurposeRegisterProxy::DWORD(&m_rip_val, this, REG_ACCESS_READ);
     GeneralPurposeRegisterProxy m_ip = GeneralPurposeRegisterProxy::WORD(&m_rip_val, this, REG_ACCESS_READ);
 
-    // IP of next instruction to be handled, provided for instruction handlers that need to know this
-    u64 m_next_insn_rip;
-
 
 
     /**
@@ -722,74 +719,73 @@ private:
     };
 
 private:
-    u64 next_insn_rip() const { return m_next_insn_rip; }
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ADD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_CLI(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_CMP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DEC(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_DIV(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_HLT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IDIV(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IMUL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INC(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INT1(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INT3(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INTO(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_INVLPG(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IRET(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IRETD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_IRETQ(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JMP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JNE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JGE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JG(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JLE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_JL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LEA(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LEAVE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LGDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LIDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LLDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LTR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOPE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_LOOPNE(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOV(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVABS(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVSX(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVSXD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MOVZX(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_MUL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_NOP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_NOT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_OR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_POP(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_POPF(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_POPFQ(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_PUSH(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_PUSHF(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_PUSHFQ(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_RET(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ROL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_ROR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SAL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SAR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SGDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHL(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHLD(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHLX(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SHR(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SIDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SLDT(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_STI(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SUB(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_SWAPGS(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_TEST(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_XCHG(cs_x86 const&);
-    [[nodiscard]] InterruptRaisedOr<IPIncrementBehavior> handle_XOR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ADD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CLI(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CMP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DEC(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DIV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_HLT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IDIV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IMUL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INC(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INT1(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INT3(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INTO(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INVLPG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRET(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JMP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JNE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JGE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JLE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LEA(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LEAVE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LGDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LIDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LLDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LTR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOPE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOPNE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVABS(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSXD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVZX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MUL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_NOP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_NOT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_OR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_POP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_POPF(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_POPFQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_PUSH(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_PUSHF(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_PUSHFQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_RET(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ROL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ROR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SAL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SAR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SGDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SIDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SLDT(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STI(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SUB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SWAPGS(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_TEST(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_XCHG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_XOR(cs_x86 const&);
 };
 
 }
