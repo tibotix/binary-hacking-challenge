@@ -40,6 +40,11 @@ struct VirtualAddress {
         addr = CPUE_checked_uadd<u64, u64>(addr, i);
         return *this;
     }
+    VirtualAddress operator-(unsigned long int const i) const { return {CPUE_checked_usub<u64, u64>(addr, i)}; }
+    VirtualAddress& operator-=(unsigned long int const i) {
+        addr = CPUE_checked_usub<u64, u64>(addr, i);
+        return *this;
+    }
     bool operator<(VirtualAddress const& other) const { return addr < other.addr; }
     bool operator<=(VirtualAddress const& other) const { return addr <= other.addr; }
     bool operator>(VirtualAddress const& other) const { return addr > other.addr; }
@@ -59,6 +64,11 @@ struct PhysicalAddress {
     PhysicalAddress operator+(unsigned long int const i) const { return {CPUE_checked_uadd<u64, u64>(addr, i)}; }
     PhysicalAddress& operator+=(unsigned long int const i) {
         addr = CPUE_checked_uadd<u64, u64>(addr, i);
+        return *this;
+    }
+    PhysicalAddress operator-(unsigned long int const i) const { return {CPUE_checked_usub<u64, u64>(addr, i)}; }
+    PhysicalAddress& operator-=(unsigned long int const i) {
+        addr = CPUE_checked_usub<u64, u64>(addr, i);
         return *this;
     }
     bool operator<(PhysicalAddress const& other) const { return addr < other.addr; }
