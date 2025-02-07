@@ -18,13 +18,13 @@ namespace CPUE {
 
 [[noreturn]] inline void fail(char const* msg = NULL) {
     if (msg != NULL)
-        printf("%s\n", msg);
+        fprintf(stderr, "%s\n", msg);
     exit(1);
 }
 
 inline void TODO_NOFAIL(char const* msg = NULL) {
     if (msg != NULL)
-        printf("TODO: %s\n", msg);
+        fprintf(stderr, "TODO: %s\n", msg);
 }
 
 [[noreturn]] inline void TODO(char const* msg = NULL) {
