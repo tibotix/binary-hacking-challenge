@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <limits>
 
 namespace CPUE {
 
@@ -28,17 +29,17 @@ public:
     }
     constexpr SizedValue& operator-=(SizedValue const& value) { return operator-=(value.m_value); }
 
-    constexpr SizedValue operator+(u64 value) { return {m_value + value, m_width}; }
-    constexpr SizedValue operator-(u64 value) { return {m_value - value, m_width}; }
-    constexpr SizedValue operator|(u64 value) { return {m_value | value, m_width}; }
-    constexpr SizedValue operator&(u64 value) { return {m_value & value, m_width}; }
-    constexpr SizedValue operator~() { return {~m_value, m_width}; }
-    constexpr SizedValue operator^(u64 value) { return {m_value ^ value, m_width}; }
-    constexpr SizedValue operator+(SizedValue const& value) { return operator+(value.m_value); }
-    constexpr SizedValue operator-(SizedValue const& value) { return operator-(value.m_value); }
-    constexpr SizedValue operator|(SizedValue const& value) { return operator|(value.m_value); }
-    constexpr SizedValue operator&(SizedValue const& value) { return operator&(value.m_value); }
-    constexpr SizedValue operator^(SizedValue const& value) { return operator^(value.m_value); }
+    constexpr SizedValue operator+(u64 value) const { return {m_value + value, m_width}; }
+    constexpr SizedValue operator-(u64 value) const { return {m_value - value, m_width}; }
+    constexpr SizedValue operator|(u64 value) const { return {m_value | value, m_width}; }
+    constexpr SizedValue operator&(u64 value) const { return {m_value & value, m_width}; }
+    constexpr SizedValue operator~() const { return {~m_value, m_width}; }
+    constexpr SizedValue operator^(u64 value) const { return {m_value ^ value, m_width}; }
+    constexpr SizedValue operator+(SizedValue const& value) const { return operator+(value.m_value); }
+    constexpr SizedValue operator-(SizedValue const& value) const { return operator-(value.m_value); }
+    constexpr SizedValue operator|(SizedValue const& value) const { return operator|(value.m_value); }
+    constexpr SizedValue operator&(SizedValue const& value) const { return operator&(value.m_value); }
+    constexpr SizedValue operator^(SizedValue const& value) const { return operator^(value.m_value); }
 
     constexpr bool operator>(u64 value) const { return m_value > value; }
     constexpr bool operator>=(u64 value) const { return m_value >= value; }
@@ -66,6 +67,8 @@ public:
     }
 
     constexpr u8 sign_bit() const { return (m_value >> (bit_width() - 1)) & 1; }
+    constexpr u8 msb() const { return sign_bit(); }
+    constexpr u8 lsb() const { return m_value & 1; }
 
     constexpr u64 max_val() const { return m_width.bitmask(); }
     constexpr ByteWidth byte_width() const { return m_width; }

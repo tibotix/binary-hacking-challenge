@@ -22,11 +22,17 @@ void ELF::lazy_load_regions() {
         if (pseg->get_memory_size() == 0)
             continue;
 
+        auto align = pseg->get_align();
+        auto vaddr = pseg->get_virtual_address();
+        auto offset = pseg->get_offset();
+        CPUE_ASSERT(align == 0 || offset % align == vaddr % align, "ELF loader: unaligned segment in ELF file. We currently don't support this.");
+
         Region region = {
-            .base = pseg->get_virtual_address() & ~((u64)pseg->get_align() - 1),
-            .size = pseg->get_file_size(),
+            .base = pseg->get_virtual_address(),
+            .size = pseg->get_memory_size(),
             .flags = get_region_flags_for_segment(*pseg),
             .data = (u8*)pseg->get_data(),
+            .data_size = pseg->get_file_size(),
         };
         if (region.base > m_vas_range.first)
             m_vas_range.first = region.base.addr;

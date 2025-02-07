@@ -15,11 +15,11 @@ constexpr u64 REGION_USER = 1ull << 2;
 constexpr u64 REGION_EXECUTABLE = 1ull << 63;
 
 struct Region {
-    // TODO: add align
     VirtualAddress base;
     u64 size;
     u64 flags = REGION_WRITABLE;
     u8* data = nullptr;
+    u64 data_size = 0;
 
     [[nodiscard]] u64 get_page_count() const { return std::ceil(static_cast<double>(size) / PAGE_SIZE); }
 };
@@ -32,7 +32,13 @@ public:
     void load_user_elf(ELF* elf, u64& top) { load_elf(elf, top, true); }
     void load_supervisor_elf(ELF* elf, u64& top) { load_elf(elf, top, false); }
 
-    void load_region(Region const& region, u64& top, bool allow_overwrite = true);
+    /**
+    * Loads the given Region [region] into VAS (Virtual-Address-Space).
+    * The virtual memory region where [region] resides MUST NOT be already mapped.
+    * This means overwriting any already mapped virtual memory is not allowed and will result
+    * in an assertion error.
+    */
+    void load_region(Region const& region, u64& top);
     /**
      * This function creates the necessary page-table structures to map the Region [region]
      * into VAS (Virtual-Address-Space).
