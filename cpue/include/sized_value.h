@@ -29,17 +29,17 @@ public:
     }
     constexpr SizedValue& operator-=(SizedValue const& value) { return operator-=(value.m_value); }
 
-    constexpr SizedValue operator+(u64 value) { return {m_value + value, m_width}; }
-    constexpr SizedValue operator-(u64 value) { return {m_value - value, m_width}; }
-    constexpr SizedValue operator|(u64 value) { return {m_value | value, m_width}; }
-    constexpr SizedValue operator&(u64 value) { return {m_value & value, m_width}; }
-    constexpr SizedValue operator~() { return {~m_value, m_width}; }
-    constexpr SizedValue operator^(u64 value) { return {m_value ^ value, m_width}; }
-    constexpr SizedValue operator+(SizedValue const& value) { return operator+(value.m_value); }
-    constexpr SizedValue operator-(SizedValue const& value) { return operator-(value.m_value); }
-    constexpr SizedValue operator|(SizedValue const& value) { return operator|(value.m_value); }
-    constexpr SizedValue operator&(SizedValue const& value) { return operator&(value.m_value); }
-    constexpr SizedValue operator^(SizedValue const& value) { return operator^(value.m_value); }
+    constexpr SizedValue operator+(u64 value) const { return {m_value + value, m_width}; }
+    constexpr SizedValue operator-(u64 value) const { return {m_value - value, m_width}; }
+    constexpr SizedValue operator|(u64 value) const { return {m_value | value, m_width}; }
+    constexpr SizedValue operator&(u64 value) const { return {m_value & value, m_width}; }
+    constexpr SizedValue operator~() const { return {~m_value, m_width}; }
+    constexpr SizedValue operator^(u64 value) const { return {m_value ^ value, m_width}; }
+    constexpr SizedValue operator+(SizedValue const& value) const { return operator+(value.m_value); }
+    constexpr SizedValue operator-(SizedValue const& value) const { return operator-(value.m_value); }
+    constexpr SizedValue operator|(SizedValue const& value) const { return operator|(value.m_value); }
+    constexpr SizedValue operator&(SizedValue const& value) const { return operator&(value.m_value); }
+    constexpr SizedValue operator^(SizedValue const& value) const { return operator^(value.m_value); }
 
     constexpr bool operator>(u64 value) const { return m_value > value; }
     constexpr bool operator>=(u64 value) const { return m_value >= value; }
