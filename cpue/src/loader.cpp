@@ -2,6 +2,7 @@
 #include "elf.h"
 
 #include "logging.h"
+#include "spdlog/fmt/bin_to_hex.h"
 
 namespace CPUE {
 
@@ -15,15 +16,15 @@ void Loader::load_elf(ELF* elf, u64& top, bool user_elf) {
         Region r = region;
         if (user_elf)
             r.flags |= REGION_USER;
-        load_region(r, top, !user_elf);
+        load_region(r, top);
     }
 }
 
-void Loader::load_region(Region const& region, u64& top, bool allow_overwrite) {
+void Loader::load_region(Region const& region, u64& top) {
     CPUE_ASSERT(IS_PAGE_ALIGNED(top), "top is not page aligned.");
 
     // create page table structures for region VAS.
-    if (!create_region_vas(region, top) && !allow_overwrite)
+    if (!create_region_vas(region, top))
         fail("Trying to load a Region into already mapped VAS.");
 
     TranslationContext ctx = {
@@ -35,15 +36,20 @@ void Loader::load_region(Region const& region, u64& top, bool allow_overwrite) {
     auto page_count = region.get_page_count();
     u64 bytes_copied = 0;
     for (u64 i = 0; i < page_count; ++i) {
-        auto result = m_cpu.mmu().va_to_pte_no_tlb(region.base + i * PAGE_SIZE, ctx);
+        auto vaddr = region.base + i * PAGE_SIZE;
+        auto result = m_cpu.mmu().va_to_pte_no_tlb(vaddr, ctx);
         CPUE_ASSERT(!result.raised(), "load_region: critical fault during loading of region.");
         auto* pte = result.release_value();
         pte->c.paddr = top >> 12;
         CPUE_ASSERT(m_cpu.mmu().physmem_size() >= top + PAGE_SIZE, "load_region: out-of-memory while loading of region data.");
-        // TODO: Or use mem_write API from MMU (much slower, but tests correctness of PageTables)
         if (region.data) {
-            auto bytes_to_copy = std::min(region.size - bytes_copied, PAGE_SIZE);
-            memcpy(m_cpu.mmu().paddr_ptr(top), region.data + bytes_copied, bytes_to_copy);
+            auto o = CPUE_checked_uadd<u64, u64>(region.base.addr, bytes_copied);
+            auto offset = o - PAGE_ALIGN(o);
+            auto paddr_to_copy = top + offset;
+            auto bytes_to_copy = std::min(region.data_size - bytes_copied, PAGE_SIZE - offset);
+            CPUE_TRACE("Populating vaddr @ 0x{:x} (paddr @ 0x{:x}) with 0x{:x} bytes data:", vaddr.addr, paddr_to_copy, bytes_to_copy);
+            CPUE_TRACE("{:X}", spdlog::to_hex(region.data + bytes_copied, region.data + bytes_copied + bytes_to_copy));
+            memcpy(m_cpu.mmu().paddr_ptr(paddr_to_copy), region.data + bytes_copied, bytes_to_copy);
             bytes_copied += bytes_to_copy;
         }
         top += PAGE_SIZE;
