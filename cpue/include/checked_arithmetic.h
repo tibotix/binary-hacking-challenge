@@ -109,7 +109,7 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
     for (const auto f : {factors...}) {
         auto r = CPUE_checked_single_umul(res, f);
         if (r.has_cf_set)
-            fail("Integer overflow in multiplikation.");
+            fail("Integer overflow in multiplication.");
         res = r.value.template as<R>();
     }
 
@@ -124,7 +124,7 @@ requires(std::is_same_v<R, T>&&...) constexpr R CPUE_checked_umul(R const first,
 constexpr ArithmeticResult CPUE_checked_single_usub(SizedValue const& first, SizedValue const& summand) {
     ArithmeticResult res;
 
-    res.value = first.value() - summand.value();
+    res.value = first - summand;
 
     if (summand.value() > first.value())
         res.has_cf_set = true;
