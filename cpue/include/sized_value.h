@@ -67,6 +67,8 @@ public:
     }
 
     constexpr u8 sign_bit() const { return (m_value >> (bit_width() - 1)) & 1; }
+    constexpr u8 msb() const { return sign_bit(); }
+    constexpr u8 lsb() const { return m_value & 1; }
 
     constexpr u64 max_val() const { return m_width.bitmask(); }
     constexpr ByteWidth byte_width() const { return m_width; }
