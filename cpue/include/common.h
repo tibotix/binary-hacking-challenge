@@ -20,13 +20,13 @@ namespace CPUE {
 
 [[noreturn]] constexpr void fail(char const* msg = NULL) {
     if (msg != NULL)
-        printf("%s\n", msg);
+        fprintf(stderr, "%s\n", msg);
     exit(1);
 }
 
 constexpr void TODO_NOFAIL(char const* msg = NULL) {
     if (msg != NULL)
-        printf("TODO: %s\n", msg);
+        fprintf(stderr, "TODO: %s\n", msg);
 }
 
 [[noreturn]] constexpr void TODO(char const* msg = NULL) {

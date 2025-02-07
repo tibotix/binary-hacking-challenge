@@ -13,10 +13,18 @@ add_subdirectory("deps/ELFIO")
 add_subdirectory("deps/spdlog")
 
 
-option(NO_LOGGING "Disable CPUE logging" OFF)
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(NO_LOGGING ON CACHE BOOL "Disable logging functionality on Release builds" FORCE)
+option(NO_LOGGING "Disable CPUE logging completely." OFF)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(ENABLE_TRACE ON CACHE BOOL "Enable Trace logs for Debug builds.")
 endif ()
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(ENABLE_TRACE OFF CACHE BOOL "Disable Trace logs for Release builds.")
+    set(NO_STDOUT_LOGGING ON CACHE BOOL "Disable stdout logging on Release builds.")
+endif ()
+set(NO_STDOUT_LOGGING OFF CACHE BOOL "Enable stdout logging by default.")
+set(ENABLE_TRACE OFF CACHE BOOL "Disable Trace by default.")
+message(STATUS "NO_STDOUT_LOGGING is set to: ${NO_STDOUT_LOGGING}")
+message(STATUS "ENABLE_TRACE is set to: ${ENABLE_TRACE}")
 
 
 # cpue
@@ -29,7 +37,11 @@ target_include_directories(cpue PUBLIC ${spdlog_SOURCE_DIR}/include)
 target_include_directories(cpue PUBLIC ${elfio_SOURCE_DIR})
 target_link_libraries(cpue PRIVATE capstone elfio spdlog::spdlog)
 target_link_options(cpue PUBLIC -Wl,-z,relro,-z,now)
-target_compile_definitions(cpue PRIVATE $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>)
+target_compile_definitions(cpue PRIVATE
+        $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>
+        $<$<BOOL:${NO_STDOUT_LOGGING}>:CPUE_NO_STDOUT_LOGGING>
+        $<$<BOOL:${ENABLE_TRACE}>:CPUE_ENABLE_TRACE>
+)
 
 
 # cpue_main
@@ -40,7 +52,11 @@ add_executable(cpue_main ${cpue_main_sources})
 target_link_libraries(cpue_main cpue CLI11::CLI11)
 target_include_directories(cpue_main PUBLIC ${CLI11_SOURCE_DIR}/include)
 set_target_properties(cpue_main PROPERTIES OUTPUT_NAME "cpue")
-target_compile_definitions(cpue_main PRIVATE $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>)
+target_compile_definitions(cpue_main PRIVATE
+        $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>
+        $<$<BOOL:${NO_STDOUT_LOGGING}>:CPUE_NO_STDOUT_LOGGING>
+        $<$<BOOL:${ENABLE_TRACE}>:CPUE_ENABLE_TRACE>
+)
 
 
 if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))

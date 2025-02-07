@@ -229,7 +229,7 @@ public:
 
     void interpreter_loop();
     [[noreturn]] void shutdown() {
-        printf("Shutting down...\n");
+        CPUE_INFO("Shutting down...");
         exit(0);
     }
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_insn(cs_insn const&);
@@ -721,6 +721,7 @@ private:
 private:
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ADD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_AND(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CLI(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CMP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DEC(cs_x86 const&);
@@ -738,18 +739,22 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JMP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JA(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JAE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JNE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JGE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JG(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JLE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JB(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LEA(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LEAVE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LGDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LIDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LLDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LTR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOP_LOOPE_LOOPNE(x86_insn const&, cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOPE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LOOPNE(cs_x86 const&);
@@ -773,6 +778,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ROR(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SAL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SAR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SAL_SAR_SHL_SHR(x86_insn const&, cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SGDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLD(cs_x86 const&);
