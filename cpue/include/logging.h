@@ -21,7 +21,11 @@ private:
 
 }
 
-#define CPUE_TRACE(...)    ::CPUE::Log::get_logger()->trace(__VA_ARGS__)
+#ifdef CPUE_ENABLE_TRACE
+#define CPUE_TRACE(...) ::CPUE::Log::get_logger()->trace(__VA_ARGS__)
+#else
+#define CPUE_TRACE(...)
+#endif
 #define CPUE_INFO(...)     ::CPUE::Log::get_logger()->info(__VA_ARGS__)
 #define CPUE_WARN(...)     ::CPUE::Log::get_logger()->warn(__VA_ARGS__)
 #define CPUE_ERROR(...)    ::CPUE::Log::get_logger()->error(__VA_ARGS__)
