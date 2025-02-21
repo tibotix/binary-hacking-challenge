@@ -43,6 +43,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(JLE)
         CASE(JL)
         CASE(JB)
+        CASE(JBE)
         CASE(LEA)
         CASE(LEAVE)
         CASE(LGDT)
@@ -475,7 +476,12 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JB(cs_x86 const& insn
     if (m_rflags.c.CF)
         return handle_JMP(insn_detail);
     return CONTINUE_IP;
-} //	Jump Lower
+} //	Jump Below
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JBE(cs_x86 const& insn_detail) {
+    if (m_rflags.c.CF || m_rflags.c.ZF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Below or Equal
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LEA(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
