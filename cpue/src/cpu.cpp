@@ -287,6 +287,7 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
 
 
 InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor) {
+    CPUE_TRACE("enter_interrupt_trap_gate for ivec: {}", i.vector);
     ErrorCode error_code = {.standard = {
                                 .tbl = 1,
                                 .selector_index = i.vector,
