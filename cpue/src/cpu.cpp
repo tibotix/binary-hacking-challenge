@@ -78,10 +78,15 @@ auto CPU::paging_mode() const -> PagingMode {
 }
 
 auto CPU::execution_mode() const -> ExecutionMode {
-    if (efer_LMA() == 1)
-        return ExecutionMode::LONG_MODE;
-    TODO_NOFAIL("execution_mode");
-    return ExecutionMode::COMPATIBILITY_MODE;
+    if (cr0().c.PE == 0 && efer_LMA() == 0)
+        return ExecutionMode::REAL_MODE;
+    if (cr0().c.PE == 1 && efer_LMA() == 0)
+        return ExecutionMode::PROTECTED_MODE;
+    if (cr0().c.PE == 1 && cr4().c.PAE == 1 && efer_LMA() == 1 && m_cs.hidden.cached_descriptor.l == 0)
+        return ExecutionMode::IA32e_COMPATIBILITY_MODE;
+    if (cr0().c.PE == 1 && cr4().c.PAE == 1 && efer_LMA() == 1 && m_cs.hidden.cached_descriptor.l == 1)
+        return ExecutionMode::IA32e_64BIT_MODE;
+    fail("Ambiguous execution mode.");
 }
 
 
@@ -222,7 +227,7 @@ InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
 }
 
 InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
-    assert_in_long_mode();
+    assert_in_64bit_mode();
 
     // See chapter 7.12 or page 3290
     m_interrupt_to_be_handled = interrupt;
@@ -353,7 +358,7 @@ InterruptRaisedOr<void> CPU::enter_task_gate(Interrupt const& i, TaskGateDescrip
 }
 
 InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn) {
-    assert_in_long_mode();
+    assert_in_64bit_mode();
 
     ErrorCode error_code = {.standard = {
                                 .tbl = (u8)(selector.c.table << 1),

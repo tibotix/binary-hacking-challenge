@@ -43,10 +43,9 @@ public:
 public:
     enum ExecutionMode {
         REAL_MODE,
-        LEGACY_MODE,
         PROTECTED_MODE,
-        COMPATIBILITY_MODE,
-        LONG_MODE,
+        IA32e_COMPATIBILITY_MODE,
+        IA32e_64BIT_MODE,
     };
 
     enum State {
@@ -223,7 +222,7 @@ public:
     }
     void assert_paging_enabled() const { CPUE_ASSERT(is_paging_enabled(), "paging not enabled"); }
     [[nodiscard]] ExecutionMode execution_mode() const;
-    void assert_in_long_mode() const { CPUE_ASSERT(execution_mode() == ExecutionMode::LONG_MODE, "not in long mode"); }
+    void assert_in_64bit_mode() const { CPUE_ASSERT(execution_mode() == ExecutionMode::IA32e_64BIT_MODE, "not in 64-bit mode"); }
 
     [[nodiscard]] State state() const { return m_state; }
 

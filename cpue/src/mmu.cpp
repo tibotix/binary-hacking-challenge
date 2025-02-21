@@ -321,7 +321,7 @@ InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, Tra
     // TODO: fix this, that we can have nested LogicalAddressTranslations
     // StartLogicalAddressTranslation _(this, laddr);
 
-    m_cpu->assert_in_long_mode();
+    m_cpu->assert_in_64bit_mode();
 
     ErrorCode const error_code = [&]() -> ErrorCode {
         if (ctx.intention != TranslationIntention::INTENTION_LOAD_DESCRIPTOR)
