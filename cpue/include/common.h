@@ -5,13 +5,13 @@
 #include <cstdio>
 #include <initializer_list>
 #include <algorithm>
-#include <cstdint>
 #include <cassert>
 
 #include "logging.h"
 
 
 #define CPUE_ASSERT(cond, msg) assert((cond) && (msg))
+#include "integral_types.h"
 
 
 namespace CPUE {
