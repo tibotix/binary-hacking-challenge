@@ -816,16 +816,17 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SAL_SAR_SHL_SHR(x86_i
     auto is_left_shift = one_of(insn, {X86_INS_SAL, X86_INS_SHL});
     auto do_shift = [&](SizedValue const& value, u8 count) -> SizedValue {
         if (is_left_shift) {
-            return {value << count, value.byte_width()};
+            return value << count;
         }
         // The SHR instruction clears the most significant bit
         if (insn == X86_INS_SHR) {
-            return {value >> count, value.byte_width()};
+            return value >> count;
         }
-        // the SAR instruction sets or clears the most significant bit to correspond to the sign (most significant bit) of the original value in the destination operand
+        // the SAR instruction sets or clears the most significant bit to correspond to the sign (most significant bit)
+        // of the original value in the destination operand
         if (insn == X86_INS_SAR) {
             u64 extension = value.msb() ? (1 << count) - 1 : 0;
-            return {(value >> count) | extension, value.byte_width()};
+            return (value >> count) | extension;
         }
         fail();
     };
