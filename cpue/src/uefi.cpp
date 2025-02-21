@@ -131,8 +131,9 @@ void UEFI::setup_idt(u64& top) {
     CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up IDT.");
     top += 0x8;
 
-    TODO_NOFAIL("cli");
-    TODO_NOFAIL("lidt [idt_pointer]");
+    CPUE_ASSERT(!m_cpu->handle_CLI({}).raised(), "exception while setting up IDT");
+    // TODO: maybe use actual lidt [idt_pointer] insn
+    m_cpu->m_idtr = {.base = idt_base, .limit = idt_limit};
 }
 
 void UEFI::setup_stack(u64& top) {
