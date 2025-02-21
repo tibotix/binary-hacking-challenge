@@ -164,7 +164,7 @@ struct Descriptor {
                                                  DescriptorType::TRAP_GATE, DescriptorType::CALL_GATE});
         }
 
-        u8 type_value() const { return c.executable << 3 || c.ec << 2 || c.wr << 1 || c.accessed; }
+        u8 type_value() const { return c.executable << 3 | c.ec << 2 | c.wr << 1 | c.accessed; }
 
         DescriptorType descriptor_type() const {
             if (is_system_descriptor())

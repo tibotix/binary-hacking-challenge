@@ -21,7 +21,7 @@ struct CallGateDescriptor {
     u64 offset3 : 32;
     u64 : 32;
 
-    u64 offset() const { return (u64)offset3 << 32 || offset2 << 16 || offset1; };
+    u64 offset() const { return (u64)offset3 << 32 | offset2 << 16 | offset1; };
     void set_offset(u64 offset) {
         offset1 = bits(offset, 15, 0);
         offset2 = bits(offset, 31, 16);
@@ -47,14 +47,14 @@ struct InterruptGateDescriptor {
     // size: 128 bits
     u64 offset1 : 16;
     SegmentSelector segment_selector;
-    u64 ist : 3;
+    u64 ist : 3; // A 3-bit value which is an offset into the Interrupt Stack Table, which is stored in the Task State Segment. If the bits are all set to zero, the Interrupt Stack Table is not used.
     u64 : 5;
     Descriptor::AccessByte access;
     u64 offset2 : 16;
     u64 offset3 : 32;
     u64 : 32;
 
-    u64 offset() const { return (u64)offset3 << 32 || offset2 << 16 || offset1; };
+    u64 offset() const { return (u64)offset3 << 32 | offset2 << 16 | offset1; };
     void set_offset(u64 offset) {
         offset1 = bits(offset, 15, 0);
         offset2 = bits(offset, 31, 16);
@@ -74,7 +74,7 @@ struct TrapGateDescriptor {
     u64 offset3 : 32;
     u64 : 32;
 
-    u64 offset() const { return (u64)offset3 << 32 || offset2 << 16 || offset1; };
+    u64 offset() const { return (u64)offset3 << 32 | offset2 << 16 | offset1; };
     void set_offset(u64 offset) {
         offset1 = bits(offset, 15, 0);
         offset2 = bits(offset, 31, 16);
