@@ -745,6 +745,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INT3(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INTO(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INVLPG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRET_IRETD_IRETQ(x86_insn const&, cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRET(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETQ(cs_x86 const&);

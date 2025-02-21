@@ -448,17 +448,137 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INVLPG(cs_x86 const& 
 
     return CONTINUE_IP;
 } //	Invalidate TLB Entries
-InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRET(cs_x86 const& insn_detail) {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRET_IRETD_IRETQ(x86_insn const& insn, cs_x86 const& insn_detail) {
+    /*
+     * TODO: (When implementing NMIs)
+     * If nonmaskable interrupts (NMIs) are blocked (see Section 6.7.1, “Handling Multiple NMIs” in the Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 3A),
+     * execution of the IRET instruction unblocks NMIs.
+     */
     MAY_HAVE_RAISED(do_privileged_instruction_check());
-    TODO();
+    assert_in_64bit_mode();
+
+    RFLAGS temp_rflags;
+
+    auto operand_byte_size = [&]() -> u64 {
+        // NOTE: As we know for sure that we're in 64-bit mode, we don't need to check cs.d/l bits
+        switch (insn) {
+            // In 64-bit mode, the instruction’s default operation size is 32 bits.
+            case X86_INS_IRET:
+            case X86_INS_IRETD: return 4;
+            case X86_INS_IRETQ: return 8;
+            default: fail();
+        }
+    }();
+    auto operand_byte_mask = bytemask(operand_byte_size);
+
+    auto pop_ip_cs = [&]() -> InterruptRaisedOr<void> {
+        m_rip_val = MAY_HAVE_RAISED(stack_pop()) & operand_byte_mask;
+        auto cs = MAY_HAVE_RAISED(stack_pop()) & 0xFFFF;
+        MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, cs));
+        CPUE_ASSERT(execution_mode() == ExecutionMode::IA32e_64BIT_MODE, "We currently do not support an iret to a non 64-bit mode execution.");
+        return {};
+    };
+
+    auto pop_temp_rflags = [&]() -> InterruptRaisedOr<void> {
+        temp_rflags = {.value = MAY_HAVE_RAISED(stack_pop())};
+        return {};
+    };
+
+    auto pop_sp_ss = [&]() -> InterruptRaisedOr<void> {
+        auto rsp = MAY_HAVE_RAISED(stack_pop()) & operand_byte_mask;
+        auto ss = MAY_HAVE_RAISED(stack_pop()) & 0xFFFF;
+        // Now all values have been popped, we can safely change rsp
+        m_rsp_val = rsp;
+        return load_segment_register(SegmentRegisterAlias::SS, ss);
+    };
+
+    auto load_rflags = [&]() -> void {
+        m_rflags.c.CF = temp_rflags.c.CF;
+        m_rflags.c.PF = temp_rflags.c.PF;
+        m_rflags.c.AF = temp_rflags.c.AF;
+        m_rflags.c.ZF = temp_rflags.c.ZF;
+        m_rflags.c.SF = temp_rflags.c.SF;
+        m_rflags.c.TF = temp_rflags.c.TF;
+        m_rflags.c.DF = temp_rflags.c.DF;
+        m_rflags.c.OF = temp_rflags.c.OF;
+        m_rflags.c.NT = temp_rflags.c.NT;
+        if (operand_byte_size == 4 || operand_byte_size == 8) {
+            m_rflags.c.RF = temp_rflags.c.RF;
+            m_rflags.c.AC = temp_rflags.c.AC;
+            m_rflags.c.ID = temp_rflags.c.ID;
+        }
+        if (cpl() <= m_rflags.c.IOPL)
+            m_rflags.c.IF = temp_rflags.c.IF;
+        if (cpl() == 0) {
+            m_rflags.c.IOPL = temp_rflags.c.IOPL;
+            if (operand_byte_size == 4 || operand_byte_size == 8) {
+                m_rflags.c.VIF = temp_rflags.c.VIF;
+                m_rflags.c.VIP = temp_rflags.c.VIP;
+            }
+        }
+    };
+
+    auto exec_mode = execution_mode();
+    switch (exec_mode) {
+        case REAL_MODE: goto real_mode;
+        case PROTECTED_MODE: goto protected_mode;
+        case IA32e_COMPATIBILITY_MODE:
+        case IA32e_64BIT_MODE: goto long_mode;
+    }
+
+real_mode:
+    TODO("iret real-mode.");
+protected_mode:
+    TODO("iret protected-mode");
+return_from_vm8086_mode:
+    TODO("iret vm8086 mode");
+return_to_outer_privilege_level:
+    MAY_HAVE_RAISED(pop_sp_ss());
+    for (auto r : {X86_REG_ES, X86_REG_FS, X86_REG_GS, X86_REG_DS}) {
+        auto sr = application_segment_register(r).value();
+        // if (SegmentSelector == NULL) OR (tempDesc(DPL) < CPL AND tempDesc(Type) is (data or non-conforming code)))
+        if (sr->visible.segment_selector.value == 0x0 ||
+            (sr->hidden.cached_descriptor.access.c.dpl < cpl() &&
+                (sr->hidden.cached_descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT ||
+                    (sr->hidden.cached_descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && sr->hidden.cached_descriptor.access.c.ec == 0)))) {
+            // SegmentSelector = 0x0
+            sr->visible.segment_selector.value = 0x0;
+        }
+    }
+    goto end;
+
+return_to_same_privilege_level:
+    goto end;
+
+long_mode:
+    if (m_rflags.c.NT)
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    MAY_HAVE_RAISED(pop_ip_cs());
+    // NOTE: we assert new-mode == 64-bit mode in pop_ip_cs()
+    MAY_HAVE_RAISED(do_canonicality_check(m_rip_val));
+
+    MAY_HAVE_RAISED(pop_temp_rflags());
+    load_rflags();
+
+    if (m_cs.visible.segment_selector.c.rpl > cpl()) {
+        goto return_to_outer_privilege_level;
+    }
+    if (exec_mode == ExecutionMode::IA32e_64BIT_MODE) {
+        MAY_HAVE_RAISED(pop_sp_ss());
+    }
+    goto return_to_same_privilege_level;
+
+end:
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRET(cs_x86 const& insn_detail) {
+    return handle_IRET_IRETD_IRETQ(X86_INS_IRET, insn_detail);
 } //	Interrupt Return
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRETD(cs_x86 const& insn_detail) {
-    MAY_HAVE_RAISED(do_privileged_instruction_check());
-    TODO();
+    return handle_IRET_IRETD_IRETQ(X86_INS_IRETD, insn_detail);
 } //	Interrupt Return
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
-    MAY_HAVE_RAISED(do_privileged_instruction_check());
-    TODO();
+    return handle_IRET_IRETD_IRETQ(X86_INS_IRETQ, insn_detail);
 } //	Interrupt Return
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JMP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
