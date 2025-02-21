@@ -126,6 +126,18 @@ std::string CPU::dump_full_state() const {
     return ss.str();
 }
 
+std::string CPU::dump_stack() {
+    std::stringstream ss;
+
+    for (u64 i = 0; i < 10; ++i) {
+        VirtualAddress addr = m_rsp_val + i * 8;
+        u64 val = m_mmu.mem_read64(addr).release_value();
+        ss << "[0x" << std::hex << std::setw(16) << std::setfill('0') << addr.addr << "]: 0x" << val << "\n";
+    }
+
+    return ss.str();
+}
+
 
 void CPU::interpreter_loop() {
     u8 ip_increment = 0;
@@ -146,6 +158,7 @@ void CPU::interpreter_loop() {
             if (!res.raised() && res.release_value() == DONT_INCREMENT_IP)
                 ip_increment = 0;
             CPUE_TRACE("State: \n{}", dump_full_state());
+            CPUE_TRACE("Stack: \n{}", dump_stack());
         }
 
         // Handle interrupts

@@ -232,6 +232,7 @@ public:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_insn(cs_insn const&);
 
     std::string dump_full_state() const;
+    std::string dump_stack();
 
     void reset();
 
