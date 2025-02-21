@@ -83,6 +83,12 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(SHLD)
         CASE(SHLX)
         CASE(SHR)
+        CASE(SETE)
+        CASE(SETNE)
+        CASE(SETL)
+        CASE(SETG)
+        CASE(SETGE)
+        CASE(SETB)
         CASE(SIDT)
         CASE(SLDT)
         CASE(STI)
@@ -859,6 +865,40 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SHLX(cs_x86 const& in
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SHR(cs_x86 const& insn_detail) {
     return handle_SAL_SAR_SHL_SHR(X86_INS_SHR, insn_detail);
 } //	Shift
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETcc(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto condition = [&]() -> bool {
+        switch (insn) {
+            case X86_INS_SETE: return m_rflags.c.ZF;
+            case X86_INS_SETNE: return !m_rflags.c.ZF;
+            case X86_INS_SETL: return m_rflags.c.SF != m_rflags.c.OF;
+            case X86_INS_SETG: return !m_rflags.c.ZF && m_rflags.c.SF == m_rflags.c.OF;
+            case X86_INS_SETGE: return m_rflags.c.SF = m_rflags.c.OF;
+            case X86_INS_SETB: return m_rflags.c.CF;
+            default: fail();
+        }
+    }();
+    MAY_HAVE_RAISED(first_op.write(SizedValue(condition, ByteWidth::WIDTH_BYTE)));
+    return CONTINUE_IP;
+} //    Set Byte on Condition
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETE(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETE, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETNE(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETNE, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETL(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETL, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETG(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETG, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETGE(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETGE, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETB(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETB, insn_detail);
+}
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SIDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();

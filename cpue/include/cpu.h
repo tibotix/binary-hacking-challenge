@@ -799,6 +799,13 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLX(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETcc(x86_insn const&, cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETNE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETGE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETB(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SIDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SLDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STI(cs_x86 const&);
