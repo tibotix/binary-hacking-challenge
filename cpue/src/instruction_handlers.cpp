@@ -203,15 +203,72 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMP(cs_x86 const& ins
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
     TODO();
 } //    Decrement By 1
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV_IDIV(x86_insn const& insn, cs_x86 const& insn_detail) {
+    bool is_signed_division = insn == X86_INS_IDIV;
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto quotient_dest = [&]() -> x86_reg {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AL;
+            case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+            default: fail();
+        }
+    }();
+    auto quotient_dest_reg = reg(quotient_dest);
+    auto quotient_reg_width = quotient_dest_reg->byte_width();
+    auto remainder_dest = [&]() -> x86_reg {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AH;
+            case ByteWidth::WIDTH_WORD: return X86_REG_DX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EDX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RDX;
+            default: fail();
+        }
+    }();
+    auto remainder_dest_reg = reg(remainder_dest);
+    auto remainder_reg_width = remainder_dest_reg->byte_width();
+
+    // divisor = remainder_reg:quotient_reg
+    auto dividend = (MAY_HAVE_RAISED(remainder_dest_reg->read()).zero_extended_to_width(quotient_reg_width.double_width()) << quotient_reg_width.bit_width()) |
+                    MAY_HAVE_RAISED(quotient_dest_reg->read());
+    if (is_signed_division)
+        dividend = dividend.sign_extended_to_width(ByteWidth::WIDTH_DQWORD);
+    auto divisor = MAY_HAVE_RAISED(first_op.read());
+    if (is_signed_division)
+        divisor = divisor.sign_extended_to_width(ByteWidth::WIDTH_DQWORD);
+    if (divisor == 0)
+        return raise_integral_interrupt(Exceptions::DE());
+    auto do_div = [&]<typename T>() -> T {
+        return dividend.as<T>() / divisor.as<T>();
+    };
+    auto quotient = SizedValue((is_signed_division ? do_div.operator()<i128>() : do_div.operator()<u128>()), dividend.byte_width());
+
+    // store quotient, and if it is too large for designated destination register, throw DE
+    auto truncated_quotient = quotient.truncated_to_width(quotient_reg_width);
+    if ((!is_signed_division && quotient != truncated_quotient) || (is_signed_division && quotient != truncated_quotient.sign_extended_to_width(quotient.byte_width())))
+        return raise_integral_interrupt(Exceptions::DE());
+    MAY_HAVE_RAISED(quotient_dest_reg->write(truncated_quotient));
+
+    // store remainder
+    auto do_mod = [&]<typename T>() -> T {
+        return dividend.as<T>() % divisor.as<T>();
+    };
+    auto remainder = SizedValue((is_signed_division ? do_mod.operator()<i128>() : do_mod.operator()<u128>()), remainder_reg_width);
+    MAY_HAVE_RAISED(remainder_dest_reg->write(remainder));
+
+    return CONTINUE_IP;
+}
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV(cs_x86 const& insn_detail) {
-    TODO();
+    return handle_DIV_IDIV(X86_INS_DIV, insn_detail);
 } //	Unsigned Divide
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_HLT(cs_x86 const& insn_detail) {
     CPUE_INFO("encountered a HLT instruction. We use this instruction to exit the emulator (although normally it would behave quite differently)");
     shutdown();
 } //	Halt
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IDIV(cs_x86 const& insn_detail) {
-    TODO();
+    return handle_DIV_IDIV(X86_INS_IDIV, insn_detail);
 } //	Signed Divide
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IMUL(cs_x86 const& insn_detail) {
     if (insn_detail.op_count == 1) {
