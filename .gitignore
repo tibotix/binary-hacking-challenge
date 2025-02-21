@@ -29,3 +29,16 @@ tutorial/stack
 tutorial/stack1
 tutorial/stack2
 tutorial/stack3
+
+
+# minik toolchain:
+minik/toolchain/ldscript.ld
+minik/toolchain/minik-x64-musl-tcc
+minik/toolchain/minik-x64-musl-tcc-ld
+minik/toolchain/musl-tcc/
+minik/toolchain/tinycc/
+
+# minik ports:
+minik/ports/lighthouse-of-doom/lighthouse-of-doom/
+minik/ports/tinybasic/Tiny-Basic/
+minik/ports/cowsay/ccowsay/
