@@ -350,6 +350,9 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> handle_nested_interrupt(Interrupt i);
     [[nodiscard]] InterruptRaisedOr<void> handle_interrupt(Interrupt i);
     // NOTE: as InterruptGateDescriptor and TrapGateDescriptor have the same layout, we simply choose one to receive
+    [[nodiscard]] InterruptRaisedOr<void> enter_interrupt_trap_gate(Interrupt const& i, InterruptGateDescriptor const& descriptor) {
+        return enter_interrupt_trap_gate(i, reinterpret_cast<TrapGateDescriptor const&>(descriptor));
+    }
     [[nodiscard]] InterruptRaisedOr<void> enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor);
     [[nodiscard]] InterruptRaisedOr<void> enter_task_gate(Interrupt const& i, TaskGateDescriptor const& task_gate_descriptor);
     [[nodiscard]] InterruptRaisedOr<void> enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn);

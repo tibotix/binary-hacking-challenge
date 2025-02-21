@@ -247,7 +247,7 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
     auto idt_descriptor = MAY_HAVE_RAISED(m_mmu.interrupt_vector_to_descriptor(interrupt.vector));
     switch (idt_descriptor.access.descriptor_type()) {
         case DescriptorType::TASK_GATE: MAY_HAVE_RAISED(enter_task_gate(interrupt, *idt_descriptor.to_task_gate_descriptor())); break;
-        case DescriptorType::INTERRUPT_GATE:
+        case DescriptorType::INTERRUPT_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_interrupt_gate_descriptor())); break;
         case DescriptorType::TRAP_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_trap_gate_descriptor())); break;
         // The following conditions cause general-protection exceptions to be generated:
         // Referencing an entry in the IDT (following an interrupt or exception) that is not an interrupt, trap, or task gate.
