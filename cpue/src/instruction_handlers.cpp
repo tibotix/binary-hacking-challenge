@@ -915,6 +915,12 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SLDT(cs_x86 const& in
     TODO();
 } //	Store Local Descriptor Table Register
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STI(cs_x86 const& insn_detail) {
+    /**
+    * TODO:
+    * Page 3286:
+    * > Maskable hardware interrupts remain inhibited on the instruction boundary following an execution of STI.
+    * > The inhibition ends after delivery of another event (e.g., exception) or the execution of the next instruction.
+    */
     if (cr0().c.PE) {
         m_rflags.c.IF = 1;
     } else if (m_rflags.c.IOPL >= cpl()) {
