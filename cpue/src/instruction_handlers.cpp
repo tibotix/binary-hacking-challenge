@@ -199,7 +199,17 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMP(cs_x86 const& ins
     return CONTINUE_IP;
 } //    Compare Two Operands
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto res = CPUE_checked_single_usub(first_val, SizedValue(1));
+
+    // The CF flag is not affected. The OF, SF, ZF, AF, and PF flags are set according to the result.
+    m_rflags.c.OF = res.has_of_set;
+    update_rflags(res.value);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return CONTINUE_IP;
 } //    Decrement By 1
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV_IDIV(x86_insn const& insn, cs_x86 const& insn_detail) {
     bool is_signed_division = insn == X86_INS_IDIV;
@@ -339,7 +349,17 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IMUL(cs_x86 const& in
     return CONTINUE_IP;
 } //	Signed Multiply
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INC(cs_x86 const& insn_detail) {
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto res = CPUE_checked_single_uadd(first_val, SizedValue(1));
+
+    // The CF flag is not affected. The OF, SF, ZF, AF, and PF flags are set according to the result.
+    m_rflags.c.OF = res.has_of_set;
+    update_rflags(res.value);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return CONTINUE_IP;
 } //	Increment by 1
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INT(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
