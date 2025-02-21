@@ -40,7 +40,7 @@ def main():
         f.flush()
 
         # Emulate
-        os.system(f"/app/cpue --kernel=none --no-serial -r'{ram}' '{f.name}' 2>/dev/null")
+        os.system(f"/app/cpue --kernel=none -r'{ram}' '{f.name}' 2>/dev/null")
 
 
 if __name__ == "__main__":
