@@ -34,17 +34,6 @@ constexpr void TODO_NOFAIL(char const* msg = NULL) {
 }
 
 
-
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
 constexpr unsigned long long operator""_kb(unsigned long long bytes) {
     return bytes * 1024;
 }
@@ -56,12 +45,28 @@ constexpr unsigned long long operator""_gb(unsigned long long bytes) {
 }
 
 
+template<typename T>
+concept is_integral = std::is_integral_v<T> || std::is_same_v<T, u128> || std::is_same_v<T, i128>;
+template<typename T>
+concept integral = is_integral<T>;
+
+template<typename T>
+concept is_unsigned_integral = is_integral<T> && std::is_unsigned_v<T>;
+template<typename T>
+concept unsigned_integral = is_unsigned_integral<T>;
+
+template<typename T>
+concept is_signed_integral = is_integral<T> && std::is_signed_v<T>;
+template<typename T>
+concept signed_integral = is_signed_integral<T>;
+
+
 typedef u16 PCID;
 
-constexpr u64 bitmask(u8 high) {
-    return (high >= 64) ? ~0ULL : (static_cast<u64>(1) << high) - 1;
+constexpr u128 bitmask(u8 high) {
+    return (high >= 128) ? ~static_cast<u128>(0) : (static_cast<u128>(1) << high) - 1;
 }
-constexpr u64 bytemask(u8 high) {
+constexpr u128 bytemask(u8 high) {
     return bitmask(high * 8);
 }
 
@@ -72,8 +77,7 @@ constexpr T bits(T val, u8 high, u8 low) {
 }
 
 
-template<typename T>
-requires std::is_integral_v<T>
+template<integral T>
 constexpr u8 sign_bit(T value) {
     return value >> (sizeof(T) * 8 - 1);
 }
@@ -100,16 +104,12 @@ static constexpr T instance(I initializer) {
     return *reinterpret_cast<T*>(&storage);
 }
 template<typename R, typename T>
-requires std::is_integral_v<R> && SameSize<R, T>
+requires is_integral<R> && SameSize<R, T>
 static constexpr R raw_bytes(T* instance) {
     return *((R*)instance);
 }
 
-template<typename T>
-concept is_unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
-template<typename T>
-concept unsigned_integral = is_unsigned_integral<T>;
 
 
 template<typename T>
@@ -144,7 +144,11 @@ public:
     // Prevent usage in if statement
     explicit operator bool() const = delete;
 
-    constexpr u64 bitmask() const { return bytemask(m_width); }
+    constexpr u128 bitmask() const { return bytemask(m_width); }
+    constexpr u16 bit_width() const { return m_width * 8; }
+
+    constexpr ByteWidth half_width() const { return std::clamp(m_width >> 1, 1, 16); }
+    constexpr ByteWidth double_width() const { return std::clamp(m_width << 1, 1, 16); }
 
     template<typename T, typename Func>
     constexpr T do_with_concrete_type(Func& f) const {
@@ -153,6 +157,7 @@ public:
             case WIDTH_WORD: return f.template operator()<u16>();
             case WIDTH_DWORD: return f.template operator()<u32>();
             case WIDTH_QWORD: return f.template operator()<u64>();
+            case WIDTH_DQWORD: return f.template operator()<u128>();
             default: fail("Can't convert to concrete type.");
         }
     }
@@ -162,8 +167,7 @@ private:
 };
 
 
-template<typename T>
-requires std::is_integral_v<T>
+template<integral T>
 constexpr ByteWidth get_byte_width() {
     switch (sizeof(T)) {
         case 1: return ByteWidth::WIDTH_BYTE;
