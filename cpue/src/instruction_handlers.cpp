@@ -496,7 +496,10 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LEA(cs_x86 const& ins
     return CONTINUE_IP;
 } //	Load Effective Address
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LEAVE(cs_x86 const& insn_detail) {
-    TODO();
+    m_rsp_val = m_rbp_val;
+    m_rbp_val = MAY_HAVE_RAISED(stack_pop());
+
+    return CONTINUE_IP;
 } //	High Level Procedure Exit
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LGDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
