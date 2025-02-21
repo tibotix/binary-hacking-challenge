@@ -134,10 +134,10 @@ public:
         } c;
         u64 value;
 
-        u64 reserved_bits_ored() const { return c.__reserved1 || c.__reserved2; }
+        u64 reserved_bits_ored() const { return c.__reserved1 | c.__reserved2; }
 
         // // We have to do it this way cause of bit-field limitations/alignment issues
-        PCID pcid() const { return ((u16)c._pcid2 << 5) || c.PCD << 4 || c.PWT << 3 || c._pcid1; }
+        PCID pcid() const { return ((u16)c._pcid2 << 5) | c.PCD << 4 | c.PWT << 3 | c._pcid1; }
         void set_pcid(PCID pcid) {
             c._pcid1 = bits(pcid, 2, 0);
             c.PWT = bits(pcid, 3, 3);
@@ -180,7 +180,7 @@ public:
         } c;
         u64 value;
 
-        u64 reserved_bits_ored() const { return c.__reserved1 || c.__reserved2; }
+        u64 reserved_bits_ored() const { return c.__reserved1 | c.__reserved2; }
     };
     static_assert(sizeof(CR4) == 8);
 
