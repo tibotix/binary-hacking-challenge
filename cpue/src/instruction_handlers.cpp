@@ -733,7 +733,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_OR(cs_x86 const& insn
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_POP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
-    auto value = MAY_HAVE_RAISED(stack_pop(INTENTION_HANDLE_INSTRUCTION));
+    auto value = MAY_HAVE_RAISED(stack_pop());
 
     MAY_HAVE_RAISED(first_op.write(SizedValue(value)));
 
