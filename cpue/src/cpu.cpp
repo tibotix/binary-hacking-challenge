@@ -101,8 +101,8 @@ std::string CPU::dump_full_state() const {
     dump("RBX", m_rbx_val);
     dump("RCX", m_rcx_val);
     dump("RDX", m_rdx_val);
-    dump("RSI", m_rsi_val);
     dump("RDI", m_rdi_val);
+    dump("RSI", m_rsi_val);
     dump("RBP", m_rbp_val);
     dump("RSP", m_rsp_val);
     dump("R8", m_r8_val);
@@ -115,7 +115,7 @@ std::string CPU::dump_full_state() const {
     dump("R15", m_r15_val);
     dump("RIP", m_rip_val);
     dump("RFLAGS", m_rflags.value);
-    dump("EFER", m_rflags.value);
+    dump("EFER", m_efer.value);
     dump("CS", m_cs.visible.segment_selector.value);
     dump("SS", m_ss.visible.segment_selector.value);
     dump("DS", m_ds.visible.segment_selector.value);
