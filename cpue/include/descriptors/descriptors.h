@@ -93,7 +93,7 @@ constexpr DescriptorType _system_descriptor_type_map[16] = {
 
 struct DescriptorTable {
     u64 base; // The base address specifies the linear address of byte 0 of the IDT
-    u32 limit; // The table limit specifies the number of bytes in the table
+    u16 limit; // The table limit specifies the number of bytes in the table
 };
 
 
