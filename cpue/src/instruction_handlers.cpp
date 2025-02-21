@@ -86,6 +86,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(SIDT)
         CASE(SLDT)
         CASE(STI)
+        CASE(STC)
         CASE(STD)
         CASE(SUB)
         CASE(SWAPGS)
