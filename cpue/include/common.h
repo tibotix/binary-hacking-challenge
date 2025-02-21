@@ -8,10 +8,18 @@
 #include <cassert>
 
 #include "logging.h"
-
-
-#define CPUE_ASSERT(cond, msg) assert((cond) && (msg))
 #include "integral_types.h"
+
+
+// NOTE: We don't optimize asserts out in release builds, as the condition is allowed to have side effects.
+//       If we have to further optimize this, make a separate CPUE_REQUIRE / etc. function that does not get
+//       optimized out in release builds.
+#define CPUE_ASSERT(cond, msg) \
+    do {                       \
+        if (!(cond)) {         \
+            fail(msg);         \
+        }                      \
+    } while (0)
 
 
 namespace CPUE {
