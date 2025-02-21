@@ -463,7 +463,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JG(cs_x86 const& insn
     return CONTINUE_IP;
 } //	Jump Greater
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JLE(cs_x86 const& insn_detail) {
-    if (m_rflags.c.ZF && m_rflags.c.SF != m_rflags.c.OF)
+    if (m_rflags.c.ZF || m_rflags.c.SF != m_rflags.c.OF)
         return handle_JMP(insn_detail);
     return CONTINUE_IP;
 } //	Jump Lower or Equal
