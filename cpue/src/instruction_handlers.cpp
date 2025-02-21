@@ -936,6 +936,10 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STC(cs_x86 const& ins
     m_rflags.c.CF = 1;
     return CONTINUE_IP;
 }
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STD(cs_x86 const& insn_detail) {
+    m_rflags.c.DF = 1;
+    return CONTINUE_IP;
+}
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
