@@ -724,6 +724,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ADD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_AND(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CALL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CLI(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CMP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DEC(cs_x86 const&);

@@ -14,6 +14,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
     switch (insn.id) {
         CASE(ADD)
         CASE(AND)
+        CASE(CALL)
         CASE(CLI)
         CASE(CMP)
         CASE(DEC)
@@ -162,6 +163,17 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_AND(cs_x86 const& ins
 
     return CONTINUE_IP;
 } //	Logical AND
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CALL(cs_x86 const& insn_detail) {
+    // Only near and far calls are allowed in 64-bit mode -> we don't need to consider inter-privilege-far-calls and task-switches.
+    assert_in_64bit_mode();
+    TODO_NOFAIL("Check for far calls");
+
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    MAY_HAVE_RAISED(stack_push(m_rip_val));
+    m_rip_val = MAY_HAVE_RAISED(first_op.read()).value();
+    return CONTINUE_IP;
+} //    Call Procedure
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CLI(cs_x86 const& insn_detail) {
     if (cr0().c.PE) {
         m_rflags.c.IF = 0;
@@ -547,7 +559,24 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_PUSHFQ(cs_x86 const& 
     return CONTINUE_IP;
 } //	Push RFLAGS Register Onto the Stack
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_RET(cs_x86 const& insn_detail) {
-    TODO();
+    // Only near and far ret are allowed in 64-bit mode -> we don't need to consider inter-privilege-far-ret.
+    assert_in_64bit_mode();
+
+    auto value = MAY_HAVE_RAISED(stack_pop());
+    m_rip_val = value;
+
+    // Release parameters from stack if operand is given
+    if (insn_detail.op_count == 1) {
+        auto first_op = Operand(this, insn_detail.operands[0]);
+        m_rsp_val += MAY_HAVE_RAISED(first_op.read()).value();
+    }
+
+    TODO_NOFAIL("Check for far ret");
+    // When executing a far return, the processor pops the return instruction pointer from the top of the stack into the EIP register,
+    // then pops the segment selector from the top of the stack into the CS register.
+    // The processor then begins program execution in the new code segment at the new instruction pointer.
+
+    return CONTINUE_IP;
 } //	Return From Procedure
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ROL(cs_x86 const& insn_detail) {
     TODO();
