@@ -20,7 +20,7 @@ public:
     [[nodiscard]] SizedValue read(u64 const* value_ptr) const { return {(*value_ptr & m_bitmask) >> m_rshift, m_width}; }
     void write(u64* value_ptr, SizedValue const& svalue) {
         CPUE_ASSERT(svalue.byte_width() <= m_width, "Invalid width.");
-        u64 value = (svalue << m_rshift) & m_bitmask;
+        u64 value = (svalue.value() << m_rshift) & m_bitmask;
         *value_ptr = (*value_ptr & m_keep_bitmask) | value;
     }
 
