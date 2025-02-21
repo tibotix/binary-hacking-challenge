@@ -63,7 +63,7 @@ void UEFI::setup_gdt(u64& top) {
     CPUE_ASSERT(m_cpu->mmu().physmem_size() >= top + 512 * 8, "setup_idt: Out of memory");
     u64 gdt_base = top;
 
-    u64 code_flags = 0b10100000 | 0xF; // GRAN_4K | LONG_MODE | 0xF
+    u64 code_flags = 0b10100000 | 0xF; // GRAN_4K | 64BIT_MODE | 0xF
     u64 ring0_code_access = 0b10011010; // PRESENT | NOT_SYS | EXEC | RW - DPL: 0x0
     u64 ring0_code_segment_descriptor = (code_flags << 48) | (ring0_code_access << 40) | 0x000000ffff; // Base: 0x0 - Limit: 0xffff
     u64 ring3_code_access = 0b11111010; // PRESENT | NOT_SYS | EXEC | RW - DPL: 0x11
