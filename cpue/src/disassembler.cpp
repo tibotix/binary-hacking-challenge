@@ -4,23 +4,19 @@
 
 namespace CPUE {
 
+// Reading instructions byte by byte
+InterruptRaisedOr<cs_insn> Disassembler::next_insn() {
+    u64 address = m_cpu->m_rip_val;
+    u8 code[15] = {0};
+    u64 code_size = 0;
 
-cs_insn const* Disassembler::next_insn_or_null() const {
-#if 0
-    InterruptRaisedOr<PhysicalAddress> code_ptr = m_cpu->mmu().va_to_pa(VirtualAddress(m_cpu->m_rip));
-    size_t code_size = 3;
-    u64 address = m_cpu->m_rip;
-
-    TODO("fetch next insn");
-    // if interrupt happened, rip is NOT updated, it stays the same
-    TODO("update rip");
-
-    // disassemble one instruction a time & store the result into @insn variable above
-    if (cs_disasm_iter(handle, &code, &code_size, &address, m_insn)) {
-        return m_insn;
+    for (; code_size < sizeof(code);) {
+        code[code_size++] = MAY_HAVE_RAISED(m_cpu->mmu().mem_read8(LogicalAddress(m_cpu->m_cs, address + code_size)));
+        u8 const* code_ptr = code;
+        if (cs_disasm_iter(m_handle, &code_ptr, &code_size, &address, m_insn))
+            return *m_insn;
     }
-#endif
-    return NULL;
+    return m_cpu->raise_interrupt(Exceptions::UD());
 }
 
 }

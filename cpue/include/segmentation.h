@@ -19,21 +19,25 @@ namespace CPUE {
  */
 
 
-struct SegmentSelector {
+union SegmentSelector {
     // size: 16 bits
     constexpr SegmentSelector() = default;
     constexpr SegmentSelector(const SegmentSelector&) = default;
-    constexpr SegmentSelector(u16 value) : rpl(bits(value, 1, 0)), table(bits(value, 2, 2)), index(bits(value, 15, 3)) {}
-    constexpr SegmentSelector(u16 rpl, u8 table, u8 index) : rpl(rpl), table(table), index(index) {}
-    u16 rpl : 2; // Requested Privilege Level
-    u16 table : 1; // Table Indicator (0=GDT,1=LDT)
-    /**
-     * Selects one of 8192 descriptors in the GDT or LDT.
-     * The processor multiplies the index value by 8 and adds the result to the
-     * base address of the GDT or LDT (from the GDTR or LDTR register, respectively)
-     */
-    u16 index : 13;
+    constexpr SegmentSelector(u16 value) : value(value){};
+    constexpr SegmentSelector(u16 rpl, u8 table, u8 index) : c({.rpl = rpl, .table = table, .index = index}) {}
+    struct Concrete {
+        u16 rpl : 2; // Requested Privilege Level
+        u16 table : 1; // Table Indicator (0=GDT,1=LDT)
+        /**
+         * Selects one of 8192 descriptors in the GDT or LDT.
+         * The processor multiplies the index value by 8 and adds the result to the
+         * base address of the GDT or LDT (from the GDTR or LDTR register, respectively)
+         */
+        u16 index : 13;
+    } c;
+    u16 value;
 };
+static_assert(sizeof(SegmentSelector::Concrete) == 2);
 static_assert(sizeof(SegmentSelector) == 2);
 
 

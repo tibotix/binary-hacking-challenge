@@ -3,10 +3,12 @@
 #include <mutex>
 #include <optional>
 #include <queue>
+#include <utility>
 
-#include "pic.h"
 #include "common.h"
 #include "interrupts.h"
+#include "forward.h"
+
 
 namespace CPUE {
 
@@ -20,9 +22,18 @@ namespace CPUE {
  */
 class ICU {
 public:
-    friend class CPU;
-    ICU() = default;
+    friend CPU;
+    ICU(CPU* cpu) : m_cpu(cpu) {}
     ICU(ICU const&) = delete;
+
+    bool intr_pin_enabled() const;
+    _InterruptRaised nmi_raise_interrupt(Interrupt i) { fail("NMI pin is not implemented"); }
+    InterruptRaisedOr<void> intr_raise_interrupt(Interrupt i) {
+        CPUE_ASSERT(i.source == InterruptSource::INTR_PIN, "Non INTR_PIN interrupt raised through intr_raise_interrupt.");
+        if (!intr_pin_enabled())
+            return {};
+        return raise_interrupt(i);
+    }
 
 private:
     static constexpr u8 MAX_PENDING_CAPACITY = 127;
@@ -44,7 +55,6 @@ private:
         }();
         return raise_interrupt(i, priority);
     }
-    _InterruptRaised nmi_raise_interrupt(Interrupt i) { fail("NMI pin is not implemented"); }
 
     /**
      * Instruction integral interrupts are handled as an integral part of the current instruction,
@@ -56,18 +66,30 @@ private:
      */
     _InterruptRaised raise_integral_interrupt(Interrupt i) { return _raise_interrupt(i, 0); }
 
-    std::optional<Interrupt> pop_highest_priority_interrupt() {
+    std::optional<std::pair<u8, Interrupt>> pop_highest_priority_interrupt() {
         std::scoped_lock lock(m_lock);
         if (m_pending_interrupts.empty())
             return {};
         auto prioritized_interrupt = m_pending_interrupts.top();
         m_pending_interrupts.pop();
-        return prioritized_interrupt.interrupt;
+        return std::make_pair(prioritized_interrupt.priority, prioritized_interrupt.interrupt);
+    }
+
+    void discard_interrupts_of_category_with_priority_lower_than(InterruptCategory category, u8 priority) {
+        CPUE_ASSERT(m_pending_interrupts_scratch_pad.empty(), "scratch priority queue is not empty");
+        while (!m_pending_interrupts.empty()) {
+            auto top = m_pending_interrupts.top();
+            if (top.priority > priority && top.interrupt.type.category() == category)
+                continue;
+            m_pending_interrupts_scratch_pad.push(top);
+        }
+        m_pending_interrupts_scratch_pad.swap(m_pending_interrupts);
     }
 
     _InterruptRaised _raise_interrupt(Interrupt i, u8 priority) {
         std::scoped_lock lock(m_lock);
         CPUE_ASSERT(m_pending_interrupts.size() < MAX_PENDING_CAPACITY, "ICU capacity full");
+        CPUE_TRACE("ICU enqueued interrupt: ({0},{1})", i.vector, (u8)i.source);
         m_pending_interrupts.push({i, priority});
         return INTERRUPT_RAISED;
     }
@@ -80,7 +102,9 @@ private:
         bool operator()(_PrioritizedInterrupt const l, _PrioritizedInterrupt const r) const { return l.priority < r.priority; }
     } _comparator;
     std::priority_queue<_PrioritizedInterrupt, std::vector<_PrioritizedInterrupt>, decltype(_comparator)> m_pending_interrupts{_comparator};
+    decltype(m_pending_interrupts) m_pending_interrupts_scratch_pad{_comparator};
     std::mutex m_lock;
+    CPU* m_cpu;
 };
 
 }

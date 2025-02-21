@@ -13,28 +13,50 @@ add_subdirectory("deps/ELFIO")
 add_subdirectory("deps/spdlog")
 
 
-option(NO_LOGGING "Disable CPUE logging" OFF)
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(NO_LOGGING ON CACHE BOOL "Disable logging functionality on Release builds" FORCE)
+option(NO_LOGGING "Disable CPUE logging completely." OFF)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(ENABLE_TRACE ON CACHE BOOL "Enable Trace logs for Debug builds.")
 endif ()
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(ENABLE_TRACE OFF CACHE BOOL "Disable Trace logs for Release builds.")
+    set(NO_STDOUT_LOGGING ON CACHE BOOL "Disable stdout logging on Release builds.")
+endif ()
+set(NO_STDOUT_LOGGING OFF CACHE BOOL "Enable stdout logging by default.")
+set(ENABLE_TRACE OFF CACHE BOOL "Disable Trace by default.")
+message(STATUS "NO_STDOUT_LOGGING is set to: ${NO_STDOUT_LOGGING}")
+message(STATUS "ENABLE_TRACE is set to: ${ENABLE_TRACE}")
 
 
+# cpue
 file(GLOB cpue_sources "src/**/*.cpp" "src/*.cpp")
 # Note: To build a shared library, use -DBUILD_SHARED_LIBS=ON when configuring
 add_library(cpue STATIC ${cpue_sources})
 target_include_directories(cpue PUBLIC include)
 target_include_directories(cpue PUBLIC ${capstone_SOURCE_DIR}/include)
 target_include_directories(cpue PUBLIC ${spdlog_SOURCE_DIR}/include)
+target_include_directories(cpue PUBLIC ${elfio_SOURCE_DIR})
 target_link_libraries(cpue PRIVATE capstone elfio spdlog::spdlog)
 target_link_options(cpue PUBLIC -Wl,-z,relro,-z,now)
-target_compile_definitions(cpue PRIVATE $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>)
+target_compile_definitions(cpue PRIVATE
+        $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>
+        $<$<BOOL:${NO_STDOUT_LOGGING}>:CPUE_NO_STDOUT_LOGGING>
+        $<$<BOOL:${ENABLE_TRACE}>:CPUE_ENABLE_TRACE>
+)
 
 
+# cpue_main
+set(CLI11_PRECOMPILED 1)
+add_subdirectory("deps/CLI11")
 set(cpue_main_sources "./main.cpp")
 add_executable(cpue_main ${cpue_main_sources})
-target_link_libraries(cpue_main cpue)
+target_link_libraries(cpue_main cpue CLI11::CLI11)
+target_include_directories(cpue_main PUBLIC ${CLI11_SOURCE_DIR}/include)
 set_target_properties(cpue_main PROPERTIES OUTPUT_NAME "cpue")
-target_compile_definitions(cpue_main PRIVATE $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>)
+target_compile_definitions(cpue_main PRIVATE
+        $<$<BOOL:${NO_LOGGING}>:CPUE_NO_LOGGING>
+        $<$<BOOL:${NO_STDOUT_LOGGING}>:CPUE_NO_STDOUT_LOGGING>
+        $<$<BOOL:${ENABLE_TRACE}>:CPUE_ENABLE_TRACE>
+)
 
 
 if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
@@ -43,9 +65,10 @@ if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
     list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
     include(Catch)
 
-    file(GLOB test_sources "tests/**/*_test.cpp" "tests/*_test.cpp")
+    file(GLOB test_sources "tests/src/**/*_test.cpp" "tests/src/*_test.cpp")
     add_executable(cpue_test ${test_sources})
     target_include_directories(cpue_test PUBLIC include)
+    target_include_directories(cpue_test PUBLIC tests/include)
 
     target_link_libraries(cpue_test PRIVATE Catch2::Catch2WithMain)
     target_link_libraries(cpue_test PRIVATE cpue)

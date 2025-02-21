@@ -1,1090 +1,785 @@
 
 #include "cpu.h"
+#include <sstream>
 
 namespace CPUE {
 
+// TODO: use dispatch array, and build it in constexpr, use nullptr for not implemented and pointer to member function otherwise
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& insn) {
+    CPUE_TRACE("Handling instruction: {} {}", insn.mnemonic, insn.op_str);
+    auto const& detail = insn.detail->x86;
+#define CASE(name) \
+    case x86_insn::X86_INS_##name: return handle_##name(detail); break;
 
-InterruptRaisedOr<void> CPU::handle_AAA() {
-    TODO();
-} //	ASCII Adjust After Addition
-InterruptRaisedOr<void> CPU::handle_AAD() {
-    TODO();
-} //	ASCII Adjust AX Before Division
-InterruptRaisedOr<void> CPU::handle_AAM() {
-    TODO();
-} //	ASCII Adjust AX After Multiply
-InterruptRaisedOr<void> CPU::handle_AAS() {
-    TODO();
-} //	ASCII Adjust AL After Subtraction
-InterruptRaisedOr<void> CPU::handle_ADC() {
-    TODO();
-} //	Add With Carry
-InterruptRaisedOr<void> CPU::handle_ADCX() {
-    TODO();
-} //	Unsigned Integer Addition of Two Operands With Carry Flag
-InterruptRaisedOr<void> CPU::handle_ADD() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_ADDPD() {
-    TODO();
-} //	Add Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDPS() {
-    TODO();
-} //	Add Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDSD() {
-    TODO();
-} //	Add Scalar Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDSS() {
-    TODO();
-} //	Add Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ADDSUBPD() {
-    TODO();
-} //	Packed Double Precision Floating-Point Add/Subtract
-InterruptRaisedOr<void> CPU::handle_ADDSUBPS() {
-    TODO();
-} //	Packed Single Precision Floating-Point Add/Subtract
-InterruptRaisedOr<void> CPU::handle_ADOX() {
-    TODO();
-} //	Unsigned Integer Addition of Two Operands With Overflow Flag
-InterruptRaisedOr<void> CPU::handle_AESDEC() {
-    TODO();
-} //	Perform One Round of an AES Decryption Flow
-InterruptRaisedOr<void> CPU::handle_AESDEC128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Decryption Flow With Key Locker Using 128-BitKey
-InterruptRaisedOr<void> CPU::handle_AESDEC256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Decryption Flow With Key Locker Using 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESDECLAST() {
-    TODO();
-} //	Perform Last Round of an AES Decryption Flow
-InterruptRaisedOr<void> CPU::handle_AESDECWIDE128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Decryption Flow With Key Locker on 8 BlocksUsing 128-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESDECWIDE256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Decryption Flow With Key Locker on 8 BlocksUsing 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENC() {
-    TODO();
-} //	Perform One Round of an AES Encryption Flow
-InterruptRaisedOr<void> CPU::handle_AESENC128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Encryption Flow With Key Locker Using 128-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENC256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Encryption Flow With Key Locker Using 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENCLAST() {
-    TODO();
-} //	Perform Last Round of an AES Encryption Flow
-InterruptRaisedOr<void> CPU::handle_AESENCWIDE128KL() {
-    TODO();
-} //	Perform Ten Rounds of AES Encryption Flow With Key Locker on 8 BlocksUsing 128-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESENCWIDE256KL() {
-    TODO();
-} //	Perform 14 Rounds of AES Encryption Flow With Key Locker on 8 BlocksUsing 256-Bit Key
-InterruptRaisedOr<void> CPU::handle_AESIMC() {
-    TODO();
-} //	Perform the AES InvMixColumn Transformation
-InterruptRaisedOr<void> CPU::handle_AESKEYGENASSIST() {
-    TODO();
-} //	AES Round Key Generation Assist
-InterruptRaisedOr<void> CPU::handle_AND() {
-    TODO();
-} //	Logical AND
-InterruptRaisedOr<void> CPU::handle_ANDN() {
-    TODO();
-} //	Logical AND NOT
-InterruptRaisedOr<void> CPU::handle_ANDNPD() {
-    TODO();
-} //	Bitwise Logical AND NOT of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ANDNPS() {
-    TODO();
-} //	Bitwise Logical AND NOT of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ANDPD() {
-    TODO();
-} //	Bitwise Logical AND of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ANDPS() {
-    TODO();
-} //	Bitwise Logical AND of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ARPL() {
-    TODO();
-} //	Adjust RPL Field of Segment Selector
-InterruptRaisedOr<void> CPU::handle_BEXTR() {
-    TODO();
-} //	Bit Field Extract
-InterruptRaisedOr<void> CPU::handle_BLENDPD() {
-    TODO();
-} //	Blend Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLENDPS() {
-    TODO();
-} //	Blend Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLENDVPD() {
-    TODO();
-} //	Variable Blend Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLENDVPS() {
-    TODO();
-} //	Variable Blend Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_BLSI() {
-    TODO();
-} //	Extract Lowest Set Isolated Bit
-InterruptRaisedOr<void> CPU::handle_BLSMSK() {
-    TODO();
-} //	Get Mask Up to Lowest Set Bit
-InterruptRaisedOr<void> CPU::handle_BLSR() {
-    TODO();
-} //	Reset Lowest Set Bit
-InterruptRaisedOr<void> CPU::handle_BNDCL() {
-    TODO();
-} //	Check Lower Bound
-InterruptRaisedOr<void> CPU::handle_BNDCN() {
-    TODO();
-} //	Check Upper Bound
-InterruptRaisedOr<void> CPU::handle_BNDCU() {
-    TODO();
-} //	Check Upper Bound
-InterruptRaisedOr<void> CPU::handle_BNDLDX() {
-    TODO();
-} //	Load Extended Bounds Using Address Translation
-InterruptRaisedOr<void> CPU::handle_BNDMK() {
-    TODO();
-} //	Make Bounds
-InterruptRaisedOr<void> CPU::handle_BNDMOV() {
-    TODO();
-} //	Move Bounds
-InterruptRaisedOr<void> CPU::handle_BNDSTX() {
-    TODO();
-} //	Store Extended Bounds Using Address Translation
-InterruptRaisedOr<void> CPU::handle_BOUND() {
-    TODO("Only handle interrupt if out of bounds");
-    static Interrupt i = {
-        .vector = 5,
-        .type = InterruptType::SOFTWARE_INTERRUPT,
-        .iclass = InterruptClass::BENIGN,
+    switch (insn.id) {
+        CASE(ADD)
+        CASE(AND)
+        CASE(CALL)
+        CASE(CLI)
+        CASE(CLD)
+        CASE(CMP)
+        CASE(CMPXCHG)
+        CASE(CWD)
+        CASE(CDQ)
+        CASE(CQO)
+        CASE(DEC)
+        CASE(DIV)
+        CASE(ENDBR64)
+        CASE(HLT)
+        CASE(IDIV)
+        CASE(IMUL)
+        CASE(INC)
+        CASE(INT)
+        CASE(INT1)
+        CASE(INT3)
+        CASE(INTO)
+        CASE(INVLPG)
+        CASE(IRET)
+        CASE(IRETD)
+        CASE(IRETQ)
+        CASE(JMP)
+        CASE(JA)
+        CASE(JAE)
+        CASE(JNE)
+        CASE(JE)
+        CASE(JGE)
+        CASE(JG)
+        CASE(JLE)
+        CASE(JL)
+        CASE(JB)
+        CASE(JBE)
+        CASE(LEA)
+        CASE(LEAVE)
+        CASE(LGDT)
+        CASE(LIDT)
+        CASE(LLDT)
+        CASE(LTR)
+        CASE(LOOP)
+        CASE(LOOPE)
+        CASE(LOOPNE)
+        CASE(MOV)
+        CASE(MOVABS)
+        CASE(MOVSX)
+        CASE(MOVSXD)
+        CASE(MOVZX)
+        CASE(MOVQ)
+        CASE(MOVSB)
+        CASE(MOVSW)
+        CASE(MOVSD)
+        CASE(MOVSQ)
+        CASE(MUL)
+        CASE(NOP)
+        CASE(NOT)
+        CASE(OR)
+        CASE(POP)
+        CASE(POPF)
+        CASE(POPFQ)
+        CASE(PUSH)
+        CASE(PUSHF)
+        CASE(PUSHFQ)
+        CASE(RET)
+        CASE(ROL)
+        CASE(ROR)
+        CASE(SAL)
+        CASE(SAR)
+        CASE(SGDT)
+        CASE(SHL)
+        CASE(SHLD)
+        CASE(SHLX)
+        CASE(SHR)
+        CASE(SETE)
+        CASE(SETNE)
+        CASE(SETL)
+        CASE(SETG)
+        CASE(SETGE)
+        CASE(SETB)
+        CASE(SIDT)
+        CASE(SLDT)
+        CASE(STI)
+        CASE(STC)
+        CASE(STD)
+        CASE(STOSB)
+        CASE(STOSW)
+        CASE(STOSD)
+        CASE(STOSQ)
+        CASE(SUB)
+        CASE(SWAPGS)
+        CASE(TEST)
+        CASE(XCHG)
+        CASE(XOR)
+
+        default: {
+            std::stringstream ss;
+            ss << "Unhandled instruction: " << insn.mnemonic;
+            TODO(ss.str().c_str());
+        }
+    }
+#undef CASE
+}
+
+
+/**
+ * Helper Functions:
+ */
+
+template<typename Func>
+requires std::is_same_v<std::invoke_result_t<Func>, InterruptRaisedOr<CPU::IPContinuationBehavior>> InterruptRaisedOr<CPU::IPContinuationBehavior>
+    CPU::do_string_op_and_handle_rep_prefixes(RepPrefix prefix, cs_x86 const& insn_detail, Func&& do_op) {
+    if (prefix == REP_PREFIX_NONE) {
+        return do_op();
+    }
+
+    // handle REP prefix case
+    auto should_terminate = [&]() -> bool {
+        switch (prefix) {
+            case REP_PREFIX_NONE:
+            case REP_PREFIX_REP: return false;
+            case REP_PREFIX_REPE: return m_rflags.c.ZF == 0;
+            case REP_PREFIX_REPNE: return m_rflags.c.ZF == 1;
+            default: return false;
+        }
     };
-    return handle_interrupt(i);
-} //	Check Array Index Against Bounds
-InterruptRaisedOr<void> CPU::handle_BSF() {
-    TODO();
-} //	Bit Scan Forward
-InterruptRaisedOr<void> CPU::handle_BSR() {
-    TODO();
-} //	Bit Scan Reverse
-InterruptRaisedOr<void> CPU::handle_BSWAP() {
-    TODO();
-} //	Byte Swap
-InterruptRaisedOr<void> CPU::handle_BT() {
-    TODO();
-} //	Bit Test
-InterruptRaisedOr<void> CPU::handle_BTC() {
-    TODO();
-} //	Bit Test and Complement
-InterruptRaisedOr<void> CPU::handle_BTR() {
-    TODO();
-} //	Bit Test and Reset
-InterruptRaisedOr<void> CPU::handle_BTS() {
-    TODO();
-} //	Bit Test and Set
-InterruptRaisedOr<void> CPU::handle_BZHI() {
-    TODO();
-} //	Zero High Bits Starting with Specified Bit Position
-InterruptRaisedOr<void> CPU::handle_CALL() {
-    TODO();
-} //	Call Procedure
-InterruptRaisedOr<void> CPU::handle_CBW() {
-    TODO();
-} //	Convert Byte to Word/Convert Word to Doubleword/Convert Doubleword toQuadword
-InterruptRaisedOr<void> CPU::handle_CDQ() {
-    TODO();
-} //	Convert Word to Doubleword/Convert Doubleword to Quadword
-InterruptRaisedOr<void> CPU::handle_CDQE() {
-    TODO();
-} //	Convert Byte to Word/Convert Word to Doubleword/Convert Doubleword toQuadword
-InterruptRaisedOr<void> CPU::handle_CLAC() {
-    TODO();
-} //	Clear AC Flag in EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_CLC() {
-    TODO();
-} //	Clear Carry Flag
-InterruptRaisedOr<void> CPU::handle_CLD() {
-    TODO();
-} //	Clear Direction Flag
-InterruptRaisedOr<void> CPU::handle_CLDEMOTE() {
-    TODO();
-} //	Cache Line Demote
-InterruptRaisedOr<void> CPU::handle_CLFLUSH() {
-    TODO();
-} //	Flush Cache Line
-InterruptRaisedOr<void> CPU::handle_CLFLUSHOPT() {
-    TODO();
-} //	Flush Cache Line Optimized
-InterruptRaisedOr<void> CPU::handle_CLI() {
-    TODO();
-} //	Clear Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_CLRSSBSY() {
-    TODO();
-} //	Clear Busy Flag in a Supervisor Shadow Stack Token
-InterruptRaisedOr<void> CPU::handle_CLTS() {
-    TODO();
-} //	Clear Task-Switched Flag in CR0
-InterruptRaisedOr<void> CPU::handle_CLUI() {
-    TODO();
-} //	Clear User Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_CLWB() {
-    TODO();
-} //	Cache Line Write Back
-InterruptRaisedOr<void> CPU::handle_CMC() {
-    TODO();
-} //	Complement Carry Flag
-InterruptRaisedOr<void> CPU::handle_CMOVcc() {
-    TODO();
-} //	Conditional Move
-InterruptRaisedOr<void> CPU::handle_CMP() {
-    TODO();
-} //	Compare Two Operands
-InterruptRaisedOr<void> CPU::handle_CMPPD() {
-    TODO();
-} //	Compare Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CMPPS() {
-    TODO();
-} //	Compare Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CMPS() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSB() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSD() {
-    TODO();
-} // (1)	Compare Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CMPSQ() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPSS() {
-    TODO();
-} //	Compare Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CMPSW() {
-    TODO();
-} //	Compare String Operands
-InterruptRaisedOr<void> CPU::handle_CMPXCHG() {
-    TODO();
-} //	Compare and Exchange
-InterruptRaisedOr<void> CPU::handle_CMPXCHG16B() {
-    TODO();
-} //	Compare and Exchange Bytes
-InterruptRaisedOr<void> CPU::handle_CMPXCHG8B() {
-    TODO();
-} //	Compare and Exchange Bytes
-InterruptRaisedOr<void> CPU::handle_COMISD() {
-    TODO();
-} //	Compare Scalar Ordered Double Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_COMISS() {
-    TODO();
-} //	Compare Scalar Ordered Single Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_CPUID() {
-    TODO();
-} //	CPU Identification
-InterruptRaisedOr<void> CPU::handle_CQO() {
-    TODO();
-} //	Convert Word to Doubleword/Convert Doubleword to Quadword
-InterruptRaisedOr<void> CPU::handle_CRC32() {
-    TODO();
-} //	Accumulate CRC32 Value
-InterruptRaisedOr<void> CPU::handle_CVTDQ2PD() {
-    TODO();
-} //	Convert Packed Doubleword Integers to Packed Double Precision Floating-PointValues
-InterruptRaisedOr<void> CPU::handle_CVTDQ2PS() {
-    TODO();
-} //	Convert Packed Doubleword Integers to Packed Single Precision Floating-PointValues
-InterruptRaisedOr<void> CPU::handle_CVTPD2DQ() {
-    TODO();
-} //	Convert Packed Double Precision Floating-Point Values to Packed DoublewordIntegers
-InterruptRaisedOr<void> CPU::handle_CVTPD2PI() {
-    TODO();
-} //	Convert Packed Double Precision Floating-Point Values to Packed Dword Integers
-InterruptRaisedOr<void> CPU::handle_CVTPD2PS() {
-    TODO();
-} //	Convert Packed Double Precision Floating-Point Values to Packed Single PrecisionFloating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPI2PD() {
-    TODO();
-} //	Convert Packed Dword Integers to Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPI2PS() {
-    TODO();
-} //	Convert Packed Dword Integers to Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPS2DQ() {
-    TODO();
-} //	Convert Packed Single Precision Floating-Point Values to Packed SignedDoubleword Integer Values
-InterruptRaisedOr<void> CPU::handle_CVTPS2PD() {
-    TODO();
-} //	Convert Packed Single Precision Floating-Point Values to Packed Double PrecisionFloating-Point Values
-InterruptRaisedOr<void> CPU::handle_CVTPS2PI() {
-    TODO();
-} //	Convert Packed Single Precision Floating-Point Values to Packed Dword Integers
-InterruptRaisedOr<void> CPU::handle_CVTSD2SI() {
-    TODO();
-} //	Convert Scalar Double Precision Floating-Point Value to Doubleword Integer
-InterruptRaisedOr<void> CPU::handle_CVTSD2SS() {
-    TODO();
-} //	Convert Scalar Double Precision Floating-Point Value to Scalar Single PrecisionFloating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSI2SD() {
-    TODO();
-} //	Convert Doubleword Integer to Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSI2SS() {
-    TODO();
-} //	Convert Doubleword Integer to Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSS2SD() {
-    TODO();
-} //	Convert Scalar Single Precision Floating-Point Value to Scalar Double PrecisionFloating-Point Value
-InterruptRaisedOr<void> CPU::handle_CVTSS2SI() {
-    TODO();
-} //	Convert Scalar Single Precision Floating-Point Value to Doubleword Integer
-InterruptRaisedOr<void> CPU::handle_CVTTPD2DQ() {
-    TODO();
-} //	Convert with Truncation Packed Double Precision Floating-Point Values toPacked Doubleword Integers
-InterruptRaisedOr<void> CPU::handle_CVTTPD2PI() {
-    TODO();
-} //	Convert With Truncation Packed Double Precision Floating-Point Values to PackedDword Integers
-InterruptRaisedOr<void> CPU::handle_CVTTPS2DQ() {
-    TODO();
-} //	Convert With Truncation Packed Single Precision Floating-Point Values to PackedSigned Doubleword Integer Values
-InterruptRaisedOr<void> CPU::handle_CVTTPS2PI() {
-    TODO();
-} //	Convert With Truncation Packed Single Precision Floating-Point Values to PackedDword Integers
-InterruptRaisedOr<void> CPU::handle_CVTTSD2SI() {
-    TODO();
-} //	Convert With Truncation Scalar Double Precision Floating-Point Value to SignedInteger
-InterruptRaisedOr<void> CPU::handle_CVTTSS2SI() {
-    TODO();
-} //	Convert With Truncation Scalar Single Precision Floating-Point Value to Integer
-InterruptRaisedOr<void> CPU::handle_CWD() {
-    TODO();
-} //	Convert Word to Doubleword/Convert Doubleword to Quadword
-InterruptRaisedOr<void> CPU::handle_CWDE() {
-    TODO();
-} //	Convert Byte to Word/Convert Word to Doubleword/Convert Doubleword toQuadword
-InterruptRaisedOr<void> CPU::handle_DAA() {
-    TODO();
-} //	Decimal Adjust AL After Addition
-InterruptRaisedOr<void> CPU::handle_DAS() {
-    TODO();
-} //	Decimal Adjust AL After Subtraction
-InterruptRaisedOr<void> CPU::handle_DEC() {
-    TODO();
-} //	Decrement by 1
-InterruptRaisedOr<void> CPU::handle_DIV() {
-    TODO();
+    // TODO: test this with golden file
+    auto count_reg_alias = [&]() -> x86_reg {
+        switch (insn_detail.addr_size) {
+            case 2: return X86_REG_CX;
+            case 4: return X86_REG_ECX;
+            case 8: return X86_REG_RCX;
+            default: fail();
+        }
+    }();
+    auto count_reg = reg(count_reg_alias);
+
+    auto ip_cont = CONTINUE_IP;
+    auto count = MAY_HAVE_RAISED(count_reg->read());
+    ;
+    while (count != 0x0) {
+        // TODO: Service pending interrupts (if any)
+        ip_cont = MAY_HAVE_RAISED(do_op());
+        MAY_HAVE_RAISED(count_reg->write(--count));
+        if (should_terminate())
+            break;
+    }
+
+    return ip_cont;
+}
+InterruptRaisedOr<void> CPU::do_privileged_instruction_check(u8 pl) {
+    if (cpl() != pl)
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    return {};
+}
+
+
+/**
+ * Handler Implementations:
+ */
+
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ADD(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
+    auto res = CPUE_checked_single_uadd(first_val, second_val);
+
+    update_rflags(res);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return CONTINUE_IP;
+} //	Add
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_AND(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_val.byte_width());
+
+    auto anded_value = first_val & second_val;
+    MAY_HAVE_RAISED(first_op.write(anded_value));
+
+    // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result. The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(anded_value);
+
+    return CONTINUE_IP;
+} //	Logical AND
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CALL(cs_x86 const& insn_detail) {
+    // Only near and far calls are allowed in 64-bit mode -> we don't need to consider inter-privilege-far-calls and task-switches.
+    assert_in_64bit_mode();
+    TODO_NOFAIL("Check for far calls");
+
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    MAY_HAVE_RAISED(stack_push(m_rip_val));
+    m_rip_val = MAY_HAVE_RAISED(first_op.read()).value();
+    return CONTINUE_IP;
+} //    Call Procedure
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CLI(cs_x86 const& insn_detail) {
+    if (cr0().c.PE) {
+        m_rflags.c.IF = 0;
+    } else if (m_rflags.c.IOPL >= cpl()) {
+        m_rflags.c.IF = 0;
+    } else if (/*VME Mode*/ (m_rflags.c.VM && cr4().c.VME) || /*PVI Mode*/ (!m_rflags.c.VM && cpl() == 3 && cr4().c.PVI)) {
+        m_rflags.c.VIF = 0;
+    } else {
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    }
+    return CONTINUE_IP;
+} //    Clear Interrupt Flag
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CLD(cs_x86 const& insn_detail) {
+    m_rflags.c.DF = 0;
+    return CONTINUE_IP;
+} //    Clear Direction Flag
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMP(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
+    auto res = CPUE_checked_single_usub(first_val, second_val);
+
+    update_rflags(res);
+
+    return CONTINUE_IP;
+} //    Compare Two Operands
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMPXCHG(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto accumulator_reg = [&]() {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AL;
+            case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+            default: fail();
+        }
+    }();
+    auto accumulator = reg(accumulator_reg);
+    auto accumulator_val = MAY_HAVE_RAISED(accumulator->read());
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto res = CPUE_checked_single_usub(accumulator_val, first_val);
+
+    update_rflags(res);
+
+    if (m_rflags.c.ZF) {
+        auto second_val = MAY_HAVE_RAISED(second_op.read());
+        MAY_HAVE_RAISED(first_op.write(second_val));
+    } else {
+        MAY_HAVE_RAISED(accumulator->write(first_val));
+    }
+
+    return CONTINUE_IP;
+} //    Compare and Exchange
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CWD(cs_x86 const& insn_detail) {
+    // DX:AX := sign-extend of AX.
+    auto value = MAY_HAVE_RAISED(reg(X86_REG_AX)->read()).sign_extended_to_width(ByteWidth::WIDTH_DWORD);
+    MAY_HAVE_RAISED(reg(X86_REG_DX)->write(value.upper_half()));
+    MAY_HAVE_RAISED(reg(X86_REG_AX)->write(value.lower_half()));
+    return CONTINUE_IP;
+} //    Convert Word to Doubleword/Convert Doubleword to Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CDQ(cs_x86 const& insn_detail) {
+    // EDX:EAX := sign-extend of EAX.
+    auto value = MAY_HAVE_RAISED(reg(X86_REG_EAX)->read()).sign_extended_to_width(ByteWidth::WIDTH_QWORD);
+    MAY_HAVE_RAISED(reg(X86_REG_EDX)->write(value.upper_half()));
+    MAY_HAVE_RAISED(reg(X86_REG_EAX)->write(value.lower_half()));
+    return CONTINUE_IP;
+} //    Convert Word to Doubleword/Convert Doubleword to Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CQO(cs_x86 const& insn_detail) {
+    // RDX:RAX:= sign-extend of RAX.
+    auto value = MAY_HAVE_RAISED(reg(X86_REG_RAX)->read()).sign_extended_to_width(ByteWidth::WIDTH_DQWORD);
+    MAY_HAVE_RAISED(reg(X86_REG_RDX)->write(value.upper_half()));
+    MAY_HAVE_RAISED(reg(X86_REG_RAX)->write(value.lower_half()));
+    return CONTINUE_IP;
+} //    Convert Word to Doubleword/Convert Doubleword to Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto res = CPUE_checked_single_usub(first_val, SizedValue(1));
+
+    // The CF flag is not affected. The OF, SF, ZF, AF, and PF flags are set according to the result.
+    m_rflags.c.OF = res.has_of_set;
+    update_rflags(res.value);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return CONTINUE_IP;
+} //    Decrement By 1
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV_IDIV(x86_insn const& insn, cs_x86 const& insn_detail) {
+    bool is_signed_division = insn == X86_INS_IDIV;
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto quotient_dest = [&]() -> x86_reg {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AL;
+            case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+            default: fail();
+        }
+    }();
+    auto quotient_dest_reg = reg(quotient_dest);
+    auto quotient_reg_width = quotient_dest_reg->byte_width();
+    auto remainder_dest = [&]() -> x86_reg {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AH;
+            case ByteWidth::WIDTH_WORD: return X86_REG_DX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EDX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RDX;
+            default: fail();
+        }
+    }();
+    auto remainder_dest_reg = reg(remainder_dest);
+    auto remainder_reg_width = remainder_dest_reg->byte_width();
+
+    // divisor = remainder_reg:quotient_reg
+    auto dividend = (MAY_HAVE_RAISED(remainder_dest_reg->read()).zero_extended_to_width(quotient_reg_width.double_width()) << quotient_reg_width.bit_width()) |
+                    MAY_HAVE_RAISED(quotient_dest_reg->read());
+    if (is_signed_division)
+        dividend = dividend.sign_extended_to_width(ByteWidth::WIDTH_DQWORD);
+    auto divisor = MAY_HAVE_RAISED(first_op.read());
+    if (is_signed_division)
+        divisor = divisor.sign_extended_to_width(ByteWidth::WIDTH_DQWORD);
+    if (divisor == 0)
+        return raise_integral_interrupt(Exceptions::DE());
+    auto do_div = [&]<typename T>() -> T {
+        return dividend.as<T>() / divisor.as<T>();
+    };
+    auto quotient = SizedValue((is_signed_division ? do_div.operator()<i128>() : do_div.operator()<u128>()), dividend.byte_width());
+
+    // store quotient, and if it is too large for designated destination register, throw DE
+    auto truncated_quotient = quotient.truncated_to_width(quotient_reg_width);
+    if ((!is_signed_division && quotient != truncated_quotient) || (is_signed_division && quotient != truncated_quotient.sign_extended_to_width(quotient.byte_width())))
+        return raise_integral_interrupt(Exceptions::DE());
+    MAY_HAVE_RAISED(quotient_dest_reg->write(truncated_quotient));
+
+    // store remainder
+    auto do_mod = [&]<typename T>() -> T {
+        return dividend.as<T>() % divisor.as<T>();
+    };
+    auto remainder = SizedValue((is_signed_division ? do_mod.operator()<i128>() : do_mod.operator()<u128>()), remainder_reg_width);
+    MAY_HAVE_RAISED(remainder_dest_reg->write(remainder));
+
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV(cs_x86 const& insn_detail) {
+    return handle_DIV_IDIV(X86_INS_DIV, insn_detail);
 } //	Unsigned Divide
-InterruptRaisedOr<void> CPU::handle_DIVPD() {
-    TODO();
-} //	Divide Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DIVPS() {
-    TODO();
-} //	Divide Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DIVSD() {
-    TODO();
-} //	Divide Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_DIVSS() {
-    TODO();
-} //	Divide Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DPPD() {
-    TODO();
-} //	Dot Product of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_DPPS() {
-    TODO();
-} //	Dot Product of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_EMMS() {
-    TODO();
-} //	Empty MMX Technology State
-InterruptRaisedOr<void> CPU::handle_ENCODEKEY128() {
-    TODO();
-} //	Encode 128-Bit Key With Key Locker
-InterruptRaisedOr<void> CPU::handle_ENCODEKEY256() {
-    TODO();
-} //	Encode 256-Bit Key With Key Locker
-InterruptRaisedOr<void> CPU::handle_ENDBR32() {
-    TODO();
-} //	Terminate an Indirect Branch in 32-bit and Compatibility Mode
-InterruptRaisedOr<void> CPU::handle_ENDBR64() {
-    TODO();
-} //	Terminate an Indirect Branch in 64-bit Mode
-InterruptRaisedOr<void> CPU::handle_ENQCMD() {
-    TODO();
-} //	Enqueue Command
-InterruptRaisedOr<void> CPU::handle_ENQCMDS() {
-    TODO();
-} //	Enqueue Command Supervisor
-InterruptRaisedOr<void> CPU::handle_ENTER() {
-    TODO();
-} //	Make Stack Frame for Procedure Parameters
-InterruptRaisedOr<void> CPU::handle_EXTRACTPS() {
-    TODO();
-} //	Extract Packed Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_F2XM1() {
-    TODO();
-} //	Compute 2x–1
-InterruptRaisedOr<void> CPU::handle_FABS() {
-    TODO();
-} //	Absolute Value
-InterruptRaisedOr<void> CPU::handle_FADD() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_FADDP() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_FBLD() {
-    TODO();
-} //	Load Binary Coded Decimal
-InterruptRaisedOr<void> CPU::handle_FBSTP() {
-    TODO();
-} //	Store BCD Integer and Pop
-InterruptRaisedOr<void> CPU::handle_FCHS() {
-    TODO();
-} //	Change Sign
-InterruptRaisedOr<void> CPU::handle_FCLEX() {
-    TODO();
-} //	Clear Exceptions
-InterruptRaisedOr<void> CPU::handle_FCMOVcc() {
-    TODO();
-} //	Floating-Point Conditional Move
-InterruptRaisedOr<void> CPU::handle_FCOM() {
-    TODO();
-} //	Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FCOMI() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FCOMIP() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FCOMP() {
-    TODO();
-} //	Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FCOMPP() {
-    TODO();
-} //	Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FCOS() {
-    TODO();
-} //	Cosine
-InterruptRaisedOr<void> CPU::handle_FDECSTP() {
-    TODO();
-} //	Decrement Stack-Top Pointer
-InterruptRaisedOr<void> CPU::handle_FDIV() {
-    TODO();
-} //	Divide
-InterruptRaisedOr<void> CPU::handle_FDIVP() {
-    TODO();
-} //	Divide
-InterruptRaisedOr<void> CPU::handle_FDIVR() {
-    TODO();
-} //	Reverse Divide
-InterruptRaisedOr<void> CPU::handle_FDIVRP() {
-    TODO();
-} //	Reverse Divide
-InterruptRaisedOr<void> CPU::handle_FFREE() {
-    TODO();
-} //	Free Floating-Point Register
-InterruptRaisedOr<void> CPU::handle_FIADD() {
-    TODO();
-} //	Add
-InterruptRaisedOr<void> CPU::handle_FICOM() {
-    TODO();
-} //	Compare Integer
-InterruptRaisedOr<void> CPU::handle_FICOMP() {
-    TODO();
-} //	Compare Integer
-InterruptRaisedOr<void> CPU::handle_FIDIV() {
-    TODO();
-} //	Divide
-InterruptRaisedOr<void> CPU::handle_FIDIVR() {
-    TODO();
-} //	Reverse Divide
-InterruptRaisedOr<void> CPU::handle_FILD() {
-    TODO();
-} //	Load Integer
-InterruptRaisedOr<void> CPU::handle_FIMUL() {
-    TODO();
-} //	Multiply
-InterruptRaisedOr<void> CPU::handle_FINCSTP() {
-    TODO();
-} //	Increment Stack-Top Pointer
-InterruptRaisedOr<void> CPU::handle_FINIT() {
-    TODO();
-} //	Initialize Floating-Point Unit
-InterruptRaisedOr<void> CPU::handle_FIST() {
-    TODO();
-} //	Store Integer
-InterruptRaisedOr<void> CPU::handle_FISTP() {
-    TODO();
-} //	Store Integer
-InterruptRaisedOr<void> CPU::handle_FISTTP() {
-    TODO();
-} //	Store Integer With Truncation
-InterruptRaisedOr<void> CPU::handle_FISUB() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_FISUBR() {
-    TODO();
-} //	Reverse Subtract
-InterruptRaisedOr<void> CPU::handle_FLD() {
-    TODO();
-} //	Load Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_FLD1() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDCW() {
-    TODO();
-} //	Load x87 FPU Control Word
-InterruptRaisedOr<void> CPU::handle_FLDENV() {
-    TODO();
-} //	Load x87 FPU Environment
-InterruptRaisedOr<void> CPU::handle_FLDL2E() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDL2T() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDLG2() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDLN2() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDPI() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FLDZ() {
-    TODO();
-} //	Load Constant
-InterruptRaisedOr<void> CPU::handle_FMUL() {
-    TODO();
-} //	Multiply
-InterruptRaisedOr<void> CPU::handle_FMULP() {
-    TODO();
-} //	Multiply
-InterruptRaisedOr<void> CPU::handle_FNCLEX() {
-    TODO();
-} //	Clear Exceptions
-InterruptRaisedOr<void> CPU::handle_FNINIT() {
-    TODO();
-} //	Initialize Floating-Point Unit
-InterruptRaisedOr<void> CPU::handle_FNOP() {
-    TODO();
-} //	No Operation
-InterruptRaisedOr<void> CPU::handle_FNSAVE() {
-    TODO();
-} //	Store x87 FPU State
-InterruptRaisedOr<void> CPU::handle_FNSTCW() {
-    TODO();
-} //	Store x87 FPU Control Word
-InterruptRaisedOr<void> CPU::handle_FNSTENV() {
-    TODO();
-} //	Store x87 FPU Environment
-InterruptRaisedOr<void> CPU::handle_FNSTSW() {
-    TODO();
-} //	Store x87 FPU Status Word
-InterruptRaisedOr<void> CPU::handle_FPATAN() {
-    TODO();
-} //	Partial Arctangent
-InterruptRaisedOr<void> CPU::handle_FPREM() {
-    TODO();
-} //	Partial Remainder
-InterruptRaisedOr<void> CPU::handle_FPREM1() {
-    TODO();
-} //	Partial Remainder
-InterruptRaisedOr<void> CPU::handle_FPTAN() {
-    TODO();
-} //	Partial Tangent
-InterruptRaisedOr<void> CPU::handle_FRNDINT() {
-    TODO();
-} //	Round to Integer
-InterruptRaisedOr<void> CPU::handle_FRSTOR() {
-    TODO();
-} //	Restore x87 FPU State
-InterruptRaisedOr<void> CPU::handle_FSAVE() {
-    TODO();
-} //	Store x87 FPU State
-InterruptRaisedOr<void> CPU::handle_FSCALE() {
-    TODO();
-} //	Scale
-InterruptRaisedOr<void> CPU::handle_FSIN() {
-    TODO();
-} //	Sine
-InterruptRaisedOr<void> CPU::handle_FSINCOS() {
-    TODO();
-} //	Sine and Cosine
-InterruptRaisedOr<void> CPU::handle_FSQRT() {
-    TODO();
-} //	Square Root
-InterruptRaisedOr<void> CPU::handle_FST() {
-    TODO();
-} //	Store Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_FSTCW() {
-    TODO();
-} //	Store x87 FPU Control Word
-InterruptRaisedOr<void> CPU::handle_FSTENV() {
-    TODO();
-} //	Store x87 FPU Environment
-InterruptRaisedOr<void> CPU::handle_FSTP() {
-    TODO();
-} //	Store Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_FSTSW() {
-    TODO();
-} //	Store x87 FPU Status Word
-InterruptRaisedOr<void> CPU::handle_FSUB() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_FSUBP() {
-    TODO();
-} //	Subtract
-InterruptRaisedOr<void> CPU::handle_FSUBR() {
-    TODO();
-} //	Reverse Subtract
-InterruptRaisedOr<void> CPU::handle_FSUBRP() {
-    TODO();
-} //	Reverse Subtract
-InterruptRaisedOr<void> CPU::handle_FTST() {
-    TODO();
-} //	TEST
-InterruptRaisedOr<void> CPU::handle_FUCOM() {
-    TODO();
-} //	Unordered Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FUCOMI() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FUCOMIP() {
-    TODO();
-} //	Compare Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_FUCOMP() {
-    TODO();
-} //	Unordered Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FUCOMPP() {
-    TODO();
-} //	Unordered Compare Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_FWAIT() {
-    TODO();
-} //	Wait
-InterruptRaisedOr<void> CPU::handle_FXAM() {
-    TODO();
-} //	Examine Floating-Point
-InterruptRaisedOr<void> CPU::handle_FXCH() {
-    TODO();
-} //	Exchange Register Contents
-InterruptRaisedOr<void> CPU::handle_FXRSTOR() {
-    TODO();
-} //	Restore x87 FPU, MMX, XMM, and MXCSR State
-InterruptRaisedOr<void> CPU::handle_FXSAVE() {
-    TODO();
-} //	Save x87 FPU, MMX Technology, and SSE State
-InterruptRaisedOr<void> CPU::handle_FXTRACT() {
-    TODO();
-} //	Extract Exponent and Significand
-InterruptRaisedOr<void> CPU::handle_FYL2X() {
-    TODO();
-} //	Compute y ∗ log2x
-InterruptRaisedOr<void> CPU::handle_FYL2XP1() {
-    TODO();
-} //	Compute y ∗ log2(x +1)
-InterruptRaisedOr<void> CPU::handle_GF2P8AFFINEINVQB() {
-    TODO();
-} //	Galois Field Affine Transformation Inverse
-InterruptRaisedOr<void> CPU::handle_GF2P8AFFINEQB() {
-    TODO();
-} //	Galois Field Affine Transformation
-InterruptRaisedOr<void> CPU::handle_GF2P8MULB() {
-    TODO();
-} //	Galois Field Multiply Bytes
-InterruptRaisedOr<void> CPU::handle_HADDPD() {
-    TODO();
-} //	Packed Double Precision Floating-Point Horizontal Add
-InterruptRaisedOr<void> CPU::handle_HADDPS() {
-    TODO();
-} //	Packed Single Precision Floating-Point Horizontal Add
-InterruptRaisedOr<void> CPU::handle_HLT() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ENDBR64(cs_x86 const& insn_detail) {
+    // NOTE: we do not support CET yet
+    return CONTINUE_IP;
+} //    Terminate an Indirect Branch in 64-bit Mode
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_HLT(cs_x86 const& insn_detail) {
+    CPUE_INFO("encountered a HLT instruction. We use this instruction to exit the emulator (although normally it would behave quite differently)");
+    shutdown();
 } //	Halt
-InterruptRaisedOr<void> CPU::handle_HRESET() {
-    TODO();
-} //	History Reset
-InterruptRaisedOr<void> CPU::handle_HSUBPD() {
-    TODO();
-} //	Packed Double Precision Floating-Point Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_HSUBPS() {
-    TODO();
-} //	Packed Single Precision Floating-Point Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_IDIV() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IDIV(cs_x86 const& insn_detail) {
+    return handle_DIV_IDIV(X86_INS_IDIV, insn_detail);
 } //	Signed Divide
-InterruptRaisedOr<void> CPU::handle_IMUL() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IMUL(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto lower_dest = [&]() -> x86_reg {
+        if (insn_detail.op_count == 1) {
+            switch (first_op.byte_width()) {
+                case ByteWidth::WIDTH_BYTE: return X86_REG_AX;
+                case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+                case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+                case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+                default: fail();
+            }
+        } else {
+            return first_op.operand().reg;
+        }
+    }();
+    auto lower_dest_reg = reg(lower_dest);
+    auto upper_dest = [&]() -> x86_reg {
+        if (insn_detail.op_count == 1) {
+            switch (first_op.byte_width()) {
+                case ByteWidth::WIDTH_BYTE: return X86_REG_INVALID;
+                case ByteWidth::WIDTH_WORD: return X86_REG_DX;
+                case ByteWidth::WIDTH_DWORD: return X86_REG_EDX;
+                case ByteWidth::WIDTH_QWORD: return X86_REG_RDX;
+                default: fail();
+            }
+        } else {
+            return X86_REG_INVALID;
+        }
+    }();
+    auto upper_dest_reg = reg(upper_dest);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = insn_detail.op_count > 1 ? MAY_HAVE_RAISED(Operand(this, insn_detail.operands[1]).read()) : SizedValue(0);
+    // When an immediate value is used as an operand, it is sign-extended to the length of the destination operand format.
+    auto third_val = insn_detail.op_count > 2 ? MAY_HAVE_RAISED(Operand(this, insn_detail.operands[2]).read()).sign_extended_to_width(lower_dest_reg->byte_width()) : SizedValue(0);
+
+    auto factor1 = [&]() -> SizedValue {
+        switch (insn_detail.op_count) {
+            case 1: return {m_rax_val, first_op.byte_width()};
+            case 2: return first_val;
+            case 3: return second_val;
+            default: fail();
+        }
+    }();
+    auto factor2 = [&]() -> SizedValue {
+        switch (insn_detail.op_count) {
+            case 1: return first_val;
+            case 2: return second_val;
+            case 3: return third_val;
+            default: fail();
+        }
+    }();
+
+    auto res = CPUE_checked_single_imul(factor1, factor2);
+
+    if (upper_dest == X86_REG_INVALID) {
+        MAY_HAVE_RAISED(lower_dest_reg->write(res.value.truncated_to_width(lower_dest_reg->byte_width())));
+    } else {
+        MAY_HAVE_RAISED(lower_dest_reg->write(res.value.lower_half()));
+        MAY_HAVE_RAISED(upper_dest_reg->write(res.value.upper_half()));
+    }
+
+    update_rflags_cf_of(res);
+    return CONTINUE_IP;
 } //	Signed Multiply
-InterruptRaisedOr<void> CPU::handle_IN() {
-    TODO();
-} //	Input From Port
-InterruptRaisedOr<void> CPU::handle_INC() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INC(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto res = CPUE_checked_single_uadd(first_val, SizedValue(1));
+
+    // The CF flag is not affected. The OF, SF, ZF, AF, and PF flags are set according to the result.
+    m_rflags.c.OF = res.has_of_set;
+    update_rflags(res.value);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return CONTINUE_IP;
 } //	Increment by 1
-InterruptRaisedOr<void> CPU::handle_INCSSPD() {
-    TODO();
-} //	Increment Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_INCSSPQ() {
-    TODO();
-} //	Increment Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_INS() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INSB() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INSD() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INSERTPS() {
-    TODO();
-} //	Insert Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_INSW() {
-    TODO();
-} //	Input from Port to String
-InterruptRaisedOr<void> CPU::handle_INT() {
-    // TODO: increment m_rip, because the return address is the next insn
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INT(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
     Interrupt i = {
-        .vector = 0, // TODO: use actual vector
+        .vector = MAY_HAVE_RAISED(first_op.read()).as<InterruptVector>(),
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    return handle_interrupt(i);
+
+    MAY_HAVE_RAISED(handle_interrupt(i));
+    return CONTINUE_IP;
 } // 	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INT1() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INT1(cs_x86 const& insn_detail) {
     static Interrupt i = {
         .vector = 1,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INT1_INSN,
     };
-    return handle_interrupt(i);
+    MAY_HAVE_RAISED(handle_interrupt(i));
+    return CONTINUE_IP;
 } //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INT3() {
-    TODO_NOFAIL("increment rip");
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INT3(cs_x86 const& insn_detail) {
+    // TODO: only for debugging
+    __asm__("int3");
+    return CONTINUE_IP;
     static Interrupt i = {
         .vector = 3,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    return handle_interrupt(i);
+    MAY_HAVE_RAISED(handle_interrupt(i));
+    return CONTINUE_IP;
 } //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INTO() {
-    TODO_NOFAIL("increment rip");
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INTO(cs_x86 const& insn_detail) {
     static Interrupt i = {
         .vector = 4,
         .type = InterruptType::SOFTWARE_INTERRUPT,
         .iclass = InterruptClass::BENIGN,
         .source = InterruptSource::INTN_INT3_INTO_INSN,
     };
-    if (m_rflags.OF) {
-        return handle_interrupt(i);
+    if (m_rflags.c.OF) {
+        MAY_HAVE_RAISED(handle_interrupt(i));
     }
-    return {};
+    return CONTINUE_IP;
 } //	Call to Interrupt Procedure
-InterruptRaisedOr<void> CPU::handle_INVD() {
-    TODO();
-} //	Invalidate Internal Caches
-InterruptRaisedOr<void> CPU::handle_INVLPG() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INVLPG(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
+
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto addr = MAY_HAVE_RAISED(operand_mem_offset(first_op.operand().mem));
+
+    m_mmu.tlb().invalidate(addr);
+
+    return CONTINUE_IP;
 } //	Invalidate TLB Entries
-InterruptRaisedOr<void> CPU::handle_INVPCID() {
-    TODO();
-} //	Invalidate Process-Context Identifier
-InterruptRaisedOr<void> CPU::handle_IRET() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRET_IRETD_IRETQ(x86_insn const& insn, cs_x86 const& insn_detail) {
+    /*
+     * TODO: (When implementing NMIs)
+     * If nonmaskable interrupts (NMIs) are blocked (see Section 6.7.1, “Handling Multiple NMIs” in the Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 3A),
+     * execution of the IRET instruction unblocks NMIs.
+     */
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
+    assert_in_64bit_mode();
+
+    RFLAGS temp_rflags;
+
+    auto operand_byte_size = [&]() -> u64 {
+        // NOTE: As we know for sure that we're in 64-bit mode, we don't need to check cs.d/l bits
+        switch (insn) {
+            // In 64-bit mode, the instruction’s default operation size is 32 bits.
+            case X86_INS_IRET:
+            case X86_INS_IRETD: return 4;
+            case X86_INS_IRETQ: return 8;
+            default: fail();
+        }
+    }();
+    auto operand_byte_mask = bytemask(operand_byte_size);
+
+    auto pop_ip_cs = [&]() -> InterruptRaisedOr<void> {
+        m_rip_val = MAY_HAVE_RAISED(stack_pop()) & operand_byte_mask;
+        auto cs = MAY_HAVE_RAISED(stack_pop()) & 0xFFFF;
+        MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, cs));
+        CPUE_ASSERT(execution_mode() == ExecutionMode::IA32e_64BIT_MODE, "We currently do not support an iret to a non 64-bit mode execution.");
+        return {};
+    };
+
+    auto pop_temp_rflags = [&]() -> InterruptRaisedOr<void> {
+        temp_rflags = {.value = MAY_HAVE_RAISED(stack_pop())};
+        return {};
+    };
+
+    auto pop_sp_ss = [&]() -> InterruptRaisedOr<void> {
+        auto rsp = MAY_HAVE_RAISED(stack_pop()) & operand_byte_mask;
+        auto ss = MAY_HAVE_RAISED(stack_pop()) & 0xFFFF;
+        // Now all values have been popped, we can safely change rsp
+        m_rsp_val = rsp;
+        return load_segment_register(SegmentRegisterAlias::SS, ss);
+    };
+
+    auto load_rflags = [&]() -> void {
+        m_rflags.c.CF = temp_rflags.c.CF;
+        m_rflags.c.PF = temp_rflags.c.PF;
+        m_rflags.c.AF = temp_rflags.c.AF;
+        m_rflags.c.ZF = temp_rflags.c.ZF;
+        m_rflags.c.SF = temp_rflags.c.SF;
+        m_rflags.c.TF = temp_rflags.c.TF;
+        m_rflags.c.DF = temp_rflags.c.DF;
+        m_rflags.c.OF = temp_rflags.c.OF;
+        m_rflags.c.NT = temp_rflags.c.NT;
+        if (operand_byte_size == 4 || operand_byte_size == 8) {
+            m_rflags.c.RF = temp_rflags.c.RF;
+            m_rflags.c.AC = temp_rflags.c.AC;
+            m_rflags.c.ID = temp_rflags.c.ID;
+        }
+        if (cpl() <= m_rflags.c.IOPL)
+            m_rflags.c.IF = temp_rflags.c.IF;
+        if (cpl() == 0) {
+            m_rflags.c.IOPL = temp_rflags.c.IOPL;
+            if (operand_byte_size == 4 || operand_byte_size == 8) {
+                m_rflags.c.VIF = temp_rflags.c.VIF;
+                m_rflags.c.VIP = temp_rflags.c.VIP;
+            }
+        }
+    };
+
+    auto exec_mode = execution_mode();
+    switch (exec_mode) {
+        case REAL_MODE: goto real_mode;
+        case PROTECTED_MODE: goto protected_mode;
+        case IA32e_COMPATIBILITY_MODE:
+        case IA32e_64BIT_MODE: goto long_mode;
+    }
+
+real_mode:
+    TODO("iret real-mode.");
+protected_mode:
+    TODO("iret protected-mode");
+return_from_vm8086_mode:
+    TODO("iret vm8086 mode");
+return_to_outer_privilege_level:
+    MAY_HAVE_RAISED(pop_sp_ss());
+    for (auto r : {X86_REG_ES, X86_REG_FS, X86_REG_GS, X86_REG_DS}) {
+        auto sr = application_segment_register(r).value();
+        // if (SegmentSelector == NULL) OR (tempDesc(DPL) < CPL AND tempDesc(Type) is (data or non-conforming code)))
+        if (sr->visible.segment_selector.value == 0x0 ||
+            (sr->hidden.cached_descriptor.access.c.dpl < cpl() &&
+                (sr->hidden.cached_descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT ||
+                    (sr->hidden.cached_descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && sr->hidden.cached_descriptor.access.c.ec == 0)))) {
+            // SegmentSelector = 0x0
+            sr->visible.segment_selector.value = 0x0;
+        }
+    }
+    goto end;
+
+return_to_same_privilege_level:
+    goto end;
+
+long_mode:
+    if (m_rflags.c.NT)
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    MAY_HAVE_RAISED(pop_ip_cs());
+    // NOTE: we assert new-mode == 64-bit mode in pop_ip_cs()
+    MAY_HAVE_RAISED(do_canonicality_check(m_rip_val));
+
+    MAY_HAVE_RAISED(pop_temp_rflags());
+    load_rflags();
+
+    if (m_cs.visible.segment_selector.c.rpl > cpl()) {
+        goto return_to_outer_privilege_level;
+    }
+    if (exec_mode == ExecutionMode::IA32e_64BIT_MODE) {
+        MAY_HAVE_RAISED(pop_sp_ss());
+    }
+    goto return_to_same_privilege_level;
+
+end:
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRET(cs_x86 const& insn_detail) {
+    return handle_IRET_IRETD_IRETQ(X86_INS_IRET, insn_detail);
 } //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_IRETD() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRETD(cs_x86 const& insn_detail) {
+    return handle_IRET_IRETD_IRETQ(X86_INS_IRETD, insn_detail);
 } //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_IRETQ() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IRETQ(cs_x86 const& insn_detail) {
+    return handle_IRET_IRETD_IRETQ(X86_INS_IRETQ, insn_detail);
 } //	Interrupt Return
-InterruptRaisedOr<void> CPU::handle_JMP() {
-    TODO();
-} //	Jump
-InterruptRaisedOr<void> CPU::handle_Jcc() {
-    TODO();
-} //	Jump if Condition Is Met
-InterruptRaisedOr<void> CPU::handle_KADDB() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KADDD() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KADDQ() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KADDW() {
-    TODO();
-} //	ADD Two Masks
-InterruptRaisedOr<void> CPU::handle_KANDB() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KANDD() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KANDNB() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDND() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDNQ() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDNW() {
-    TODO();
-} //	Bitwise Logical AND NOT Masks
-InterruptRaisedOr<void> CPU::handle_KANDQ() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KANDW() {
-    TODO();
-} //	Bitwise Logical AND Masks
-InterruptRaisedOr<void> CPU::handle_KMOVB() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KMOVD() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KMOVQ() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KMOVW() {
-    TODO();
-} //	Move From and to Mask Registers
-InterruptRaisedOr<void> CPU::handle_KNOTB() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KNOTD() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KNOTQ() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KNOTW() {
-    TODO();
-} //	NOT Mask Register
-InterruptRaisedOr<void> CPU::handle_KORB() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KORD() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KORQ() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KORTESTB() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORTESTD() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORTESTQ() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORTESTW() {
-    TODO();
-} //	OR Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KORW() {
-    TODO();
-} //	Bitwise Logical OR Masks
-InterruptRaisedOr<void> CPU::handle_KSHIFTLB() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTLD() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTLQ() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTLW() {
-    TODO();
-} //	Shift Left Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRB() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRD() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRQ() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KSHIFTRW() {
-    TODO();
-} //	Shift Right Mask Registers
-InterruptRaisedOr<void> CPU::handle_KTESTB() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KTESTD() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KTESTQ() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KTESTW() {
-    TODO();
-} //	Packed Bit Test Masks and Set Flags
-InterruptRaisedOr<void> CPU::handle_KUNPCKBW() {
-    TODO();
-} //	Unpack for Mask Registers
-InterruptRaisedOr<void> CPU::handle_KUNPCKDQ() {
-    TODO();
-} //	Unpack for Mask Registers
-InterruptRaisedOr<void> CPU::handle_KUNPCKWD() {
-    TODO();
-} //	Unpack for Mask Registers
-InterruptRaisedOr<void> CPU::handle_KXNORB() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXNORD() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXNORQ() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXNORW() {
-    TODO();
-} //	Bitwise Logical XNOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORB() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORD() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORQ() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_KXORW() {
-    TODO();
-} //	Bitwise Logical XOR Masks
-InterruptRaisedOr<void> CPU::handle_LAHF() {
-    TODO();
-} //	Load Status Flags Into AH Register
-InterruptRaisedOr<void> CPU::handle_LAR() {
-    TODO();
-} //	Load Access Rights Byte
-InterruptRaisedOr<void> CPU::handle_LDDQU() {
-    TODO();
-} //	Load Unaligned Integer 128 Bits
-InterruptRaisedOr<void> CPU::handle_LDMXCSR() {
-    TODO();
-} //	Load MXCSR Register
-InterruptRaisedOr<void> CPU::handle_LDS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LDTILECFG() {
-    TODO();
-} //	Load Tile Configuration
-InterruptRaisedOr<void> CPU::handle_LEA() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JMP(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    TODO_NOFAIL("Check for far jumps.");
+    m_rip_val = MAY_HAVE_RAISED(first_op.read()).value();
+    return CONTINUE_IP;
+} // Jump
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JA(cs_x86 const& insn_detail) {
+    if (!m_rflags.c.CF && !m_rflags.c.ZF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Above
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JAE(cs_x86 const& insn_detail) {
+    if (!m_rflags.c.CF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Above or Equal
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JNE(cs_x86 const& insn_detail) {
+    if (!m_rflags.c.ZF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Not Equal
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JE(cs_x86 const& insn_detail) {
+    if (m_rflags.c.ZF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Equal
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JGE(cs_x86 const& insn_detail) {
+    if (m_rflags.c.SF == m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Greater or Equal
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JG(cs_x86 const& insn_detail) {
+    if (!m_rflags.c.ZF && m_rflags.c.SF == m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Greater
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JLE(cs_x86 const& insn_detail) {
+    if (m_rflags.c.ZF || m_rflags.c.SF != m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Lower or Equal
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JL(cs_x86 const& insn_detail) {
+    if (m_rflags.c.SF != m_rflags.c.OF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Lower
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JB(cs_x86 const& insn_detail) {
+    if (m_rflags.c.CF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Below
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_JBE(cs_x86 const& insn_detail) {
+    if (m_rflags.c.CF || m_rflags.c.ZF)
+        return handle_JMP(insn_detail);
+    return CONTINUE_IP;
+} //	Jump Below or Equal
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LEA(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    if (second_op.operand().type != X86_OP_MEM)
+        return raise_integral_interrupt(Exceptions::UD());
+    auto offset = MAY_HAVE_RAISED(operand_mem_offset(second_op.operand().mem));
+    offset &= bytemask(insn_detail.addr_size);
+
+    MAY_HAVE_RAISED(first_op.write(SizedValue(offset, first_op.byte_width())));
+
+    return CONTINUE_IP;
 } //	Load Effective Address
-InterruptRaisedOr<void> CPU::handle_LEAVE() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LEAVE(cs_x86 const& insn_detail) {
+    m_rsp_val = m_rbp_val;
+    m_rbp_val = MAY_HAVE_RAISED(stack_pop());
+
+    return CONTINUE_IP;
 } //	High Level Procedure Exit
-InterruptRaisedOr<void> CPU::handle_LES() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LFENCE() {
-    TODO();
-} //	Load Fence
-InterruptRaisedOr<void> CPU::handle_LFS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LGDT() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LGDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Global/Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LGS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LIDT() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LIDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Global/Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LLDT() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LLDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Local Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_LMSW() {
-    TODO();
-} //	Load Machine Status Word
-InterruptRaisedOr<void> CPU::handle_LOADIWKEY() {
-    TODO();
-} //	Load Internal Wrapping Key With Key Locker
-InterruptRaisedOr<void> CPU::handle_LOCK() {
-    TODO();
-} //	Assert LOCK# Signal Prefix
-InterruptRaisedOr<void> CPU::handle_LODS() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSB() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSD() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSQ() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LODSW() {
-    TODO();
-} //	Load String
-InterruptRaisedOr<void> CPU::handle_LOOP() {
-    TODO();
-} //	Loop According to ECX Counter
-InterruptRaisedOr<void> CPU::handle_LOOPcc() {
-    TODO();
-} //	Loop According to ECX Counter
-InterruptRaisedOr<void> CPU::handle_LSL() {
-    TODO();
-} //	Load Segment Limit
-InterruptRaisedOr<void> CPU::handle_LSS() {
-    TODO();
-} //	Load Far Pointer
-InterruptRaisedOr<void> CPU::handle_LTR() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LTR(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Load Task Register
-InterruptRaisedOr<void> CPU::handle_LZCNT() {
-    TODO();
-} //	Count the Number of Leading Zero Bits
-InterruptRaisedOr<void> CPU::handle_MASKMOVDQU() {
-    TODO();
-} //	Store Selected Bytes of Double Quadword
-InterruptRaisedOr<void> CPU::handle_MASKMOVQ() {
-    TODO();
-} //	Store Selected Bytes of Quadword
-InterruptRaisedOr<void> CPU::handle_MAXPD() {
-    TODO();
-} //	Maximum of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MAXPS() {
-    TODO();
-} //	Maximum of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MAXSD() {
-    TODO();
-} //	Return Maximum Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MAXSS() {
-    TODO();
-} //	Return Maximum Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MFENCE() {
-    TODO();
-} //	Memory Fence
-InterruptRaisedOr<void> CPU::handle_MINPD() {
-    TODO();
-} //	Minimum of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MINPS() {
-    TODO();
-} //	Minimum of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MINSD() {
-    TODO();
-} //	Return Minimum Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MINSS() {
-    TODO();
-} //	Return Minimum Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MONITOR() {
-    TODO();
-} //	Set Up Monitor Address
-InterruptRaisedOr<void> CPU::handle_MOV() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LOOP_LOOPE_LOOPNE(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto ctr_reg_alias = [&]() -> x86_reg {
+        switch (insn_detail.addr_size) {
+            case 8: return X86_REG_RCX;
+            case 4: return X86_REG_ECX;
+            default: return X86_REG_CX;
+        }
+    }();
+    auto ctr_reg = reg(ctr_reg_alias);
+
+    auto new_ctr_val = MAY_HAVE_RAISED(ctr_reg->read()) - 1;
+    MAY_HAVE_RAISED(ctr_reg->write(new_ctr_val));
+
+    auto should_branch = [&]() -> bool {
+        switch (insn) {
+            case X86_INS_LOOP: return new_ctr_val != 0;
+            case X86_INS_LOOPE: return new_ctr_val != 0 && m_rflags.c.ZF;
+            case X86_INS_LOOPNE: return new_ctr_val != 0 && !m_rflags.c.ZF;
+            default: fail();
+        }
+    }();
+    if (should_branch) {
+        auto dest_rip = MAY_HAVE_RAISED(first_op.read()).value();
+        MAY_HAVE_RAISED(do_canonicality_check(dest_rip));
+        m_rip_val = dest_rip;
+    }
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LOOP(cs_x86 const& insn_detail) {
+    return handle_LOOP_LOOPE_LOOPNE(X86_INS_LOOP, insn_detail);
+} //	Loop According to ECX Counter
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LOOPE(cs_x86 const& insn_detail) {
+    return handle_LOOP_LOOPE_LOOPNE(X86_INS_LOOPE, insn_detail);
+} //	Loop According to ECX Counter
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_LOOPNE(cs_x86 const& insn_detail) {
+    return handle_LOOP_LOOPE_LOOPNE(X86_INS_LOOPNE, insn_detail);
+} //	Loop According to ECX Counter
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOV(cs_x86 const& insn_detail) {
     /**
      * TODO:
      * Attempting to set any reserved bits
@@ -1097,932 +792,472 @@ InterruptRaisedOr<void> CPU::handle_MOV() {
      * Writing to a reserved bit in an MSR.
      * If an attempt is made to set a reserved bit in CR3, CR4 or CR8.
      */
-    TODO();
+    auto first_op = Operand(this, insn_detail.operands[0]); // Destination
+    auto second_op = Operand(this, insn_detail.operands[1]); // Source
+
+    // Prevent the MOV instruction from attempting to load the CS register
+    if (first_op.operand().type == X86_OP_REG && first_op.operand().reg == X86_REG_CS) {
+        fail("Cannot load CS register using the MOV instruction. Use far JMP, CALL, or RET instead.");
+    }
+
+    // Read the value from the source operand
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = second_val.sign_extended_to_width(first_op.byte_width());
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+
+    return CONTINUE_IP;
 } //	Move
-InterruptRaisedOr<void> CPU::handle_MOVAPD() {
-    TODO();
-} //	Move Aligned Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVAPS() {
-    TODO();
-} //	Move Aligned Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVBE() {
-    TODO();
-} //	Move Data After Swapping Bytes
-InterruptRaisedOr<void> CPU::handle_MOVD() {
-    TODO();
-} //	Move Doubleword/Move Quadword
-InterruptRaisedOr<void> CPU::handle_MOVDDUP() {
-    TODO();
-} //	Replicate Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVDIR64B() {
-    TODO();
-} //	Move 64 Bytes as Direct Store
-InterruptRaisedOr<void> CPU::handle_MOVDIRI() {
-    TODO();
-} //	Move Doubleword as Direct Store
-InterruptRaisedOr<void> CPU::handle_MOVDQ2Q() {
-    TODO();
-} //	Move Quadword from XMM to MMX Technology Register
-InterruptRaisedOr<void> CPU::handle_MOVDQA() {
-    TODO();
-} //	Move Aligned Packed Integer Values
-InterruptRaisedOr<void> CPU::handle_MOVDQU() {
-    TODO();
-} //	Move Unaligned Packed Integer Values
-InterruptRaisedOr<void> CPU::handle_MOVHLPS() {
-    TODO();
-} //	Move Packed Single Precision Floating-Point Values High to Low
-InterruptRaisedOr<void> CPU::handle_MOVHPD() {
-    TODO();
-} //	Move High Packed Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MOVHPS() {
-    TODO();
-} //	Move High Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVLHPS() {
-    TODO();
-} //	Move Packed Single Precision Floating-Point Values Low to High
-InterruptRaisedOr<void> CPU::handle_MOVLPD() {
-    TODO();
-} //	Move Low Packed Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MOVLPS() {
-    TODO();
-} //	Move Low Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVMSKPD() {
-    TODO();
-} //	Extract Packed Double Precision Floating-Point Sign Mask
-InterruptRaisedOr<void> CPU::handle_MOVMSKPS() {
-    TODO();
-} //	Extract Packed Single Precision Floating-Point Sign Mask
-InterruptRaisedOr<void> CPU::handle_MOVNTDQ() {
-    TODO();
-} //	Store Packed Integers Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTDQA() {
-    TODO();
-} //	Load Double Quadword Non-Temporal Aligned Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTI() {
-    TODO();
-} //	Store Doubleword Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTPD() {
-    TODO();
-} //	Store Packed Double Precision Floating-Point Values Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTPS() {
-    TODO();
-} //	Store Packed Single Precision Floating-Point Values Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVNTQ() {
-    TODO();
-} //	Store of Quadword Using Non-Temporal Hint
-InterruptRaisedOr<void> CPU::handle_MOVQ() {
-    TODO();
-} //	Move Doubleword/Move Quadword
-InterruptRaisedOr<void> CPU::handle_MOVQ2DQ() {
-    TODO();
-} //	Move Quadword from MMX Technology to XMM Register
-InterruptRaisedOr<void> CPU::handle_MOVS() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSB() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSD() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSHDUP() {
-    TODO();
-} //	Replicate Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVSLDUP() {
-    TODO();
-} //	Replicate Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVSQ() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSS() {
-    TODO();
-} //	Move or Merge Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MOVSW() {
-    TODO();
-} //	Move Data From String to String
-InterruptRaisedOr<void> CPU::handle_MOVSX() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVABS(cs_x86 const& insn_detail) {
+    return handle_MOV(insn_detail);
 } //	Move With Sign-Extension
-InterruptRaisedOr<void> CPU::handle_MOVSXD() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSX(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]); // Destination
+    auto second_op = Operand(this, insn_detail.operands[1]); // Source
+
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_op.byte_width());
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+
+    return CONTINUE_IP;
 } //	Move With Sign-Extension
-InterruptRaisedOr<void> CPU::handle_MOVUPD() {
-    TODO();
-} //	Move Unaligned Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVUPS() {
-    TODO();
-} //	Move Unaligned Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MOVZX() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSXD(cs_x86 const& insn_detail) {
+    return handle_MOVSX(insn_detail);
+} //	Move With Sign-Extension
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVZX(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]); // Destination
+    auto second_op = Operand(this, insn_detail.operands[1]); // Source
+
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).zero_extended_to_width(first_op.byte_width());
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+
+    return CONTINUE_IP;
 } //	Move With Zero-Extend
-InterruptRaisedOr<void> CPU::handle_MPSADBW() {
-    TODO();
-} //	Compute Multiple Packed Sums of Absolute Difference
-InterruptRaisedOr<void> CPU::handle_MUL() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVQ(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).zero_extended_or_truncated_to_width(first_op.byte_width());
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+    return CONTINUE_IP;
+} //    Move Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSB_MOVSW_MOVSD_MOVSQ(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+    CPUE_ASSERT(first_op.operand().type == X86_OP_MEM && second_op.operand().type == X86_OP_MEM, "MOVS with non-memory operands.");
+    CPUE_ASSERT(first_op.operand().size == second_op.operand().size, "MOVS with mismatching memory operand sizes.");
+
+    auto do_op = [&]() -> InterruptRaisedOr<IPContinuationBehavior> {
+        auto second_val = MAY_HAVE_RAISED(second_op.read());
+        MAY_HAVE_RAISED(first_op.write(second_val));
+
+        auto inc = first_op.operand().size * ((-2 * m_rflags.c.DF) + 1);
+
+        auto first_reg = gpreg(first_op.operand().mem.base);
+        auto first_reg_val = MAY_HAVE_RAISED(first_reg->read());
+        MAY_HAVE_RAISED(first_reg->write(first_reg_val + inc));
+
+        auto second_reg = gpreg(second_op.operand().mem.base);
+        auto second_reg_val = MAY_HAVE_RAISED(second_reg->read());
+        MAY_HAVE_RAISED(second_reg->write(second_reg_val + inc));
+        return CONTINUE_IP;
+    };
+
+    // MOVS can only have REP prefix.
+    auto prefix = insn_detail.prefix[0] == X86_PREFIX_REP ? REP_PREFIX_REP : REP_PREFIX_NONE;
+    return do_string_op_and_handle_rep_prefixes(prefix, insn_detail, do_op);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSB(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSB, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSW(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSW, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSD(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSD, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSQ(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSQ, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MUL(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+
+    auto lower_dest_reg = [&]() -> x86_reg {
+        switch (first_val.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AX;
+            case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+            default: fail();
+        }
+    }();
+    auto upper_dest_reg = [&]() -> x86_reg {
+        switch (first_val.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_INVALID;
+            case ByteWidth::WIDTH_WORD: return X86_REG_DX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EDX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RDX;
+            default: fail();
+        }
+    }();
+
+    auto factor = SizedValue(m_rax_val, first_val.byte_width());
+    auto res = CPUE_checked_single_umul(first_val, factor);
+
+    if (upper_dest_reg == X86_REG_INVALID) {
+        MAY_HAVE_RAISED(reg(lower_dest_reg)->write(res.value));
+    } else {
+        MAY_HAVE_RAISED(reg(lower_dest_reg)->write(res.value.lower_half()));
+        MAY_HAVE_RAISED(reg(upper_dest_reg)->write(res.value.upper_half()));
+    }
+
+    update_rflags_cf_of(res);
+    return CONTINUE_IP;
 } //	Unsigned Multiply
-InterruptRaisedOr<void> CPU::handle_MULPD() {
-    TODO();
-} //	Multiply Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MULPS() {
-    TODO();
-} //	Multiply Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MULSD() {
-    TODO();
-} //	Multiply Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_MULSS() {
-    TODO();
-} //	Multiply Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_MULX() {
-    TODO();
-} //	Unsigned Multiply Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_MWAIT() {
-    TODO();
-} //	Monitor Wait
-InterruptRaisedOr<void> CPU::handle_NEG() {
-    TODO();
-} //	Two's Complement Negation
-InterruptRaisedOr<void> CPU::handle_NOP() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_NOP(cs_x86 const& insn_detail) {
+    return CONTINUE_IP;
 } //	No Operation
-InterruptRaisedOr<void> CPU::handle_NOT() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_NOT(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto value = MAY_HAVE_RAISED(first_op.read());
+    auto not_value = ~value;
+
+    MAY_HAVE_RAISED(first_op.write(not_value));
+
+    return CONTINUE_IP;
 } //	One's Complement Negation
-InterruptRaisedOr<void> CPU::handle_OR() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_OR(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_val.byte_width());
+
+    auto ored_value = first_val | second_val;
+    MAY_HAVE_RAISED(first_op.write(ored_value));
+
+    // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result. The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(ored_value);
+
+    return CONTINUE_IP;
 } //	Logical Inclusive OR
-InterruptRaisedOr<void> CPU::handle_ORPD() {
-    TODO();
-} //	Bitwise Logical OR of Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ORPS() {
-    TODO();
-} //	Bitwise Logical OR of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_OUT() {
-    TODO();
-} //	Output to Port
-InterruptRaisedOr<void> CPU::handle_OUTS() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_OUTSB() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_OUTSD() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_OUTSW() {
-    TODO();
-} //	Output String to Port
-InterruptRaisedOr<void> CPU::handle_PABSB() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PABSD() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PABSQ() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PABSW() {
-    TODO();
-} //	Packed Absolute Value
-InterruptRaisedOr<void> CPU::handle_PACKSSDW() {
-    TODO();
-} //	Pack With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PACKSSWB() {
-    TODO();
-} //	Pack With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PACKUSDW() {
-    TODO();
-} //	Pack With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PACKUSWB() {
-    TODO();
-} //	Pack With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PADDB() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PADDD() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PADDQ() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PADDSB() {
-    TODO();
-} //	Add Packed Signed Integers with Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PADDSW() {
-    TODO();
-} //	Add Packed Signed Integers with Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PADDUSB() {
-    TODO();
-} //	Add Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PADDUSW() {
-    TODO();
-} //	Add Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PADDW() {
-    TODO();
-} //	Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PALIGNR() {
-    TODO();
-} //	Packed Align Right
-InterruptRaisedOr<void> CPU::handle_PAND() {
-    TODO();
-} //	Logical AND
-InterruptRaisedOr<void> CPU::handle_PANDN() {
-    TODO();
-} //	Logical AND NOT
-InterruptRaisedOr<void> CPU::handle_PAUSE() {
-    TODO();
-} //	Spin Loop Hint
-InterruptRaisedOr<void> CPU::handle_PAVGB() {
-    TODO();
-} //	Average Packed Integers
-InterruptRaisedOr<void> CPU::handle_PAVGW() {
-    TODO();
-} //	Average Packed Integers
-InterruptRaisedOr<void> CPU::handle_PBLENDVB() {
-    TODO();
-} //	Variable Blend Packed Bytes
-InterruptRaisedOr<void> CPU::handle_PBLENDW() {
-    TODO();
-} //	Blend Packed Words
-InterruptRaisedOr<void> CPU::handle_PCLMULQDQ() {
-    TODO();
-} //	Carry-Less Multiplication Quadword
-InterruptRaisedOr<void> CPU::handle_PCMPEQB() {
-    TODO();
-} //	Compare Packed Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPEQD() {
-    TODO();
-} //	Compare Packed Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPEQQ() {
-    TODO();
-} //	Compare Packed Qword Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPEQW() {
-    TODO();
-} //	Compare Packed Data for Equal
-InterruptRaisedOr<void> CPU::handle_PCMPESTRI() {
-    TODO();
-} //	Packed Compare Explicit Length Strings, Return Index
-InterruptRaisedOr<void> CPU::handle_PCMPESTRM() {
-    TODO();
-} //	Packed Compare Explicit Length Strings, Return Mask
-InterruptRaisedOr<void> CPU::handle_PCMPGTB() {
-    TODO();
-} //	Compare Packed Signed Integers for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPGTD() {
-    TODO();
-} //	Compare Packed Signed Integers for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPGTQ() {
-    TODO();
-} //	Compare Packed Data for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPGTW() {
-    TODO();
-} //	Compare Packed Signed Integers for Greater Than
-InterruptRaisedOr<void> CPU::handle_PCMPISTRI() {
-    TODO();
-} //	Packed Compare Implicit Length Strings, Return Index
-InterruptRaisedOr<void> CPU::handle_PCMPISTRM() {
-    TODO();
-} //	Packed Compare Implicit Length Strings, Return Mask
-InterruptRaisedOr<void> CPU::handle_PCONFIG() {
-    TODO();
-} //	Platform Configuration
-InterruptRaisedOr<void> CPU::handle_PDEP() {
-    TODO();
-} //	Parallel Bits Deposit
-InterruptRaisedOr<void> CPU::handle_PEXT() {
-    TODO();
-} //	Parallel Bits Extract
-InterruptRaisedOr<void> CPU::handle_PEXTRB() {
-    TODO();
-} //	Extract Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PEXTRD() {
-    TODO();
-} //	Extract Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PEXTRQ() {
-    TODO();
-} //	Extract Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PEXTRW() {
-    TODO();
-} //	Extract Word
-InterruptRaisedOr<void> CPU::handle_PHADDD() {
-    TODO();
-} //	Packed Horizontal Add
-InterruptRaisedOr<void> CPU::handle_PHADDSW() {
-    TODO();
-} //	Packed Horizontal Add and Saturate
-InterruptRaisedOr<void> CPU::handle_PHADDW() {
-    TODO();
-} //	Packed Horizontal Add
-InterruptRaisedOr<void> CPU::handle_PHMINPOSUW() {
-    TODO();
-} //	Packed Horizontal Word Minimum
-InterruptRaisedOr<void> CPU::handle_PHSUBD() {
-    TODO();
-} //	Packed Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_PHSUBSW() {
-    TODO();
-} //	Packed Horizontal Subtract and Saturate
-InterruptRaisedOr<void> CPU::handle_PHSUBW() {
-    TODO();
-} //	Packed Horizontal Subtract
-InterruptRaisedOr<void> CPU::handle_PINSRB() {
-    TODO();
-} //	Insert Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PINSRD() {
-    TODO();
-} //	Insert Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PINSRQ() {
-    TODO();
-} //	Insert Byte/Dword/Qword
-InterruptRaisedOr<void> CPU::handle_PINSRW() {
-    TODO();
-} //	Insert Word
-InterruptRaisedOr<void> CPU::handle_PMADDUBSW() {
-    TODO();
-} //	Multiply and Add Packed Signed and Unsigned Bytes
-InterruptRaisedOr<void> CPU::handle_PMADDWD() {
-    TODO();
-} //	Multiply and Add Packed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSB() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSD() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSQ() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXSW() {
-    TODO();
-} //	Maximum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUB() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUD() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUQ() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMAXUW() {
-    TODO();
-} //	Maximum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINSB() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINSD() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINSQ() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINSW() {
-    TODO();
-} //	Minimum of Packed Signed Integers
-InterruptRaisedOr<void> CPU::handle_PMINUB() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINUD() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINUQ() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMINUW() {
-    TODO();
-} //	Minimum of Packed Unsigned Integers
-InterruptRaisedOr<void> CPU::handle_PMOVMSKB() {
-    TODO();
-} //	Move Byte Mask
-InterruptRaisedOr<void> CPU::handle_PMOVSX() {
-    TODO();
-} //	Packed Move With Sign Extend
-InterruptRaisedOr<void> CPU::handle_PMOVZX() {
-    TODO();
-} //	Packed Move With Zero Extend
-InterruptRaisedOr<void> CPU::handle_PMULDQ() {
-    TODO();
-} //	Multiply Packed Doubleword Integers
-InterruptRaisedOr<void> CPU::handle_PMULHRSW() {
-    TODO();
-} //	Packed Multiply High With Round and Scale
-InterruptRaisedOr<void> CPU::handle_PMULHUW() {
-    TODO();
-} //	Multiply Packed Unsigned Integers and Store High Result
-InterruptRaisedOr<void> CPU::handle_PMULHW() {
-    TODO();
-} //	Multiply Packed Signed Integers and Store High Result
-InterruptRaisedOr<void> CPU::handle_PMULLD() {
-    TODO();
-} //	Multiply Packed Integers and Store Low Result
-InterruptRaisedOr<void> CPU::handle_PMULLQ() {
-    TODO();
-} //	Multiply Packed Integers and Store Low Result
-InterruptRaisedOr<void> CPU::handle_PMULLW() {
-    TODO();
-} //	Multiply Packed Signed Integers and Store Low Result
-InterruptRaisedOr<void> CPU::handle_PMULUDQ() {
-    TODO();
-} //	Multiply Packed Unsigned Doubleword Integers
-InterruptRaisedOr<void> CPU::handle_POP() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_POP(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto value = MAY_HAVE_RAISED(stack_pop());
+
+    MAY_HAVE_RAISED(first_op.write(SizedValue(value)));
+
+    return CONTINUE_IP;
 } //	Pop a Value From the Stack
-InterruptRaisedOr<void> CPU::handle_POPA() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_POPF(cs_x86 const& insn_detail) {
     TODO();
-} //	Pop All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_POPAD() {
+} //	Pop Stack Into lower 16 bits of RFLAGS Register
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_POPFQ(cs_x86 const& insn_detail) {
     TODO();
-} //	Pop All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_POPCNT() {
-    TODO();
-} //	Return the Count of Number of Bits Set to 1
-InterruptRaisedOr<void> CPU::handle_POPF() {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POPFD() {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POPFQ() {
-    TODO();
-} //	Pop Stack Into EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_POR() {
-    TODO();
-} //	Bitwise Logical OR
-InterruptRaisedOr<void> CPU::handle_PREFETCHW() {
-    TODO();
-} //	Prefetch Data Into Caches in Anticipation of a Write
-InterruptRaisedOr<void> CPU::handle_PREFETCHh() {
-    TODO();
-} //	Prefetch Data Into Caches
-InterruptRaisedOr<void> CPU::handle_PSADBW() {
-    TODO();
-} //	Compute Sum of Absolute Differences
-InterruptRaisedOr<void> CPU::handle_PSHUFB() {
-    TODO();
-} //	Packed Shuffle Bytes
-InterruptRaisedOr<void> CPU::handle_PSHUFD() {
-    TODO();
-} //	Shuffle Packed Doublewords
-InterruptRaisedOr<void> CPU::handle_PSHUFHW() {
-    TODO();
-} //	Shuffle Packed High Words
-InterruptRaisedOr<void> CPU::handle_PSHUFLW() {
-    TODO();
-} //	Shuffle Packed Low Words
-InterruptRaisedOr<void> CPU::handle_PSHUFW() {
-    TODO();
-} //	Shuffle Packed Words
-InterruptRaisedOr<void> CPU::handle_PSIGNB() {
-    TODO();
-} //	Packed SIGN
-InterruptRaisedOr<void> CPU::handle_PSIGND() {
-    TODO();
-} //	Packed SIGN
-InterruptRaisedOr<void> CPU::handle_PSIGNW() {
-    TODO();
-} //	Packed SIGN
-InterruptRaisedOr<void> CPU::handle_PSLLD() {
-    TODO();
-} //	Shift Packed Data Left Logical
-InterruptRaisedOr<void> CPU::handle_PSLLDQ() {
-    TODO();
-} //	Shift Double Quadword Left Logical
-InterruptRaisedOr<void> CPU::handle_PSLLQ() {
-    TODO();
-} //	Shift Packed Data Left Logical
-InterruptRaisedOr<void> CPU::handle_PSLLW() {
-    TODO();
-} //	Shift Packed Data Left Logical
-InterruptRaisedOr<void> CPU::handle_PSRAD() {
-    TODO();
-} //	Shift Packed Data Right Arithmetic
-InterruptRaisedOr<void> CPU::handle_PSRAQ() {
-    TODO();
-} //	Shift Packed Data Right Arithmetic
-InterruptRaisedOr<void> CPU::handle_PSRAW() {
-    TODO();
-} //	Shift Packed Data Right Arithmetic
-InterruptRaisedOr<void> CPU::handle_PSRLD() {
-    TODO();
-} //	Shift Packed Data Right Logical
-InterruptRaisedOr<void> CPU::handle_PSRLDQ() {
-    TODO();
-} //	Shift Double Quadword Right Logical
-InterruptRaisedOr<void> CPU::handle_PSRLQ() {
-    TODO();
-} //	Shift Packed Data Right Logical
-InterruptRaisedOr<void> CPU::handle_PSRLW() {
-    TODO();
-} //	Shift Packed Data Right Logical
-InterruptRaisedOr<void> CPU::handle_PSUBB() {
-    TODO();
-} //	Subtract Packed Integers
-InterruptRaisedOr<void> CPU::handle_PSUBD() {
-    TODO();
-} //	Subtract Packed Integers
-InterruptRaisedOr<void> CPU::handle_PSUBQ() {
-    TODO();
-} //	Subtract Packed Quadword Integers
-InterruptRaisedOr<void> CPU::handle_PSUBSB() {
-    TODO();
-} //	Subtract Packed Signed Integers With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBSW() {
-    TODO();
-} //	Subtract Packed Signed Integers With Signed Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBUSB() {
-    TODO();
-} //	Subtract Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBUSW() {
-    TODO();
-} //	Subtract Packed Unsigned Integers With Unsigned Saturation
-InterruptRaisedOr<void> CPU::handle_PSUBW() {
-    TODO();
-} //	Subtract Packed Integers
-InterruptRaisedOr<void> CPU::handle_PTEST() {
-    TODO();
-} //	Logical Compare
-InterruptRaisedOr<void> CPU::handle_PTWRITE() {
-    TODO();
-} //	Write Data to a Processor Trace Packet
-InterruptRaisedOr<void> CPU::handle_PUNPCKHBW() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKHDQ() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKHQDQ() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKHWD() {
-    TODO();
-} //	Unpack High Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLBW() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLDQ() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLQDQ() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUNPCKLWD() {
-    TODO();
-} //	Unpack Low Data
-InterruptRaisedOr<void> CPU::handle_PUSH() {
-    TODO();
+} //	Pop Stack Into RFLAGS Register
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_PUSH(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+
+    auto value = MAY_HAVE_RAISED(first_op.read());
+
+    MAY_HAVE_RAISED(stack_push(value.value()));
+    return CONTINUE_IP;
 } //	Push Word, Doubleword, or Quadword Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHA() {
-    TODO();
-} //	Push All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_PUSHAD() {
-    TODO();
-} //	Push All General-Purpose Registers
-InterruptRaisedOr<void> CPU::handle_PUSHF() {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHFD() {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PUSHFQ() {
-    TODO();
-} //	Push EFLAGS Register Onto the Stack
-InterruptRaisedOr<void> CPU::handle_PXOR() {
-    TODO();
-} //	Logical Exclusive OR
-InterruptRaisedOr<void> CPU::handle_RCL() {
-    TODO();
-} //	Rotate
-InterruptRaisedOr<void> CPU::handle_RCPPS() {
-    TODO();
-} //	Compute Reciprocals of Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_RCPSS() {
-    TODO();
-} //	Compute Reciprocal of Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_RCR() {
-    TODO();
-} //	Rotate
-InterruptRaisedOr<void> CPU::handle_RDFSBASE() {
-    TODO();
-} //	Read FS/GS Segment Base
-InterruptRaisedOr<void> CPU::handle_RDGSBASE() {
-    TODO();
-} //	Read FS/GS Segment Base
-InterruptRaisedOr<void> CPU::handle_RDMSR() {
-    TODO();
-} //	Read From Model Specific Register
-InterruptRaisedOr<void> CPU::handle_RDPID() {
-    TODO();
-} //	Read Processor ID
-InterruptRaisedOr<void> CPU::handle_RDPKRU() {
-    TODO();
-} //	Read Protection Key Rights for User Pages
-InterruptRaisedOr<void> CPU::handle_RDPMC() {
-    TODO();
-} //	Read Performance-Monitoring Counters
-InterruptRaisedOr<void> CPU::handle_RDRAND() {
-    TODO();
-} //	Read Random Number
-InterruptRaisedOr<void> CPU::handle_RDSEED() {
-    TODO();
-} //	Read Random SEED
-InterruptRaisedOr<void> CPU::handle_RDSSPD() {
-    TODO();
-} //	Read Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_RDSSPQ() {
-    TODO();
-} //	Read Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_RDTSC() {
-    TODO();
-} //	Read Time-Stamp Counter
-InterruptRaisedOr<void> CPU::handle_RDTSCP() {
-    TODO();
-} //	Read Time-Stamp Counter and Processor ID
-InterruptRaisedOr<void> CPU::handle_REP() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPE() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPNE() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPNZ() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_REPZ() {
-    TODO();
-} //	Repeat String Operation Prefix
-InterruptRaisedOr<void> CPU::handle_RET() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_PUSHF(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(stack_push(m_rflags.value & 0x000000000000FFFF));
+    return CONTINUE_IP;
+} //	Push lower 16 bits of RFLAGS Register Onto the Stack
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_PUSHFQ(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(stack_push(m_rflags.value & 0x0000000000FCFFFF));
+    return CONTINUE_IP;
+} //	Push RFLAGS Register Onto the Stack
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_RET(cs_x86 const& insn_detail) {
+    // Only near and far ret are allowed in 64-bit mode -> we don't need to consider inter-privilege-far-ret.
+    assert_in_64bit_mode();
+
+    auto value = MAY_HAVE_RAISED(stack_pop());
+    m_rip_val = value;
+
+    // Release parameters from stack if operand is given
+    if (insn_detail.op_count == 1) {
+        auto first_op = Operand(this, insn_detail.operands[0]);
+        m_rsp_val += MAY_HAVE_RAISED(first_op.read()).value();
+    }
+
+    TODO_NOFAIL("Check for far ret");
+    // When executing a far return, the processor pops the return instruction pointer from the top of the stack into the EIP register,
+    // then pops the segment selector from the top of the stack into the CS register.
+    // The processor then begins program execution in the new code segment at the new instruction pointer.
+
+    return CONTINUE_IP;
 } //	Return From Procedure
-InterruptRaisedOr<void> CPU::handle_ROL() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ROL(cs_x86 const& insn_detail) {
     TODO();
 } //	Rotate
-InterruptRaisedOr<void> CPU::handle_ROR() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ROR(cs_x86 const& insn_detail) {
     TODO();
 } //	Rotate
-InterruptRaisedOr<void> CPU::handle_RORX() {
-    TODO();
-} //	Rotate Right Logical Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_ROUNDPD() {
-    TODO();
-} //	Round Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ROUNDPS() {
-    TODO();
-} //	Round Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ROUNDSD() {
-    TODO();
-} //	Round Scalar Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_ROUNDSS() {
-    TODO();
-} //	Round Scalar Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_RSM() {
-    TODO();
-} //	Resume From System Management Mode
-InterruptRaisedOr<void> CPU::handle_RSQRTPS() {
-    TODO();
-} //	Compute Reciprocals of Square Roots of Packed Single Precision Floating-PointValues
-InterruptRaisedOr<void> CPU::handle_RSQRTSS() {
-    TODO();
-} //	Compute Reciprocal of Square Root of Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_RSTORSSP() {
-    TODO();
-} //	Restore Saved Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_SAHF() {
-    TODO();
-} //	Store AH Into Flags
-InterruptRaisedOr<void> CPU::handle_SAL() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SAL(cs_x86 const& insn_detail) {
+    return handle_SAL_SAR_SHL_SHR(X86_INS_SAL, insn_detail);
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SAR() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SAR(cs_x86 const& insn_detail) {
+    return handle_SAL_SAR_SHL_SHR(X86_INS_SAR, insn_detail);
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SARX() {
-    TODO();
-} //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SAVEPREVSSP() {
-    TODO();
-} //	Save Previous Shadow Stack Pointer
-InterruptRaisedOr<void> CPU::handle_SBB() {
-    TODO();
-} //	Integer Subtraction With Borrow
-InterruptRaisedOr<void> CPU::handle_SCAS() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SCASB() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SCASD() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SCASW() {
-    TODO();
-} //	Scan String
-InterruptRaisedOr<void> CPU::handle_SENDUIPI() {
-    TODO();
-} //	Send User Interprocessor Interrupt
-InterruptRaisedOr<void> CPU::handle_SERIALIZE() {
-    TODO();
-} //	Serialize Instruction Execution
-InterruptRaisedOr<void> CPU::handle_SETSSBSY() {
-    TODO();
-} //	Mark Shadow Stack Busy
-InterruptRaisedOr<void> CPU::handle_SETcc() {
-    TODO();
-} //	Set Byte on Condition
-InterruptRaisedOr<void> CPU::handle_SFENCE() {
-    TODO();
-} //	Store Fence
-InterruptRaisedOr<void> CPU::handle_SGDT() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SGDT(cs_x86 const& insn_detail) {
     TODO();
 } //	Store Global Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SHA1MSG1() {
-    TODO();
-} //	Perform an Intermediate Calculation for the Next Four SHA1 Message Dwords
-InterruptRaisedOr<void> CPU::handle_SHA1MSG2() {
-    TODO();
-} //	Perform a Final Calculation for the Next Four SHA1 Message Dwords
-InterruptRaisedOr<void> CPU::handle_SHA1NEXTE() {
-    TODO();
-} //	Calculate SHA1 State Variable E After Four Rounds
-InterruptRaisedOr<void> CPU::handle_SHA1RNDS4() {
-    TODO();
-} //	Perform Four Rounds of SHA1 Operation
-InterruptRaisedOr<void> CPU::handle_SHA256MSG1() {
-    TODO();
-} //	Perform an Intermediate Calculation for the Next Four SHA256 MessageDwords
-InterruptRaisedOr<void> CPU::handle_SHA256MSG2() {
-    TODO();
-} //	Perform a Final Calculation for the Next Four SHA256 Message Dwords
-InterruptRaisedOr<void> CPU::handle_SHA256RNDS2() {
-    TODO();
-} //	Perform Two Rounds of SHA256 Operation
-InterruptRaisedOr<void> CPU::handle_SHL() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SAL_SAR_SHL_SHR(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    // The count is masked to 5 bits (or 6 bits with a 64-bit operand). The count range is limited to 0 to 31 (or 63 with a 64-bit operand).
+    u8 count_mask = [&]() -> u8 {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_QWORD: return 0x3F;
+            default: return 0x1F;
+        }
+    }();
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto shift_num = MAY_HAVE_RAISED(second_op.read()) & count_mask;
+
+    if (shift_num == 0)
+        return CONTINUE_IP;
+
+    auto is_left_shift = one_of(insn, {X86_INS_SAL, X86_INS_SHL});
+    auto do_shift = [&](SizedValue const& value, u8 count) -> SizedValue {
+        if (is_left_shift) {
+            return value << count;
+        }
+        // The SHR instruction clears the most significant bit
+        if (insn == X86_INS_SHR) {
+            return value >> count;
+        }
+        // the SAR instruction sets or clears the most significant bit to correspond to the sign (most significant bit)
+        // of the original value in the destination operand
+        if (insn == X86_INS_SAR) {
+            u64 extension = value.msb() ? (1 << count) - 1 : 0;
+            return (value >> count) | extension;
+        }
+        fail();
+    };
+    auto temp_res = do_shift(first_val, shift_num.as<u8>() - 1);
+    m_rflags.c.CF = is_left_shift ? temp_res.msb() : temp_res.lsb();
+    auto res = do_shift(temp_res, 1);
+
+    MAY_HAVE_RAISED(first_op.write(res));
+
+    if (shift_num == 1)
+        m_rflags.c.OF = [&]() -> u8 {
+            switch (insn) {
+                case X86_INS_SAL:
+                case X86_INS_SHL: return res.msb() ^ m_rflags.c.CF;
+                case X86_INS_SAR: return 0;
+                case X86_INS_SHR: return first_val.msb();
+                default: return 0;
+            }
+        }();
+
+    // The SF, ZF, and PF flags are set according to the result. If the count is 0, the flags are not affected.
+    update_rflags(res);
+
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SHL(cs_x86 const& insn_detail) {
+    return handle_SAL_SAR_SHL_SHR(X86_INS_SHL, insn_detail);
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SHLD() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SHLD(cs_x86 const& insn_detail) {
     TODO();
 } //	Double Precision Shift Left
-InterruptRaisedOr<void> CPU::handle_SHLX() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SHLX(cs_x86 const& insn_detail) {
     TODO();
 } //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SHR() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SHR(cs_x86 const& insn_detail) {
+    return handle_SAL_SAR_SHL_SHR(X86_INS_SHR, insn_detail);
 } //	Shift
-InterruptRaisedOr<void> CPU::handle_SHRD() {
-    TODO();
-} //	Double Precision Shift Right
-InterruptRaisedOr<void> CPU::handle_SHRX() {
-    TODO();
-} //	Shift Without Affecting Flags
-InterruptRaisedOr<void> CPU::handle_SHUFPD() {
-    TODO();
-} //	Packed Interleave Shuffle of Pairs of Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SHUFPS() {
-    TODO();
-} //	Packed Interleave Shuffle of Quadruplets of Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SIDT() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETcc(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto condition = [&]() -> bool {
+        switch (insn) {
+            case X86_INS_SETE: return m_rflags.c.ZF;
+            case X86_INS_SETNE: return !m_rflags.c.ZF;
+            case X86_INS_SETL: return m_rflags.c.SF != m_rflags.c.OF;
+            case X86_INS_SETG: return !m_rflags.c.ZF && m_rflags.c.SF == m_rflags.c.OF;
+            case X86_INS_SETGE: return m_rflags.c.SF = m_rflags.c.OF;
+            case X86_INS_SETB: return m_rflags.c.CF;
+            default: fail();
+        }
+    }();
+    MAY_HAVE_RAISED(first_op.write(SizedValue(condition, ByteWidth::WIDTH_BYTE)));
+    return CONTINUE_IP;
+} //    Set Byte on Condition
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETE(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETE, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETNE(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETNE, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETL(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETL, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETG(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETG, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETGE(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETGE, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETB(cs_x86 const& insn_detail) {
+    return handle_SETcc(X86_INS_SETB, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SIDT(cs_x86 const& insn_detail) {
+    if (cr4().c.UMIP)
+        MAY_HAVE_RAISED(do_privileged_instruction_check());
+
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto addr = VirtualAddress(MAY_HAVE_RAISED(operand_mem_offset(first_op.operand().mem)));
+
+    MAY_HAVE_RAISED(m_mmu.mem_write16(addr, m_idtr.limit));
+    MAY_HAVE_RAISED(m_mmu.mem_write64(addr + 2, m_idtr.base));
+
+    return CONTINUE_IP;
 } //	Store Interrupt Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SLDT() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SLDT(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Store Local Descriptor Table Register
-InterruptRaisedOr<void> CPU::handle_SMSW() {
-    TODO();
-} //	Store Machine Status Word
-InterruptRaisedOr<void> CPU::handle_SQRTPD() {
-    TODO();
-} //	Square Root of Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SQRTPS() {
-    TODO();
-} //	Square Root of Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SQRTSD() {
-    TODO();
-} //	Compute Square Root of Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_SQRTSS() {
-    TODO();
-} //	Compute Square Root of Scalar Single Precision Value
-InterruptRaisedOr<void> CPU::handle_STAC() {
-    TODO();
-} //	Set AC Flag in EFLAGS Register
-InterruptRaisedOr<void> CPU::handle_STC() {
-    TODO();
-} //	Set Carry Flag
-InterruptRaisedOr<void> CPU::handle_STD() {
-    TODO();
-} //	Set Direction Flag
-InterruptRaisedOr<void> CPU::handle_STI() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STI(cs_x86 const& insn_detail) {
+    /**
+    * TODO:
+    * Page 3286:
+    * > Maskable hardware interrupts remain inhibited on the instruction boundary following an execution of STI.
+    * > The inhibition ends after delivery of another event (e.g., exception) or the execution of the next instruction.
+    */
+    if (cr0().c.PE) {
+        m_rflags.c.IF = 1;
+    } else if (m_rflags.c.IOPL >= cpl()) {
+        m_rflags.c.IF = 1;
+    } else if ((/*VME Mode*/ (m_rflags.c.VM && cr4().c.VME) || /*PVI Mode*/ (!m_rflags.c.VM && cpl() == 3 && cr4().c.PVI)) && !m_rflags.c.VIP) {
+        m_rflags.c.VIF = 1;
+    } else {
+        return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
+    }
+    return CONTINUE_IP;
 } //	Set Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_STMXCSR() {
-    TODO();
-} //	Store MXCSR Register State
-InterruptRaisedOr<void> CPU::handle_STOS() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSB() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSD() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSQ() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STOSW() {
-    TODO();
-} //	Store String
-InterruptRaisedOr<void> CPU::handle_STR() {
-    TODO();
-} //	Store Task Register
-InterruptRaisedOr<void> CPU::handle_STTILECFG() {
-    TODO();
-} //	Store Tile Configuration
-InterruptRaisedOr<void> CPU::handle_STUI() {
-    TODO();
-} //	Set User Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_SUB() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STC(cs_x86 const& insn_detail) {
+    m_rflags.c.CF = 1;
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STD(cs_x86 const& insn_detail) {
+    m_rflags.c.DF = 1;
+    return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSB_STOSW_STOSD_STOSQ(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]); // this is populated by capstone
+    auto second_op = Operand(this, insn_detail.operands[0]); // this is populated by capstone
+    CPUE_ASSERT(first_op.operand().type == X86_OP_MEM, "STOS with non-memory operand.");
+
+    auto do_op = [&]() -> InterruptRaisedOr<IPContinuationBehavior> {
+        auto second_val = MAY_HAVE_RAISED(second_op.read());
+        MAY_HAVE_RAISED(first_op.write(second_val));
+
+        auto inc = first_op.operand().size * ((-2 * m_rflags.c.DF) + 1);
+
+        auto first_reg = gpreg(first_op.operand().mem.base);
+        auto first_reg_val = MAY_HAVE_RAISED(first_reg->read());
+        MAY_HAVE_RAISED(first_reg->write(first_reg_val + inc));
+
+        return CONTINUE_IP;
+    };
+
+    // STOS can only have REP prefix.
+    auto prefix = insn_detail.prefix[0] == X86_PREFIX_REP ? REP_PREFIX_REP : REP_PREFIX_NONE;
+    return do_string_op_and_handle_rep_prefixes(prefix, insn_detail, do_op);
+} //    Store String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSB(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSB, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSW(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSW, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSD(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSD, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSQ(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSQ, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
+    auto res = CPUE_checked_single_usub(first_val, second_val);
+
+    update_rflags(res);
+    MAY_HAVE_RAISED(first_op.write(res.value));
+
+    return CONTINUE_IP;
 } //	Subtract
-InterruptRaisedOr<void> CPU::handle_SUBPD() {
-    TODO();
-} //	Subtract Packed Double Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SUBPS() {
-    TODO();
-} //	Subtract Packed Single Precision Floating-Point Values
-InterruptRaisedOr<void> CPU::handle_SUBSD() {
-    TODO();
-} //	Subtract Scalar Double Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_SUBSS() {
-    TODO();
-} //	Subtract Scalar Single Precision Floating-Point Value
-InterruptRaisedOr<void> CPU::handle_SWAPGS() {
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SWAPGS(cs_x86 const& insn_detail) {
+    MAY_HAVE_RAISED(do_privileged_instruction_check());
     TODO();
 } //	Swap GS Base Register
-InterruptRaisedOr<void> CPU::handle_SYSCALL() {
-    TODO();
-} //	Fast System Call
-InterruptRaisedOr<void> CPU::handle_SYSENTER() {
-    TODO();
-} //	Fast System Call
-InterruptRaisedOr<void> CPU::handle_SYSEXIT() {
-    TODO();
-} //	Fast Return from Fast System Call
-InterruptRaisedOr<void> CPU::handle_SYSRET() {
-    TODO();
-} //	Return From Fast System Call
-InterruptRaisedOr<void> CPU::handle_TDPBF16PS() {
-    TODO();
-} //	Dot Product of BF16 Tiles Accumulated into Packed Single Precision Tile
-InterruptRaisedOr<void> CPU::handle_TDPBSSD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TDPBSUD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TDPBUSD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TDPBUUD() {
-    TODO();
-} //	Dot Product of Signed/Unsigned Bytes with DwordAccumulation
-InterruptRaisedOr<void> CPU::handle_TEST() {
-    TODO();
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_TEST(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_val.byte_width());
+
+    auto anded_value = first_val & second_val;
+
+    // The OF and CF flags are set to 0. The SF, ZF, and PF flags are set according to the result (see the “Operation” section above). The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(anded_value);
+
+    return CONTINUE_IP;
 } //	Logical Compare
-InterruptRaisedOr<void> CPU::handle_TESTUI() {
-    TODO();
-} //	Determine User Interrupt Flag
-InterruptRaisedOr<void> CPU::handle_TILELOADD() {
-    TODO();
-} //	Load Tile
-InterruptRaisedOr<void> CPU::handle_TILERELEASE() {
-    TODO();
-} //	Release Tile
-InterruptRaisedOr<void> CPU::handle_TILESTORED() {
-    TODO();
-} //	Store Tile
-InterruptRaisedOr<void> CPU::handle_TILEZERO() {
-    TODO();
-} //	Zero Tile
-InterruptRaisedOr<void> CPU::handle_TPAUSE() {
-    TODO();
-} //	Timed PAUSE
-InterruptRaisedOr<void> CPU::handle_TZCNT() {
-    TODO();
-} //	Count the Number of Trailing Zero Bits
-InterruptRaisedOr<void> CPU::handle_UCOMISD() {
-    TODO();
-} //	Unordered Compare Scalar Double Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_UCOMISS() {
-    TODO();
-} //	Unordered Compare Scalar Single Precision Floating-Point Values and Set EFLAGS
-InterruptRaisedOr<void> CPU::handle_UD() {
-    TODO();
-} //	Undefined Instruction
-InterruptRaisedOr<void> CPU::handle_UIRET() {
-    TODO();
-} //
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_XCHG(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+    MAY_HAVE_RAISED(second_op.write(first_val));
+    //XCHG does not change a flag.
+
+    return CONTINUE_IP;
+
+} // Exchange
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_XOR(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = MAY_HAVE_RAISED(second_op.read());
+    if (second_op.operand().type == X86_OP_IMM)
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
+
+    auto xored_value = first_val ^ second_val;
+
+    // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result. The state of the AF flag is undefined.
+    m_rflags.c.OF = m_rflags.c.CF = 0;
+    update_rflags(xored_value);
+
+    MAY_HAVE_RAISED(first_op.write(xored_value));
+    return CONTINUE_IP;
+} // XOR
 
 
 }

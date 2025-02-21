@@ -1,0 +1,22 @@
+diff --git a/C/basic.c b/C/basic.c
+index a114872..dd1a687 100644
+--- a/C/basic.c
++++ b/C/basic.c
+@@ -58,7 +58,7 @@ static int accept(const char *s) {
+   space();
+   n = strlen(s);
+   if (eol() - ip < (int)n) { return false; }
+-  if (memicmp(s, ip, n) == 0) {
++  if (memcmp(s, ip, n) == 0) {
+     // if last char of s is alpha, make sure next char of ip is not alnum
+     if (isalpha(s[0]) && isalpha(ip[n])) { return false; }
+     ip += n;
+@@ -318,7 +318,7 @@ static void load(void) {
+ int main() {
+   for (;;) {
+     int n;
+-    printf("> ");
++    printf("> ");fflush(stdout);
+     if (fgets(line, LINE_MAX, stdin) == NULL) { break; }
+     ip = line;
+     if ((n = num()) != 0) {

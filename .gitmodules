@@ -1,12 +1,15 @@
-[submodule "deps/capstone"]
+[submodule "cpue/deps/capstone"]
 	path = cpue/deps/capstone
 	url = https://github.com/capstone-engine/capstone.git
-[submodule "deps/ELFIO"]
+[submodule "cpue/deps/ELFIO"]
 	path = cpue/deps/ELFIO
 	url = https://github.com/serge1/ELFIO.git
-[submodule "deps/catch2"]
+[submodule "cpue/deps/catch2"]
 	path = cpue/deps/catch2
 	url = https://github.com/catchorg/Catch2.git
 [submodule "cpue/deps/spdlog"]
 	path = cpue/deps/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "cpue/deps/CLI11"]
+	path = cpue/deps/CLI11
+	url = https://github.com/CLIUtils/CLI11.git

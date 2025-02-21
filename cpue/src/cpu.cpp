@@ -2,15 +2,17 @@
 #include "cpu.h"
 #include "tss.h"
 
+#include <sstream>
+#include <iomanip>
 
 namespace CPUE {
 
 
-static constexpr Descriptor::AccessByte _default_access_byte = {
-    .accessed = 1,
-    .wr = 1,
-    .present = 1,
-};
+static constexpr Descriptor::AccessByte _default_access_byte = {.c = {
+                                                                    .accessed = 1,
+                                                                    .wr = 1,
+                                                                    .present = 1,
+                                                                }};
 static constexpr ApplicationSegmentRegister _default_application_segment_register = {.visible = 0x0,
     .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0}}};
 static constexpr ApplicationSegmentRegister _default_cs_segment_register = {.visible = 0x0,
@@ -19,30 +21,31 @@ static constexpr SystemSegmentRegister _default_system_segment_register = {.visi
     .hidden = {.cached_descriptor = {.limit1 = 0xFFFF, .base1 = 0x0, .access = _default_access_byte, .limit2 = 0x0, .base2 = 0x0, .base3 = 0x0}}};
 
 
+
 void CPU::reset() {
     // See page 3425
 
-    m_rax = 0x0;
-    m_rbx = 0x0;
-    m_rcx = 0x0;
-    m_rdx = 0x00000600;
-    m_rsi = 0x0;
-    m_rsp = 0x0;
-    m_rbp = 0x0;
-    m_rip = 0x0000FFF0;
-    m_r8 = m_r9 = m_r10 = m_r11 = m_r12 = m_r13 = m_r14 = m_r15 = 0x0;
+    m_rax_val = 0x0;
+    m_rbx_val = 0x0;
+    m_rcx_val = 0x0;
+    m_rdx_val = 0x00000600;
+    m_rsi_val = 0x0;
+    m_rsp_val = 0x0;
+    m_rbp_val = 0x0;
+    m_rip_val = 0x0000FFF0;
+    m_r8_val = m_r9_val = m_r10_val = m_r11_val = m_r12_val = m_r13_val = m_r14_val = m_r15_val = 0x0;
 
     m_cs = _default_cs_segment_register;
     m_ds = m_ss = m_es = m_fs = m_gs = _default_application_segment_register;
 
     m_rflags = instance<RFLAGS, u64>(0x2);
-    m_cr0 = instance<CR0, u64>(0x60000010);
-    m_cr2 = 0x0_va;
-    m_cr3 = instance<CR3, u64>(0x0);
-    m_cr4 = instance<CR4, u64>(0x0);
-    m_cr8 = instance<CR8, u64>(0x0);
+    m_cr0_val = 0x60000010;
+    m_cr2_val = 0x0;
+    m_cr3_val = 0x0;
+    m_cr4_val = 0x0;
+    m_cr8_val = 0x0;
 
-    m_efer = instance<EFER, u64>(0x0);
+    m_efer = {.value = 0x0};
 
     m_fsbase = m_gsbase = 0x0;
     m_kernel_gsbase = 0x0;
@@ -54,14 +57,131 @@ void CPU::reset() {
 };
 
 
+auto CPU::paging_mode() const -> PagingMode {
+    // If CR0.PG = 0, paging is not used. The logical processor treats all linear addresses as if they were physical
+    // addresses.
+    if (cr0().c.PG == 0)
+        return PAGING_MODE_NONE;
+    // If CR4.PAE = 0, 32-bit paging is used.
+    if (cr4().c.PAE == 0)
+        return PAGING_MODE_32BIT;
+    // If CR4.PAE = 1 and IA32_EFER.LME = 0, PAE paging is used.
+    if (m_efer.c.LME == 0)
+        return PAGING_MODE_PAE;
+    // If CR4.PAE = 1, IA32_EFER.LME = 1, and CR4.LA57 = 0, 4-level paging is used.
+    if (cr4().c.LA57 == 0)
+        return PAGING_MODE_4LEVEL;
+    // If CR4.PAE = 1, IA32_EFER.LME = 1, and CR4.LA57 = 1, 5-level paging is used.
+    if (cr4().c.LA57 == 1)
+        return PAGING_MODE_5LEVEL;
+    fail("Ambiguous paging mode.");
+}
+
+auto CPU::execution_mode() const -> ExecutionMode {
+    if (cr0().c.PE == 0 && efer_LMA() == 0)
+        return ExecutionMode::REAL_MODE;
+    if (cr0().c.PE == 1 && efer_LMA() == 0)
+        return ExecutionMode::PROTECTED_MODE;
+    if (cr0().c.PE == 1 && cr4().c.PAE == 1 && efer_LMA() == 1 && m_cs.hidden.cached_descriptor.l == 0)
+        return ExecutionMode::IA32e_COMPATIBILITY_MODE;
+    if (cr0().c.PE == 1 && cr4().c.PAE == 1 && efer_LMA() == 1 && m_cs.hidden.cached_descriptor.l == 1)
+        return ExecutionMode::IA32e_64BIT_MODE;
+    fail("Ambiguous execution mode.");
+}
+
+
+std::string CPU::dump_full_state() const {
+    std::stringstream ss;
+
+    auto dump = [&ss](const char* msg, u64 value) -> void {
+        ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << value << "\n";
+    };
+    auto dump128 = [&ss](const char* msg, u128 value) -> void {
+        u64 high = value >> 64;
+        u64 low = value & 0xFFFFFFFFFFFFFFFF;
+        ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << high << "|" << low << "\n";
+    };
+
+    dump("RAX", m_rax_val);
+    dump("RBX", m_rbx_val);
+    dump("RCX", m_rcx_val);
+    dump("RDX", m_rdx_val);
+    dump("RDI", m_rdi_val);
+    dump("RSI", m_rsi_val);
+    dump("RBP", m_rbp_val);
+    dump("RSP", m_rsp_val);
+    dump("R8", m_r8_val);
+    dump("R9", m_r9_val);
+    dump("R10", m_r10_val);
+    dump("R11", m_r11_val);
+    dump("R12", m_r12_val);
+    dump("R13", m_r13_val);
+    dump("R14", m_r14_val);
+    dump("R15", m_r15_val);
+    dump("RIP", m_rip_val);
+    dump("RFLAGS", m_rflags.value);
+    dump("EFER", m_efer.value);
+    dump("CS", m_cs.visible.segment_selector.value);
+    dump("SS", m_ss.visible.segment_selector.value);
+    dump("DS", m_ds.visible.segment_selector.value);
+    dump("ES", m_es.visible.segment_selector.value);
+    dump("FS", m_fs.visible.segment_selector.value);
+    dump("GS", m_gs.visible.segment_selector.value);
+    dump128("XMM0", m_xmm0_val);
+    dump128("XMM1", m_xmm1_val);
+    dump128("XMM2", m_xmm2_val);
+    dump128("XMM3", m_xmm3_val);
+    dump128("XMM4", m_xmm4_val);
+    dump128("XMM5", m_xmm5_val);
+    dump128("XMM6", m_xmm6_val);
+    dump128("XMM7", m_xmm7_val);
+    dump128("XMM8", m_xmm8_val);
+    dump128("XMM9", m_xmm9_val);
+    dump128("XMM10", m_xmm10_val);
+    dump128("XMM11", m_xmm11_val);
+    dump128("XMM12", m_xmm12_val);
+    dump128("XMM13", m_xmm13_val);
+    dump128("XMM14", m_xmm14_val);
+    dump128("XMM15", m_xmm15_val);
+
+    return ss.str();
+}
+
+std::string CPU::dump_stack() {
+    std::stringstream ss;
+
+    for (u64 i = 0; i < 10; ++i) {
+        VirtualAddress addr = m_rsp_val + i * 8;
+        u64 val = m_mmu.mem_read64(addr).release_value();
+        ss << "[0x" << std::hex << std::setw(16) << std::setfill('0') << addr.addr << "]: 0x" << val << "\n";
+    }
+
+    return ss.str();
+}
+
+
 void CPU::interpreter_loop() {
+    u64 old_ip = 0;
     for (;;) {
         m_state = STATE_FETCH_INSTRUCTION;
-        cs_insn const* insn = m_disassembler.next_insn_or_null();
+        if (auto int_or_insn = m_disassembler.next_insn(); !int_or_insn.raised()) {
+            m_state = STATE_HANDLE_INSTRUCTION;
 
-        m_state = STATE_HANDLE_INSTRUCTION;
-        TODO_NOFAIL("Handle insn");
-        // handle_insn()
+            auto insn = int_or_insn.release_value();
+
+            // save current ip
+            old_ip = m_rip_val;
+            // set ip to next insn
+            m_rip_val = m_rip_val + insn.size;
+
+            auto res = handle_insn(insn);
+            // If this instruction executed successfully (without any interrupt), and instructs us to reset ip, reset ip to the instruction that was handled.
+            if (!res.raised() && res.release_value() == RESET_IP) {
+                m_rip_val = old_ip;
+            }
+            CPUE_TRACE("State: \n{}", dump_full_state());
+            CPUE_TRACE("Stack: \n{}", dump_stack());
+        }
 
         // Handle interrupts
         m_state = STATE_HANDLE_INTERRUPT;
@@ -71,24 +191,18 @@ void CPU::interpreter_loop() {
             if (!opt_i.has_value())
                 break;
 
-            Interrupt i = opt_i.value();
+            auto [priority, i] = opt_i.value();
 
             /**
              * The processor first services a pending event from the class which has the highest priority,
              * transferring execution to the first instruction of the handler.
              * Lower priority exceptions are discarded; lower priority interrupts are held pending.
              */
-
-            if (i.type.category() == InterruptCategory::INTERRUPT) {
-                // clear all exceptions in ICU, as they are guaranteed to be of lower priority than i
-                // (since i is not an exception)
-                TODO_NOFAIL("clear all exceptions in ICU");
-            }
-            TODO_NOFAIL("clear all exceptions having priority lower than i");
+            m_icu.discard_interrupts_of_category_with_priority_lower_than(InterruptCategory::EXCEPTION, priority);
 
             /**
-             * As we don't implement asynchronous interrupts, we know for sure, that when
-             * handle_nested_interrupt and handle_interrupt return, they finished by either
+             * As we don't implement asynchronous interrupts (all interrupts are handled at instruction boundary),
+             * we know for sure, that when handle_nested_interrupt and handle_interrupt return, they finished by either
              * succeeding or raising another interrupt.
              */
 
@@ -100,6 +214,10 @@ void CPU::interpreter_loop() {
                     continue;
                 }
             }
+
+            // If handled interrupt is of type FAULT_EXCEPTION, reset next_ip to ip that raised this interrupt.
+            if (i.type == InterruptType::FAULT_EXCEPTION)
+                m_rip_val = old_ip;
 
             // It doesn't matter if this raises, because no matter what we always process all pending interrupts.
             (void)handle_interrupt(i);
@@ -140,13 +258,16 @@ InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
     switch (action) {
         case NIA_HANDLE_SERIALLY: return {};
         case NIA_GENERATE_DOUBLE_FAULT: return raise_interrupt(Exceptions::DF(ZERO_ERROR_CODE_NOEXT));
-        case NIA_SHUTDOWN: shutdown();
+        case NIA_SHUTDOWN: {
+            CPUE_WARN("Got a Triple-Fault -> shutting down...");
+            shutdown();
+        }
         default: fail();
     }
 }
 
 InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
-    assert_in_long_mode();
+    assert_in_64bit_mode();
 
     // See chapter 7.12 or page 3290
     m_interrupt_to_be_handled = interrupt;
@@ -166,10 +287,17 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
     auto idt_descriptor = MAY_HAVE_RAISED(m_mmu.interrupt_vector_to_descriptor(interrupt.vector));
     switch (idt_descriptor.access.descriptor_type()) {
         case DescriptorType::TASK_GATE: MAY_HAVE_RAISED(enter_task_gate(interrupt, *idt_descriptor.to_task_gate_descriptor())); break;
-        case DescriptorType::INTERRUPT_GATE:
+        case DescriptorType::INTERRUPT_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_interrupt_gate_descriptor())); break;
         case DescriptorType::TRAP_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_trap_gate_descriptor())); break;
-        // TODO: maybe raise exception here instead of fail
-        default: fail("Invalid segment type for interrupt.");
+        // The following conditions cause general-protection exceptions to be generated:
+        // Referencing an entry in the IDT (following an interrupt or exception) that is not an interrupt, trap, or task gate.
+        default: {
+            ErrorCode error_code = {.standard = {
+                                        .tbl = 0b01,
+                                        .selector_index = interrupt.vector,
+                                    }};
+            return raise_interrupt(Exceptions::GP(error_code));
+        }
     }
 
     // Only real exceptions push an error_code
@@ -186,6 +314,7 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
 
 
 InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor) {
+    CPUE_TRACE("enter_interrupt_trap_gate for ivec: {}", i.vector);
     ErrorCode error_code = {.standard = {
                                 .tbl = 1,
                                 .selector_index = i.vector,
@@ -194,21 +323,21 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     // rpl is not checked as vectors have none (only segment-selectors)
     // The processor checks the DPL of the interrupt or trap gate only if an exception or interrupt is generated with an
     // INT n, INT3, or INTO instruction (INT1 would not check). Here, the CPL must be less than or equal to the DPL of the gate.
-    if (i.source == InterruptSource::INTN_INT3_INTO_INSN && cpl() > descriptor.access.dpl)
+    if (i.source == InterruptSource::INTN_INT3_INTO_INSN && cpl() > descriptor.access.c.dpl)
         return raise_interrupt(Exceptions::GP(error_code));
 
     auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(descriptor.segment_selector));
 
     // Check if target code segment is executable code segment
-    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.c.executable == 0)
         return raise_interrupt(Exceptions::GP(error_code));
     auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
     // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
     if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
         return raise_interrupt(Exceptions::GP(error_code));
 
-    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
-    auto dest_dpl = dest_segment_descriptor.access.dpl;
+    auto dest_is_conforming = dest_segment_descriptor.access.c.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.c.dpl;
 
     TODO_NOFAIL("Privilege Checks");
 
@@ -219,7 +348,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * changed and no stack switch occurs.
      */
     auto old_ss = m_ss.visible.segment_selector;
-    auto old_sp = m_rsp;
+    auto old_sp = m_rsp_val;
     if (dest_is_conforming && dest_dpl < cpl()) {
         std::tie(old_ss, old_sp) = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
     }
@@ -227,16 +356,16 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     // In 64-bit mode:
     // The stack pointer (SS:RSP) is pushed unconditionally on interrupts. In legacy modes, this push is conditional
     // and based on a change in current privilege level(CPL).
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+    MAY_HAVE_RAISED(stack_push(old_ss.value));
     MAY_HAVE_RAISED(stack_push(old_sp));
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u64>(&m_rflags)));
+    MAY_HAVE_RAISED(stack_push(m_rflags.value));
 
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
-    MAY_HAVE_RAISED(stack_push(m_rip));
+    MAY_HAVE_RAISED(stack_push(m_cs.visible.segment_selector.value));
+    MAY_HAVE_RAISED(stack_push(m_rip_val));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
     MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, descriptor.segment_selector, dest_segment_descriptor));
-    m_rip = dest_segment_descriptor.base() + descriptor.offset();
+    m_rip_val = dest_segment_descriptor.base() + descriptor.offset();
 
     /**
      * When accessing an exception or interrupt handler through either an interrupt gate or a trap gate, the processor
@@ -246,7 +375,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * ensures that no single-step exception will be delivered after delivery to the handler. A subsequent IRET instruction
      * restores the TF (and VM, RF, and NT) flags to the values in the saved contents of the EFLAGS register on the stack
      */
-    m_rflags.TF = m_rflags.VM = m_rflags.RF = m_rflags.NT = 0;
+    m_rflags.c.TF = m_rflags.c.VM = m_rflags.c.RF = m_rflags.c.NT = 0;
 
     /**
      * The only difference between an interrupt gate and a trap gate is the way the processor handles the IF flag in the
@@ -256,7 +385,7 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
      * Accessing a handler procedure through a trap gate does not affect the IF flag.
      */
     if (descriptor.access.descriptor_type() == DescriptorType::INTERRUPT_GATE) {
-        m_rflags.IF = 0;
+        m_rflags.c.IF = 0;
     }
 
     return {};
@@ -270,28 +399,28 @@ InterruptRaisedOr<void> CPU::enter_task_gate(Interrupt const& i, TaskGateDescrip
 }
 
 InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn) {
-    assert_in_long_mode();
+    assert_in_64bit_mode();
 
     ErrorCode error_code = {.standard = {
-                                .tbl = (u8)(selector.table << 1),
-                                .selector_index = selector.index,
+                                .tbl = (u8)(selector.c.table << 1),
+                                .selector_index = selector.c.index,
                             }};
     // CPL ≤ call gate DPL; RPL ≤ call gate DPL
-    if (cpl() > call_gate_descriptor.access.dpl || selector.rpl > call_gate_descriptor.access.dpl)
+    if (cpl() > call_gate_descriptor.access.c.dpl || selector.c.rpl > call_gate_descriptor.access.c.dpl)
         return raise_interrupt(Exceptions::GP(error_code));
 
     auto dest_segment_descriptor = MAY_HAVE_RAISED(m_mmu.segment_selector_to_descriptor(call_gate_descriptor.segment_selector));
 
     // Check if target code segment is executable code segment
-    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.executable == 0)
+    if (!dest_segment_descriptor.is_application_segment_descriptor() || dest_segment_descriptor.access.c.executable == 0)
         return raise_interrupt(Exceptions::GP(error_code));
     auto* dest_code_segment_descriptor = dest_segment_descriptor.to_application_segment_descriptor();
     // Target code segments referenced by a 64-bit call gate must be 64-bit code segments (CS.L = 1, CS.D = 0).
     if (dest_code_segment_descriptor->l == 0 || dest_code_segment_descriptor->db == 1)
         return raise_interrupt(Exceptions::GP(error_code));
 
-    auto dest_is_conforming = dest_segment_descriptor.access.ec == 1;
-    auto dest_dpl = dest_segment_descriptor.access.dpl;
+    auto dest_is_conforming = dest_segment_descriptor.access.c.ec == 1;
+    auto dest_dpl = dest_segment_descriptor.access.c.dpl;
     // Destination conforming code segment DPL ≤ CPL
     if (dest_is_conforming && dest_dpl > cpl())
         return raise_interrupt(Exceptions::GP(error_code));
@@ -312,16 +441,16 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
      */
     if (dest_is_conforming && dest_dpl < cpl()) {
         auto [old_ss, old_sp] = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
-        MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+        MAY_HAVE_RAISED(stack_push(old_ss.value));
         MAY_HAVE_RAISED(stack_push(old_sp));
     }
 
     MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
-    MAY_HAVE_RAISED(stack_push(m_rip));
+    MAY_HAVE_RAISED(stack_push(m_rip_val));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
     MAY_HAVE_RAISED(load_segment_register(SegmentRegisterAlias::CS, call_gate_descriptor.segment_selector, dest_segment_descriptor));
-    m_rip = dest_segment_descriptor.base() + call_gate_descriptor.offset();
+    m_rip_val = dest_segment_descriptor.base() + call_gate_descriptor.offset();
     return {};
 }
 
@@ -329,7 +458,7 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
 InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 target_pl) {
     // Check TSS limits
     if (m_tr.hidden.cached_descriptor.limit() < sizeof(TSS) - 1) {
-        ErrorCode error_code = {.standard = {.tbl = 0, .selector_index = m_tr.visible.segment_selector.index}};
+        ErrorCode error_code = {.standard = {.tbl = 0, .selector_index = m_tr.visible.segment_selector.c.index}};
         return raise_interrupt(Exceptions::TS(error_code));
     }
     // Stack switch
@@ -353,18 +482,18 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     auto new_sp_addr = VirtualAddress(m_tr.hidden.cached_descriptor.base() + (tss_sp_byte_offset * 8));
     TODO_NOFAIL("Check limit");
     auto new_sp = MAY_HAVE_RAISED(mmu().mem_read64(new_sp_addr, INTENTION_LOAD_TSS));
-    new_sp = (new_sp << 32) || new_sp & 0xFFFFFFFF; // switch endianness
+    new_sp = (new_sp << 32) | new_sp & 0xFFFFFFFF; // switch endianness
     //  3. Checks the stack-segment descriptor for the proper privileges and type and generates an invalid TSS (#TS)
     //     exception if violations are detected.
     // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
     //  4. Temporarily saves the current values of the SS and RSP registers.
     auto old_ss = m_ss;
-    auto old_sp = m_rsp;
+    auto old_sp = m_rsp_val;
     // The new SS is forced to NULL and the SS selector’s RPL field is forced to the new CPL.
     // we can do this cause in 64-bit mode the processor does not perform runtime NULL-selector checks
-    m_ss.visible.segment_selector.index = 0x0;
-    m_ss.visible.segment_selector.rpl = target_pl;
-    m_rsp = new_sp;
+    m_ss.visible.segment_selector.c.index = 0x0;
+    m_ss.visible.segment_selector.c.rpl = target_pl;
+    m_rsp_val = new_sp;
     //  6. Pushes the temporarily saved values for the SS and RSP registers (for the calling procedure) onto the new stack
     //  7. Copies the number of parameter specified in the parameter count field of the call gate from the calling
     //     procedure’s stack to the new stack. If the count is 0, no parameters are copied.
@@ -373,8 +502,19 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     return std::make_pair(old_ss.visible.segment_selector, old_sp);
 }
 
+void CPU::fix_interrupt_ext_bit(Interrupt& i) const {
+    // #PF and #CP use custom error_code format
+    if (i.vector != Exceptions::VEC_PF && i.vector != Exceptions::VEC_CP && i.error_code.has_value()) {
+        // don't clear already set ext bit, but otherwise use value of source (or 0, if we're currently not handling an interrupt)
+        i.error_code->standard.ext |= m_interrupt_to_be_handled.has_value() ? m_interrupt_to_be_handled->source.is_external() : 0;
+    }
+}
 
 
+_InterruptRaised CPU::raise_integral_interrupt(Interrupt i) {
+    fix_interrupt_ext_bit(i);
+    return m_icu.raise_integral_interrupt(i);
+}
 
 InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector) {
     GDTLDTDescriptor descriptor = MAY_HAVE_RAISED(mmu().segment_selector_to_descriptor(selector));
@@ -383,13 +523,13 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, SegmentSelector selector, GDTLDTDescriptor const& descriptor) {
     ErrorCode error_code = {.standard = {
-                                .tbl = static_cast<u8>(selector.table << 1),
-                                .selector_index = selector.index,
+                                .tbl = static_cast<u8>(selector.c.table << 1),
+                                .selector_index = selector.c.index,
                             }};
 
     // 64-bit mode does not perform NULL-selector runtime checking
     // If an attempt is made to load null selector in the SS register in CPL3 and 64-bit mode.
-    if (selector.index == 0 && alias == SegmentRegisterAlias::SS && cpl() == 3) {
+    if (selector.c.index == 0 && alias == SegmentRegisterAlias::SS && cpl() == 3) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
 
@@ -398,14 +538,14 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     // segment register, assuming that the type of memory that contains the segment descriptor supports processor
     // writes. (Can also be used for example to track number of accesses to a descriptor).
     auto [base, limit] = descriptor_table_of_selector(selector);
-    auto const access_byte_vaddr = VirtualAddress(base) + (selector.index * 8) + offsetof(Descriptor, access);
+    auto const access_byte_vaddr = VirtualAddress(base) + (selector.c.index * 8) + offsetof(Descriptor, access);
     auto new_access_byte = descriptor.access;
-    new_access_byte.accessed = 1;
-    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
+    new_access_byte.c.accessed = 1;
+    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, new_access_byte.value));
 
     // The Segment Not Present exception occurs when trying to load a segment or gate which has its `Present` bit set to 0.
     // However, when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
-    if (descriptor.access.present == 0) {
+    if (descriptor.access.c.present == 0) {
         if (alias.type() == SegmentRegisterType::STACK) {
             return raise_integral_interrupt(Exceptions::SS(error_code));
         }
@@ -426,7 +566,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Segment selectors for code segments that are not readable cannot be loaded into data-segment registers (DS, ES, FS, and GS).
-    if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && !descriptor.access.wr && alias.type() == SegmentRegisterType::DATA) {
+    if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT && !descriptor.access.c.wr && alias.type() == SegmentRegisterType::DATA) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Segment selectors for system segments cannot be loaded into data-segment registers (DS, ES, FS, and GS).
@@ -434,7 +574,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
     // — Only segment selectors of writable data segments can be loaded into the SS register.
-    if (alias == SegmentRegisterAlias::SS && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.wr) {
+    if (alias == SegmentRegisterAlias::SS && descriptor.access.descriptor_type() == DescriptorType::DATA_SEGMENT && !descriptor.access.c.wr) {
         return raise_integral_interrupt(Exceptions::GP(error_code));
     }
 
@@ -449,26 +589,26 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
         // The processor loads the segment selector into the segment register if the DPL is numerically greater
         // than or equal to both the CPL and the RPL. Otherwise, a general-protection fault is generated and the segment
         // register is not loaded.
-        if (!(descriptor.access.dpl <= cpl() && descriptor.access.dpl <= selector.rpl)) {
+        if (!(descriptor.access.c.dpl >= cpl() && descriptor.access.c.dpl >= selector.c.rpl)) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
     if (alias == SegmentRegisterAlias::SS) {
         // PRIVILEGE LEVEL CHECKING WHEN LOADING THE SS REGISTER
         // If the RPL and DPL are not equal to the CPL, a general-protection exception (#GP) is generated.
-        if (!(descriptor.access.dpl == cpl() == selector.rpl)) {
+        if (!(selector.c.rpl == cpl() && descriptor.access.c.dpl == cpl())) {
             return raise_integral_interrupt(Exceptions::GP(error_code));
         }
     }
     if (descriptor.access.descriptor_type() == DescriptorType::CODE_SEGMENT) {
         // PRIVILEGE LEVEL CHECKING WHEN TRANSFERRING PROGRAM CONTROL BETWEEN CODE SEGMENTS
-        if (!descriptor.access.ec) {
+        if (!descriptor.access.c.ec) {
             // Accessing Nonconforming Code Segments
             // When accessing nonconforming code segments, the CPL of the calling procedure must be equal to the DPL of the
             // destination code segment; otherwise, the processor generates a general-protection exception (#GP).
             // A transfer into a nonconforming segment at a different privilege level results in a general-protection exception (#GP),
             // unless a gate is used to access it.
-            if (descriptor.access.dpl != cpl() && !descriptor.is_gate_descriptor()) {
+            if (descriptor.access.c.dpl != cpl() && !descriptor.is_gate_descriptor()) {
                 return raise_integral_interrupt(Exceptions::GP(error_code));
             }
         } else {
@@ -477,7 +617,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
             // greater than (less privileged) the DPL of the destination code segment; the processor generates a general-protec-
             // tion exception (#GP) only if the CPL is less than the DPL. (The segment selector RPL for the destination code
             // segment is not checked if the segment is a conforming code segment.)
-            if (cpl() < descriptor.access.dpl) {
+            if (cpl() < descriptor.access.c.dpl) {
                 return raise_integral_interrupt(Exceptions::GP(error_code));
             }
         }
@@ -499,17 +639,22 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 
 
-InterruptRaisedOr<void> CPU::stack_push(u64 value) {
+InterruptRaisedOr<void> CPU::stack_push(u64 value, TranslationIntention intention) {
     TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
-    if (m_rsp < 8)
+    if (m_state == STATE_HANDLE_INSTRUCTION && intention == INTENTION_UNKNOWN)
+        intention = INTENTION_HANDLE_INSTRUCTION;
+    if (m_rsp_val < 8)
         return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
-    m_rsp -= 8;
-    MAY_HAVE_RAISED(mmu().mem_write64(stack_pointer(), value));
-    return {};
+    m_rsp_val -= 8;
+    return mmu().mem_write64(stack_pointer(), value, intention);
 }
 
-InterruptRaisedOr<u64> CPU::stack_pop() {
-    TODO("stack_pop");
+InterruptRaisedOr<u64> CPU::stack_pop(TranslationIntention intention) {
+    if (m_state == STATE_HANDLE_INSTRUCTION && intention == INTENTION_UNKNOWN)
+        intention = INTENTION_HANDLE_INSTRUCTION;
+    auto value = MAY_HAVE_RAISED(mmu().mem_read64(stack_pointer(), intention));
+    m_rsp_val += 8;
+    return value;
 }
 
 
@@ -522,16 +667,44 @@ InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) 
         // explicitly use the SS segment register), a stack fault (#SS) is generated. In either case, a null error code is
         // produced.
         TODO_NOFAIL("raise #GP or #SS");
+        CPUE_TRACE("Canonicality Check failed for vaddr {:x}", vaddr.addr);
         return raise_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
     }
     return {};
 }
 
 DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) const {
-    switch (selector.table) {
+    switch (selector.c.table) {
         case 0: return m_gdtr;
-        case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
+        case 1: return {m_ldtr.hidden.cached_descriptor.base(), static_cast<u16>(m_ldtr.hidden.cached_descriptor.limit())};
         default: fail();
+    }
+}
+
+InterruptRaisedOr<SizedValue> CPU::operand_read(cs_x86_op const& operand) {
+    switch (operand.type) {
+        case X86_OP_REG: return reg(operand.reg)->read();
+        case X86_OP_MEM: {
+            auto do_mem_read = [&]<typename T>() -> InterruptRaisedOr<SizedValue> {
+                return SizedValue(MAY_HAVE_RAISED(m_mmu.mem_read<T>(MAY_HAVE_RAISED(logical_address(operand.mem)))), ByteWidth(operand.size));
+            };
+            return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<SizedValue>, decltype(do_mem_read)>(do_mem_read);
+        }
+        case X86_OP_IMM: return SizedValue(operand.imm, ByteWidth(operand.size));
+        case X86_OP_INVALID: fail("operand_read on invalid operand.");
+    }
+}
+InterruptRaisedOr<void> CPU::operand_write(cs_x86_op const& operand, SizedValue value) {
+    switch (operand.type) {
+        case X86_OP_REG: return reg(operand.reg)->write(value);
+        case X86_OP_MEM: {
+            auto do_mem_write = [&]<typename T>() -> InterruptRaisedOr<void> {
+                return m_mmu.mem_write<T>(MAY_HAVE_RAISED(logical_address(operand.mem)), value.as<T>());
+            };
+            return ByteWidth(operand.size).do_with_concrete_type<InterruptRaisedOr<void>, decltype(do_mem_write)>(do_mem_write);
+        }
+        case X86_OP_IMM:
+        case X86_OP_INVALID: fail("operand_write on invalid operand.");
     }
 }
 

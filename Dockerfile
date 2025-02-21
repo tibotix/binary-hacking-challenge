@@ -14,7 +14,7 @@ COPY ./cpue /cpue
 
 # now build cpue and install it
 RUN cd /cpue && rm -rf build/ && mkdir build && cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=0 -G "Unix Makefiles" .. && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=0 -DENABLE_TRACE=1 -G "Unix Makefiles" .. && \
     cmake --build .
 
 
@@ -34,6 +34,7 @@ RUN useradd -UM chall
 COPY ./challenge /app
 COPY --from=build-env /cpue/build/cpue /app/cpue
 RUN chmod +x /app/socat.sh /app/cpue /app/cpue.py
+RUN chown chall:chall /app /app/*
 
 WORKDIR /app
 
