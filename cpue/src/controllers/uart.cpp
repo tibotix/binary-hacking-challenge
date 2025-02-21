@@ -6,8 +6,8 @@ using namespace std::literals::chrono_literals;
 namespace CPUE {
 
 
-UARTController::UARTController(CPU* cpu) : m_cpu(cpu) {
-    auto handle = m_cpu->pic().request_connection();
+UARTController::UARTController(CPU* cpu, u8 id) : m_cpu(cpu) {
+    auto handle = m_cpu->pic().request_connection(id);
     CPUE_ASSERT(handle.has_value(), "UARTController failed to request PIC connection");
     m_pic_handle = handle.value();
     init_mmio_registers();
@@ -26,12 +26,12 @@ void UARTController::init_mmio_registers() {
     // THR/RBR
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x0, {
                                                                    .width = ByteWidth::WIDTH_BYTE,
-                                                                   .read_func = [](void* data) -> BigEndian<u64> {
-                                                                       return static_cast<UARTController*>(data)->read_rbr();
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
+                                                                       return SizedValue(static_cast<UARTController*>(data)->read_rbr());
                                                                    },
                                                                    .write_func =
-                                                                       [](void* data, BigEndian<u64> value) {
-                                                                           static_cast<UARTController*>(data)->write_thr((u8)value.value);
+                                                                       [](void* data, SizedValue const& value, u64) {
+                                                                           static_cast<UARTController*>(data)->write_thr(value.as<u8>());
                                                                        },
                                                                    .data = this,
                                                                });
@@ -39,14 +39,14 @@ void UARTController::init_mmio_registers() {
     // IER
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x1, {
                                                                    .width = ByteWidth::WIDTH_BYTE,
-                                                                   .read_func = [](void* data) -> BigEndian<u64> {
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
                                                                        auto* this_ = static_cast<UARTController*>(data);
                                                                        std::scoped_lock _(this_->m_mutex);
-                                                                       return this_->m_ier.value;
+                                                                       return SizedValue(this_->m_ier.value);
                                                                    },
                                                                    .write_func =
-                                                                       [](void* data, BigEndian<u64> value) {
-                                                                           static_cast<UARTController*>(data)->write_ier((u8)value.value);
+                                                                       [](void* data, SizedValue const& value, u64) {
+                                                                           static_cast<UARTController*>(data)->write_ier(value.as<u8>());
                                                                        },
                                                                    .data = this,
                                                                });
@@ -54,12 +54,46 @@ void UARTController::init_mmio_registers() {
     // IIR/FCR
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x2, {
                                                                    .width = ByteWidth::WIDTH_BYTE,
-                                                                   .read_func = [](void* data) -> BigEndian<u64> {
-                                                                       return static_cast<UARTController*>(data)->read_iir();
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
+                                                                       return SizedValue(static_cast<UARTController*>(data)->read_iir());
                                                                    },
                                                                    .write_func =
-                                                                       [](void* data, BigEndian<u64> value) {
-                                                                           static_cast<UARTController*>(data)->write_fcr((u8)value.value);
+                                                                       [](void* data, SizedValue const& value, u64) {
+                                                                           static_cast<UARTController*>(data)->write_fcr(value.as<u8>());
+                                                                       },
+                                                                   .data = this,
+                                                               });
+
+    // LCR
+    m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x3, {
+                                                                   .width = ByteWidth::WIDTH_BYTE,
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
+                                                                       auto* this_ = static_cast<UARTController*>(data);
+                                                                       std::scoped_lock _(this_->m_mutex);
+                                                                       return SizedValue(this_->m_lcr.value);
+                                                                   },
+                                                                   .write_func =
+                                                                       [](void* data, SizedValue const& value, u64) {
+                                                                           auto* this_ = static_cast<UARTController*>(data);
+                                                                           std::scoped_lock _(this_->m_mutex);
+                                                                           this_->m_lcr.value = value.as<u8>();
+                                                                       },
+                                                                   .data = this,
+                                                               });
+
+    // MCR
+    m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x4, {
+                                                                   .width = ByteWidth::WIDTH_BYTE,
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
+                                                                       auto* this_ = static_cast<UARTController*>(data);
+                                                                       std::scoped_lock _(this_->m_mutex);
+                                                                       return SizedValue(this_->m_mcr.value);
+                                                                   },
+                                                                   .write_func =
+                                                                       [](void* data, SizedValue const& value, u64) {
+                                                                           auto* this_ = static_cast<UARTController*>(data);
+                                                                           std::scoped_lock _(this_->m_mutex);
+                                                                           this_->m_mcr.value = value.as<u8>();
                                                                        },
                                                                    .data = this,
                                                                });
@@ -67,11 +101,11 @@ void UARTController::init_mmio_registers() {
     // LSR
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x5, {
                                                                    .width = ByteWidth::WIDTH_BYTE,
-                                                                   .read_func = [](void* data) -> BigEndian<u64> {
-                                                                       return static_cast<UARTController*>(data)->read_lsr();
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
+                                                                       return SizedValue(static_cast<UARTController*>(data)->read_lsr());
                                                                    },
                                                                    .write_func =
-                                                                       [](void* data, BigEndian<u64> value) {
+                                                                       [](void* data, SizedValue const& value, u64) {
                                                                            fail("Attempted to write to LSR which is not allowed");
                                                                        },
                                                                    .data = this,
@@ -81,6 +115,12 @@ void UARTController::init_mmio_registers() {
 
 u8 UARTController::read_rbr() {
     std::scoped_lock _(m_mutex);
+
+    if (m_lcr.c.dlab) {
+        // Read Divisor-Latch (LSB)
+        // not implemented
+        return 0x0;
+    }
 
     // When a timeout interrupt has occurred it is cleared and the timer reset when the CPU reads one character
     // from the RCVR FIFO.
@@ -96,23 +136,45 @@ u8 UARTController::read_rbr() {
 void UARTController::write_thr(u8 value) {
     std::scoped_lock _(m_mutex);
     assert_in_fifo_mode();
+
+    if (m_lcr.c.dlab) {
+        // Write to Divisor-Latch (LSB)
+        // not implemented
+        return;
+    }
+
     if (!m_tx_fifo.try_enqueue(value))
         return record_overrun_error();
     update_thre_interrupt_if_necessary();
     cv.notify_one();
 }
+u8 UARTController::read_ier() const {
+    if (m_lcr.c.dlab) {
+        // Read Divisor-Latch (MSB)
+        // not implemented
+        return 0x0;
+    }
+    return m_ier.value;
+}
 void UARTController::write_ier(u8 value) {
     std::scoped_lock _(m_mutex);
+
+    if (m_lcr.c.dlab) {
+        // Write to Divisor-Latch (MSB)
+        // not implemented
+        return;
+    }
+
     m_ier.value = value;
-    if (m_ier.is_rda_enabled()) {
+    if (!m_ier.is_rda_enabled()) {
         clear_interrupt(Interrupts::RECEIVED_DATA_AVAILABLE);
         clear_interrupt(Interrupts::CHARACTER_TIMEOUT_INDICATION);
     }
-    if (m_ier.is_thre_enabled())
+    if (!m_ier.is_thre_enabled())
         clear_interrupt(Interrupts::TRANSMITTER_HOLDING_REGISTER_EMPTY);
-    if (m_ier.is_rls_enabled())
+    if (!m_ier.is_rls_enabled())
         clear_interrupt(Interrupts::RECEIVER_LINE_STATUS);
-    if (m_ier.is_ms_enabled())
+    if (!m_ier.is_ms_enabled())
         clear_interrupt(Interrupts::MODEM_STATUS);
 }
 u8 UARTController::read_iir() {
@@ -123,19 +185,27 @@ u8 UARTController::read_iir() {
      * its current indication until the access is complete. Table 1 shows the contents of the IIR. Details on each bit
      * follow.
      */
-    while (!m_interrupt_queue.empty() && !m_active_interrupt_map.test(m_interrupt_queue.top().number)) {
-        m_interrupt_queue.pop();
-    }
-    if (m_interrupt_queue.empty())
+    if (m_active_interrupt_map.none())
         return 1;
-    auto i = m_interrupt_queue.top();
+    std::optional<Interrupt> highest_priority_interrupt = std::nullopt;
+    for (auto i : SORTED_INTERRUPTS) {
+        if (m_active_interrupt_map.test(i.number)) {
+            highest_priority_interrupt = i;
+            break;
+        }
+    }
+    if (!highest_priority_interrupt.has_value())
+        return 1;
+    auto i = highest_priority_interrupt.value();
     if (i == Interrupts::TRANSMITTER_HOLDING_REGISTER_EMPTY)
         clear_interrupt(i);
     return i.iir_value;
 }
 void UARTController::write_fcr(u8 value) {
     std::scoped_lock _(m_mutex);
-    m_fcr.value = value;
+    // LCR Bit 7 (DLAB) must be set to access the [...] or access bit 5 of the FCR.
+    constexpr u8 LCR_BIT7 = 0b10000000;
+    m_fcr.value = value & ((m_lcr.value & LCR_BIT7) | ~LCR_BIT7);
     if (m_fcr.concrete.clear_rx_fifo) {
         m_rx_fifo.clear();
         update_data_ready_bit_and_rda_interrupt_if_necessary();
@@ -145,6 +215,10 @@ void UARTController::write_fcr(u8 value) {
         update_thre_interrupt_if_necessary();
     }
     m_fcr.concrete.clear_rx_fifo = m_fcr.concrete.clear_tx_fifo = 0;
+    while (m_rx_fifo.size() > fifo_capacity())
+        (void)m_rx_fifo.take_first();
+    while (m_tx_fifo.size() > fifo_capacity())
+        (void)m_tx_fifo.take_first();
     assert_in_fifo_mode();
 }
 u8 UARTController::read_lsr() {
@@ -164,14 +238,13 @@ void UARTController::rx(char const c) {
     if (!m_active_interrupt_map.test(Interrupts::CHARACTER_TIMEOUT_INDICATION.number))
         m_last_char_received_time_point = std::chrono::steady_clock::now();
 
-    if (!m_rx_fifo.try_enqueue(c))
+    if (m_rx_fifo.size() >= fifo_capacity() || !m_rx_fifo.try_enqueue(c))
         return record_overrun_error();
     update_data_ready_bit_and_rda_interrupt_if_necessary();
     cv.notify_one();
 }
 
 void UARTController::record_overrun_error() {
-    std::scoped_lock _(m_mutex);
     m_lsr.concrete.oe = 1;
     if (m_ier.is_rls_enabled()) {
         record_interrupt(Interrupts::RECEIVER_LINE_STATUS);
@@ -179,11 +252,10 @@ void UARTController::record_overrun_error() {
 }
 
 void UARTController::record_interrupt(Interrupt interrupt) {
-    CPUE_ASSERT(m_interrupt_queue.size() < MAX_PENDING_INTERRUPTS, "Too many pending interrupts in UARTController.");
-    // don't insert the same interrupt twice.
+    // don't record the same interrupt twice
     if (m_active_interrupt_map.test(interrupt.number))
         return;
-    m_interrupt_queue.push(interrupt);
+    CPUE_TRACE("UART: record_interrupt: {}", interrupt.number);
     m_active_interrupt_map.set(interrupt.number);
     m_cpu->pic().raise_irq_pin(m_pic_handle);
 }
@@ -208,6 +280,9 @@ void UARTController::loop() {
 
         // send all enqueued bytes
         while (!m_tx_fifo.is_empty()) {
+            // if auto-CTS is enabled but CTS is high, break
+            if (m_mcr.c.afe && !cts())
+                break;
             tx(m_tx_fifo.take_first().value());
         }
         update_thre_interrupt_if_necessary();

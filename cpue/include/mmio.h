@@ -14,8 +14,8 @@
 namespace CPUE {
 
 
-typedef BigEndian<u64> (*mmio_reg_read_t)(void*);
-typedef void (*mmio_reg_write_t)(void*, BigEndian<u64>);
+typedef SizedValue (*mmio_reg_read_t)(void*, u64);
+typedef void (*mmio_reg_write_t)(void*, SizedValue const&, u64);
 
 struct MMIOReg {
     const ByteWidth width = ByteWidth::WIDTH_BYTE;
@@ -23,13 +23,13 @@ struct MMIOReg {
     mmio_reg_write_t write_func = nullptr;
     void* data = nullptr;
 
-    BigEndian<u64> read() const {
+    SizedValue read(u64 offset_in_bytes = 0x0) const {
         CPUE_ASSERT(read_func != nullptr, "read_func is null");
-        return read_func(data) & bytemask(width);
+        return read_func(data, offset_in_bytes) & bytemask(width);
     }
-    void write(BigEndian<u64> value) const {
+    void write(SizedValue value, u64 offset_in_bytes = 0x0) const {
         CPUE_ASSERT(write_func != nullptr, "read_func is null");
-        return write_func(data, value & bytemask(width));
+        return write_func(data, value & bytemask(width), offset_in_bytes);
     }
 };
 
@@ -38,12 +38,12 @@ MMIOReg make_ptr_mmio_reg(T* ptr) {
     CPUE_ASSERT(ptr != nullptr, "ptr is null");
     return MMIOReg{
         .width = get_byte_width<T>(),
-        .read_func = [](void* data) -> BigEndian<u64> {
-            return *static_cast<u64*>(data);
+        .read_func = [](void* data, u64) -> SizedValue {
+            return SizedValue(*static_cast<T*>(data));
         },
         .write_func =
-            [](void* data, BigEndian<u64> value) {
-                *static_cast<T*>(data) = static_cast<T>(value);
+            [](void* data, SizedValue const& value, u64) {
+                *static_cast<T*>(data) = static_cast<T>(value.value());
             },
         .data = ptr,
     };
@@ -61,28 +61,14 @@ public:
         auto [it, offset_in_bytes] = find_mmio_register(paddr);
         if (it == m_mmio_regs.end())
             return std::nullopt;
-        auto offset_in_bits = offset_in_bytes * 8;
-        // NOTE: we support mismatched register and read width.
-        // Example: reading 2 bytes from base addr of 4byte register with value 0x01020304 (stored 0x04030201 in mem) results in 0x0304
-        // Example: reading 8 bytes from base addr of 4byte register with value 0x01020304 (stored 0x04030201 in mem) results in 0x0000000001020304
-        return (it->reg.read() >> offset_in_bits) & bytemask(get_byte_width<T>());
+        return it->reg.read(offset_in_bytes).as<T>();
     }
     template<unsigned_integral T>
     [[nodiscard]] InterruptRaisedOr<bool> try_mmio_write(PhysicalAddress const& paddr, BigEndian<T> const& value) {
         auto [it, offset_in_bytes] = find_mmio_register(paddr);
         if (it == m_mmio_regs.end())
             return false;
-        auto offset_in_bits = offset_in_bytes * 8;
-        // NOTE: we support mismatched register and write width.
-        // Example: writing 0x0a0b (0x0b0a in le) to base addr of 4byte register with value 0x01020304 (stored 0x04030201 in mem) results in 0x01020a0b
-        // Example: writing 0x0a0b0c0d (0x0d0c0b0a in le) to base addr of 2byte register with value 0x0102 (stored 0x0201 in mem) results in 0x0c0d
-        auto prev = it->reg.read();
-        auto offset_val = prev & bitmask(offset_in_bits);
-        u64 val = (((u64)value << offset_in_bits) | offset_val) & bytemask(it->reg.width);
-        if (get_byte_width<T>() + offset_in_bytes < it->reg.width) {
-            val = (prev & ~bytemask(it->reg.width - offset_in_bytes)) | val;
-        }
-        it->reg.write(val);
+        it->reg.write(SizedValue(value.value), offset_in_bytes);
         return true;
     }
 
