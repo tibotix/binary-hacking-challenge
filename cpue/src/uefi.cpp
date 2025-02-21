@@ -105,7 +105,6 @@ void UEFI::setup_gdt(u64& top) {
     // TODO: maybe use actual lgdt [gdt_pointer] insn
     m_cpu->m_gdtr = {.base = gdt_base, .limit = gdt_limit};
 
-    // TODO: refactor these, maybe use actual move cs, ... insn
     CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::CS, SegmentSelector(1 << 3)).raised(), "exception while loading CS.");
     CPUE_ASSERT(!m_cpu->load_segment_register(SegmentRegisterAlias::DS, SegmentSelector(2 << 3)).raised(), "exception while loading DS.");
 }
@@ -120,16 +119,16 @@ void UEFI::setup_idt(u64& top) {
 
     // Just fill it with 510 entries
     for (int i = 0; i < 510; ++i) {
-        CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, 0x0).raised(), "exception while setting up GDT.");
+        CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, 0x0).raised(), "exception while setting up IDT.");
         top += 0x8;
     }
 
     // IDT Pointer (2byte limit + 8byte linear base address)
     u64 idt_pointer = top;
     u16 idt_limit = top - idt_base - 1;
-    CPUE_ASSERT(!m_cpu->mmu().mem_write16(top, idt_limit).raised(), "exception while setting up GDT.");
+    CPUE_ASSERT(!m_cpu->mmu().mem_write16(top, idt_limit).raised(), "exception while setting up IDT.");
     top += 0x2;
-    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up GDT.");
+    CPUE_ASSERT(!m_cpu->mmu().mem_write64(top, idt_base).raised(), "exception while setting up IDT.");
     top += 0x8;
 
     TODO_NOFAIL("cli");
