@@ -21,7 +21,7 @@ struct Region {
     u64 flags = REGION_WRITABLE;
     u8* data = nullptr;
 
-    [[nodiscard]] u64 get_page_count() const { return std::ceil(static_cast<double>(size) / PAGE_SIZE); }
+    [[nodiscard]] u64 get_page_count() const { return (PAGE_ALIGN_CEIL(base.addr + size) - PAGE_ALIGN(base.addr)) / PAGE_SIZE; }
 };
 
 class Loader {
