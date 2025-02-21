@@ -899,8 +899,16 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SETB(cs_x86 const& in
     return handle_SETcc(X86_INS_SETB, insn_detail);
 }
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SIDT(cs_x86 const& insn_detail) {
-    MAY_HAVE_RAISED(do_privileged_instruction_check());
-    TODO();
+    if (cr4().c.UMIP)
+        MAY_HAVE_RAISED(do_privileged_instruction_check());
+
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto addr = VirtualAddress(MAY_HAVE_RAISED(operand_mem_offset(first_op.operand().mem)));
+
+    MAY_HAVE_RAISED(m_mmu.mem_write16(addr, m_idtr.limit));
+    MAY_HAVE_RAISED(m_mmu.mem_write64(addr + 2, m_idtr.base));
+
+    return CONTINUE_IP;
 } //	Store Interrupt Descriptor Table Register
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SLDT(cs_x86 const& insn_detail) {
     MAY_HAVE_RAISED(do_privileged_instruction_check());
