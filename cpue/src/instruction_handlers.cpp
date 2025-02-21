@@ -19,6 +19,9 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(CLD)
         CASE(CMP)
         CASE(CMPXCHG)
+        CASE(CWD)
+        CASE(CDQ)
+        CASE(CQO)
         CASE(DEC)
         CASE(DIV)
         CASE(ENDBR64)
@@ -228,6 +231,27 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMPXCHG(cs_x86 const&
 
     return CONTINUE_IP;
 } //    Compare and Exchange
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CWD(cs_x86 const& insn_detail) {
+    // DX:AX := sign-extend of AX.
+    auto value = MAY_HAVE_RAISED(reg(X86_REG_AX)->read()).sign_extended_to_width(ByteWidth::WIDTH_DWORD);
+    MAY_HAVE_RAISED(reg(X86_REG_DX)->write(value.upper_half()));
+    MAY_HAVE_RAISED(reg(X86_REG_AX)->write(value.lower_half()));
+    return CONTINUE_IP;
+} //    Convert Word to Doubleword/Convert Doubleword to Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CDQ(cs_x86 const& insn_detail) {
+    // EDX:EAX := sign-extend of EAX.
+    auto value = MAY_HAVE_RAISED(reg(X86_REG_EAX)->read()).sign_extended_to_width(ByteWidth::WIDTH_QWORD);
+    MAY_HAVE_RAISED(reg(X86_REG_EDX)->write(value.upper_half()));
+    MAY_HAVE_RAISED(reg(X86_REG_EAX)->write(value.lower_half()));
+    return CONTINUE_IP;
+} //    Convert Word to Doubleword/Convert Doubleword to Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CQO(cs_x86 const& insn_detail) {
+    // RDX:RAX:= sign-extend of RAX.
+    auto value = MAY_HAVE_RAISED(reg(X86_REG_RAX)->read()).sign_extended_to_width(ByteWidth::WIDTH_DQWORD);
+    MAY_HAVE_RAISED(reg(X86_REG_RDX)->write(value.upper_half()));
+    MAY_HAVE_RAISED(reg(X86_REG_RAX)->write(value.lower_half()));
+    return CONTINUE_IP;
+} //    Convert Word to Doubleword/Convert Doubleword to Quadword
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
