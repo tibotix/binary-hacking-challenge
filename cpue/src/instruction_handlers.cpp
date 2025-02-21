@@ -20,6 +20,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(CMP)
         CASE(DEC)
         CASE(DIV)
+        CASE(ENDBR64)
         CASE(HLT)
         CASE(IDIV)
         CASE(IMUL)
@@ -274,6 +275,10 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV_IDIV(x86_insn con
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DIV(cs_x86 const& insn_detail) {
     return handle_DIV_IDIV(X86_INS_DIV, insn_detail);
 } //	Unsigned Divide
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ENDBR64(cs_x86 const& insn_detail) {
+    // NOTE: we do not support CET yet
+    return CONTINUE_IP;
+} //    Terminate an Indirect Branch in 64-bit Mode
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_HLT(cs_x86 const& insn_detail) {
     CPUE_INFO("encountered a HLT instruction. We use this instruction to exit the emulator (although normally it would behave quite differently)");
     shutdown();
