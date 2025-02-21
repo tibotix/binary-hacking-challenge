@@ -23,7 +23,9 @@ void _start(void *user_binary_entry_point) {
     minik_write_ull(i, 10);
     minik_write_str(": ");
     char *buffer = kmalloc(0x50);
-    minik_read_until_newline(buffer, 0x50);
+    u64 count = minik_read_until_newline(buffer, 0x50);
+    if (count > 0)
+      buffer[count - 1] = 0;
     argv[i] = buffer;
   }
   minik_write_str("Let's go :)\n\n\n");
