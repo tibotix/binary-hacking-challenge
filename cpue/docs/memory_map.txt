@@ -1,14 +1,16 @@
 
 
 UARTController MMIO:
-THR/RBR: 0xffff'ffff'0000'0000
-IER: 0xffff'ffff'0000'0001
-IIR/FCR: 0xffff'ffff'0000'0002
-LSR: 0xffff'ffff'0000'0005
+THR/RBR: 0xff00'0000
+IER: 0xff00'0001
+IIR/FCR: 0xff00'0002
+LCR: 0xff00'0003
+MCR: 0xff00'0004
+LSR: 0xff00'0005
 
 PIC MMIO:
-EOI : 0xffff'ffff'0000'ff00
-ICW4: 0xffff'ffff'0000'ff01
+EOI : 0xff00'ff00
+ICW4: 0xff00'ff01
 
 
 =================================================================================

@@ -92,7 +92,7 @@ private:
 
 class PIC {
 public:
-    static constexpr PhysicalAddress MMIO_REG_BASE = 0xffff'ffff'0000'ff00_pa;
+    static constexpr PhysicalAddress MMIO_REG_BASE = 0xff00'ff00_pa;
     static constexpr u8 NUM_IRQ_PINS = 8;
     static constexpr u8 IRQ_VEC_BASE = 0xc0;
 
