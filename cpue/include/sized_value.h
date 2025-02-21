@@ -131,4 +131,8 @@ private:
     ByteWidth m_width;
 };
 
+constexpr SizedValue operator""_sv(unsigned long long bytes) {
+    return SizedValue(bytes);
+}
+
 }

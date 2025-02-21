@@ -4,7 +4,6 @@
 #include <string>
 #include "kernel.h"
 #include "elf.h"
-#include "cpu.h"
 
 namespace CPUE {
 
