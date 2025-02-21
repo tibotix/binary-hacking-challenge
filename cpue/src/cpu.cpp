@@ -670,7 +670,7 @@ InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) 
 DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) const {
     switch (selector.c.table) {
         case 0: return m_gdtr;
-        case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
+        case 1: return {m_ldtr.hidden.cached_descriptor.base(), static_cast<u16>(m_ldtr.hidden.cached_descriptor.limit())};
         default: fail();
     }
 }
