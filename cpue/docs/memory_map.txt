@@ -1,14 +1,16 @@
 
 
 UARTController MMIO:
-THR/RBR: 0xffff'ffff'0000'0000
-IER: 0xffff'ffff'0000'0001
-IIR/FCR: 0xffff'ffff'0000'0002
-LSR: 0xffff'ffff'0000'0005
+THR/RBR: 0xff00'0000
+IER: 0xff00'0001
+IIR/FCR: 0xff00'0002
+LCR: 0xff00'0003
+MCR: 0xff00'0004
+LSR: 0xff00'0005
 
 PIC MMIO:
-EOI : 0xffff'ffff'0000'ff00
-ICW4: 0xffff'ffff'0000'ff01
+EOI : 0xff00'ff00
+ICW4: 0xff00'ff01
 
 
 =================================================================================
@@ -62,30 +64,6 @@ IDT:
 
 
 =================================================================================
-Kernel Loading:
+ELF Loading:
 
-We implement a higher-half kernel, meaning the kernel is initially loaded at higher addresses.
-
-The Kernel ELF must ...
- - be statically compiled,
- - be no PIE,
- - have a base address of at least 0xffffffff'00000000,
- - be no greater than 4GB in memory.
-
-ID_END = min(PHYSMEM, 4MB)
-
-Virtual MemoryMap after Kernel Loading:
-+-----------------------+-----------------------+
-| 0x000000 - 0x8000     |  Reserved UEFI Space  | [0x0000-...]
-| 0x000000 - ID_END     |  Identity-Mapped Mem  | [0x0000-...]
-| K_BASE   - K_END      |  Kernel Image         | [0x8000-...]
-+-----------------------+-----------------------+
-
-EXPT_SIZE is the total number of bytes of additional page table structures needed to map the kernel elf.
-
-Physical MemoryMap after Kernel Loading:
-+-------------------------+-----------------------+
-| 0x000000   - 0x8000     |  Reserved UEFI Space  | [0x0000-...]
-| 0x8000     - +EXPT_SIZE |  Extra Page Tables    |
-| +EXPT_SIZE - K_END      |  Kernel Image         |
-+-------------------------+-----------------------+
+The Kernel ELF and User ELF are loaded in the same way by our simple ELF loader. (see loader.cpp)

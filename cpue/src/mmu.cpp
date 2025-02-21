@@ -31,7 +31,7 @@ InterruptRaisedOr<PhysicalAddress> MMU::va_to_pa(VirtualAddress const& vaddr, Tr
     // the final physical address is computed as follows:
     // Bits 51:12 are from the PTE.
     // Bits 11:0 are from the original linear address.
-    u64 paddr = (pte.c.paddr << 12) | bits(vaddr.addr, 11, 0);
+    u64 paddr = (static_cast<u64>(pte.c.paddr) << 12) | bits(vaddr.addr, 11, 0);
     return paddr;
 }
 
@@ -120,7 +120,6 @@ auto MMU::page_table_walk(VirtualAddress const& vaddr, bool (*f)(PageStructureEn
     {
         u64 pml4e_paddr = (m_cpu->cr3().c.pml4_base_paddr << 12) | (bits(vaddr.addr, 47, 39) << 3);
         // TODO: check endianness in paddr_ptr
-        // TODO_NOFAIL("check endianness in paddr_ptr");
         r.pml4e = paddr_ptr<PML4E>(pml4e_paddr);
     }
     r.pml4e->c.accessed = 1;
@@ -236,8 +235,7 @@ InterruptRaisedOr<void> MMU::check_page_structure_access_rights(PageStructureEnt
     // - Access to an inner-privilege-level stack during an inter-privilege-level call or a call to an exception or interrupt
     //   handler, when a change of privilege level occurs.
     // - and accesses to the task-state segment (TSS) as part of a task switch or change of CPL.
-    // TODO: Overrides to Page Protection
-    // TODO_NOFAIL("Overrides to Page Protection");
+    TODO_NOFAIL("Overrides to Page Protection");
 
 
     /**
@@ -321,7 +319,7 @@ InterruptRaisedOr<VirtualAddress> MMU::la_to_va(LogicalAddress const& laddr, Tra
     // TODO: fix this, that we can have nested LogicalAddressTranslations
     // StartLogicalAddressTranslation _(this, laddr);
 
-    m_cpu->assert_in_long_mode();
+    m_cpu->assert_in_64bit_mode();
 
     ErrorCode const error_code = [&]() -> ErrorCode {
         if (ctx.intention != TranslationIntention::INTENTION_LOAD_DESCRIPTOR)
@@ -402,6 +400,7 @@ InterruptRaisedOr<IDTDescriptor> MMU::interrupt_vector_to_descriptor(InterruptVe
 
 template<typename D, u16 index_scale>
 InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress const& table_base, u16 table_limit, u16 descriptor_index, ErrorCode error_code) {
+    CPUE_TRACE("get_descriptor_from_descriptor_table: table_base=0x{:x} ; table_limit=0x{:x} ; descriptor_index=0x{:x}", table_base.addr, table_limit, descriptor_index);
     if (table_limit < CPUE_checked_umul<u16, u16>((descriptor_index + 1), index_scale)) {
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     }
@@ -412,6 +411,7 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
     };
     TODO_NOFAIL("check endianness (get_descriptor_from_descriptor_table)");
     auto* descriptor1 = paddr_ptr<Descriptor>(MAY_HAVE_RAISED(va_to_pa(table_base + (descriptor_index * index_scale), ctx)));
+    CPUE_TRACE("descriptor1: 0x{:x}", *(u64*)descriptor1);
     if (descriptor1->access.descriptor_type() == DescriptorType::RESERVED)
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     // If the P flag is set to 0, a not present (#NP) exception is generated when a program attempts to access the descriptor. (Can be used by OS to track access counts)
@@ -425,8 +425,9 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     // check if we have access to the next 64 bit
     auto* descriptor2 = paddr_ptr<Descriptor>(MAY_HAVE_RAISED(va_to_pa(table_base + ((descriptor_index + 1) * index_scale) + sizeof(Descriptor), ctx)));
+    CPUE_TRACE("descriptor2: 0x{:x}", *(u64*)descriptor2);
     // this should be always 0
-    if (descriptor1->access.type_value() != 0)
+    if (descriptor2->access.type_value() != 0)
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     D expanded_descriptor{};
     memcpy(&expanded_descriptor, descriptor1, sizeof(Descriptor));

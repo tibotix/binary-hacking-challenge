@@ -5,61 +5,89 @@
 
 namespace CPUE {
 
+
 class SizedValue {
 public:
     SizedValue() = default;
     template<integral T>
     constexpr explicit SizedValue(T value) : m_value(value), m_width(get_byte_width<T>()) {}
-    constexpr SizedValue(u64 value, ByteWidth width) : m_value(value & bytemask(width)), m_width(width) {}
+    constexpr SizedValue(u128 value, ByteWidth width) : m_value(value & bytemask(width)), m_width(width) {}
 
-    constexpr SizedValue& operator=(u64 value) {
+    constexpr SizedValue& operator--() { return operator-=(1); }
+    constexpr SizedValue operator--(int) {
+        auto cpy = *this;
+        --*this;
+        return cpy;
+    }
+
+    constexpr SizedValue& operator++() { return operator+=(1); }
+    constexpr SizedValue operator++(int) {
+        auto cpy = *this;
+        ++*this;
+        return cpy;
+    }
+
+    constexpr SizedValue& operator=(u128 value) {
         set(value);
         return *this;
     }
     constexpr SizedValue& operator=(SizedValue const& value) = default;
 
-    constexpr SizedValue& operator+=(u64 value) {
+    constexpr SizedValue& operator+=(u128 value) {
         set(m_value + value);
         return *this;
     }
     constexpr SizedValue& operator+=(SizedValue const& value) { return operator+=(value.m_value); }
-    constexpr SizedValue& operator-=(u64 value) {
+    constexpr SizedValue& operator-=(u128 value) {
         set(m_value - value);
         return *this;
     }
     constexpr SizedValue& operator-=(SizedValue const& value) { return operator-=(value.m_value); }
 
-    constexpr SizedValue operator+(u64 value) const { return {m_value + value, m_width}; }
-    constexpr SizedValue operator-(u64 value) const { return {m_value - value, m_width}; }
-    constexpr SizedValue operator|(u64 value) const { return {m_value | value, m_width}; }
-    constexpr SizedValue operator&(u64 value) const { return {m_value & value, m_width}; }
+    constexpr SizedValue operator+(u128 value) const { return {m_value + value, m_width}; }
+    constexpr SizedValue operator-(u128 value) const { return {m_value - value, m_width}; }
+    constexpr SizedValue operator/(u128 value) const { return {m_value / value, m_width}; }
+    constexpr SizedValue operator*(u128 value) const { return {m_value * value, m_width}; }
+    constexpr SizedValue operator%(u128 value) const { return {m_value % value, m_width}; }
+    constexpr SizedValue operator|(u128 value) const { return {m_value | value, m_width}; }
+    constexpr SizedValue operator&(u128 value) const { return {m_value & value, m_width}; }
     constexpr SizedValue operator~() const { return {~m_value, m_width}; }
-    constexpr SizedValue operator^(u64 value) const { return {m_value ^ value, m_width}; }
+    constexpr SizedValue operator^(u128 value) const { return {m_value ^ value, m_width}; }
     constexpr SizedValue operator+(SizedValue const& value) const { return operator+(value.m_value); }
     constexpr SizedValue operator-(SizedValue const& value) const { return operator-(value.m_value); }
+    constexpr SizedValue operator/(SizedValue const& value) const { return operator/(value.m_value); }
+    constexpr SizedValue operator*(SizedValue const& value) const { return operator*(value.m_value); }
+    constexpr SizedValue operator%(SizedValue const& value) const { return operator%(value.m_value); }
     constexpr SizedValue operator|(SizedValue const& value) const { return operator|(value.m_value); }
     constexpr SizedValue operator&(SizedValue const& value) const { return operator&(value.m_value); }
     constexpr SizedValue operator^(SizedValue const& value) const { return operator^(value.m_value); }
+    constexpr SizedValue operator>>(int pos) const { return {m_value >> pos, m_width}; }
+    constexpr SizedValue operator<<(int pos) const { return {m_value << pos, m_width}; }
 
-    constexpr bool operator>(u64 value) const { return m_value > value; }
-    constexpr bool operator>=(u64 value) const { return m_value >= value; }
-    constexpr bool operator<(u64 value) const { return m_value < value; }
-    constexpr bool operator<=(u64 value) const { return m_value <= value; }
-    constexpr bool operator==(u64 value) const { return m_value == value; }
+    constexpr bool operator>(u128 value) const { return m_value > value; }
+    constexpr bool operator>=(u128 value) const { return m_value >= value; }
+    constexpr bool operator<(u128 value) const { return m_value < value; }
+    constexpr bool operator<=(u128 value) const { return m_value <= value; }
+    constexpr bool operator==(u128 value) const { return m_value == value; }
     constexpr bool operator==(SizedValue const& other) const { return operator==(other.m_value); }
 
-    constexpr u64 operator>>(int pos) const { return m_value >> pos; }
-    constexpr u64 operator<<(int pos) const { return m_value << pos; }
 
+    [[nodiscard]] constexpr u128 value() const { return m_value; }
+    [[nodiscard]] constexpr i128 signed_value() const { return as_signed<i128>(); }
+    constexpr SizedValue upper_half() const { return {m_value >> m_width.half_width().bit_width(), m_width.half_width()}; }
+    constexpr SizedValue lower_half() const { return {m_value & m_width.half_width().bitmask(), m_width.half_width()}; }
 
-    constexpr u64 value() const { return m_value; }
-
-    template<unsigned_integral T>
+    template<typename T>
     constexpr T as() const {
         return static_cast<T>(m_value);
     }
+
+    template<unsigned_integral T>
+    constexpr T as_unsigned() const {
+        return static_cast<T>(m_value);
+    }
     template<signed_integral T>
-    constexpr T as() const {
+    constexpr T as_signed() const {
         if (m_value > std::numeric_limits<decltype(m_value)>::max()) {
             return -static_cast<T>(~m_value) - 1;
         }
@@ -70,9 +98,23 @@ public:
     constexpr u8 msb() const { return sign_bit(); }
     constexpr u8 lsb() const { return m_value & 1; }
 
-    constexpr u64 max_val() const { return m_width.bitmask(); }
+
+    [[nodiscard]] constexpr SizedValue zero_extended_or_truncated_to_width(ByteWidth width) const { return {m_value, width}; }
+    [[nodiscard]] constexpr SizedValue zero_extended_to_width(ByteWidth width) const { return {m_value, width}; }
+    [[nodiscard]] constexpr SizedValue sign_extended_to_width(ByteWidth width) const {
+        if (m_width >= ByteWidth::WIDTH_DQWORD)
+            return {m_value, width};
+        if (sign_bit())
+            return {(width.bitmask() << bit_width()) | m_value, width};
+        return {m_value, width};
+    }
+    [[nodiscard]] constexpr SizedValue truncated_to_width(ByteWidth width) const { return {m_value, width}; }
+
+
+
+    constexpr u128 max_val() const { return m_width.bitmask(); }
     constexpr ByteWidth byte_width() const { return m_width; }
-    constexpr u16 bit_width() const { return byte_width() * 8; }
+    constexpr u16 bit_width() const { return m_width.bit_width(); }
 
     template<typename T, typename Func>
     constexpr T do_with_concrete_type(Func& f) const {
@@ -83,10 +125,14 @@ public:
     }
 
 private:
-    constexpr void set(u64 value) { m_value = value & bytemask(m_width); }
+    constexpr void set(u128 value) { m_value = value & bytemask(m_width); }
 
-    u64 m_value;
+    u128 m_value;
     ByteWidth m_width;
 };
+
+constexpr SizedValue operator""_sv(unsigned long long bytes) {
+    return SizedValue(bytes);
+}
 
 }

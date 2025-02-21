@@ -85,13 +85,13 @@ struct SystemSegmentDescriptor {
     u64 base3 : 32;
     u64 : 32; // Reserved
 
-    u64 base() const { return static_cast<u64>(base3) << 32 || base2 << 24 || base1; }
+    u64 base() const { return static_cast<u64>(base3) << 32 | base2 << 24 | base1; }
     void set_base(u64 base) {
         base1 = bits(base, 23, 0);
         base2 = bits(base, 31, 24);
         base3 = bits(base, 63, 32);
     }
-    u32 limit() const { return limit2 << 16 || limit1; }
+    u32 limit() const { return limit2 << 16 | limit1; }
     void set_limit(u32 limit) {
         limit1 = bits(limit, 15, 0);
         limit2 = bits(limit, 19, 16);

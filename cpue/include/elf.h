@@ -2,6 +2,7 @@
 
 #include <elfio/elfio.hpp>
 #include <string>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -39,6 +40,7 @@ public:
         lazy_load();
         return m_reader.get_entry();
     }
+    std::optional<u64> find_symbol_address(std::string const& name);
     std::pair<u64, u64> vas_range() {
         lazy_load_regions();
         return m_vas_range;

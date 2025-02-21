@@ -27,7 +27,7 @@ void Log::init() {
 
     s_logger = std::make_shared<spdlog::logger>("CPUE", begin(log_sinks), end(log_sinks));
     spdlog::register_logger(s_logger);
-    s_logger->set_level(spdlog::level::trace);
+    s_logger->set_level(spdlog::level::info);
     s_logger->flush_on(spdlog::level::trace);
 }
 

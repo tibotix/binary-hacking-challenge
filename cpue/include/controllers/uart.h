@@ -1,6 +1,7 @@
 #pragma once
 
 #include <thread>
+#include <atomic>
 #include <condition_variable>
 #include <chrono>
 #include <queue>
@@ -21,18 +22,26 @@ public:
 
     [[nodiscard]] bool is_connected() const { return m_opposite != nullptr; }
 
-    virtual void tx(char const c) const {
+    void tx(char const c) const {
         if (m_opposite) {
             m_opposite->rx(c);
         }
     };
-    virtual void rx(char c) = 0;
+    [[nodiscard]] bool cts() const { return m_cts; }
+    void set_rts(bool rts) const {
+        if (m_opposite)
+            m_opposite->set_cts(rts);
+    }
 
+protected:
+    virtual void rx(char c) = 0;
+    void set_cts(bool cts) { m_cts = cts; }
 
 private:
     void connect_to(UARTDevice* device) { m_opposite = device; }
 
     UARTDevice* m_opposite = nullptr;
+    std::atomic<bool> m_cts = true;
 };
 
 inline void connect_uart_devices(UARTDevice& device1, UARTDevice& device2) {
@@ -45,7 +54,7 @@ inline void connect_uart_devices(UARTDevice& device1, UARTDevice& device2) {
 /**
  * UART Controller for 1 UART connection to an external device.
  *
- * This is a simplified version of the 16550D UART Transceiver
+ * This is a simplified version of the TL16C750 UART Transceiver
  * We only implement the FIFO-Interrupt-based operation mode
  *
  * Registers (all registers are 1byte wide):
@@ -55,7 +64,10 @@ inline void connect_uart_devices(UARTDevice& device1, UARTDevice& device2) {
  *  - 0x1: IER (Interrupt-Enable-Register)
  *  - 0x2: IIR (Interrupt-Identification-Register)
  *  - 0x2: FCR (FIFO-Control-Register)
+ *  - 0x3: LCR (Line-Control-Register) (partially implemented)
+ *  - 0x4: MCR (Modem-Control-Register)
  *  - 0x5: LSR (Line-Status-Register)
+ *  - 0x6: MSR (Modem-Status-Register) (not implemented)
  *  - (internal) TSR (Transmit-Shift-Register)
  *      -> if data is written to TSR, it is immediately transmitted over the wire
  *
@@ -69,6 +81,8 @@ inline void connect_uart_devices(UARTDevice& device1, UARTDevice& device2) {
  *  - 0x1: Enable Transmitter Holding Register Empty Interrupt
  *  - 0x2: Enable Receiver Line Status Interrupt
  *  - 0x3: Enable MODEM Status Interrupt
+ *  - 0x4: Enables sleep mode (not implemented)
+ *  - 0x5: Enables low power mode (not implemented)
  * The currently active interrupt is set in IIR:
  *  - 0b0001 (priority -): No interrupt
  *  - 0b0110 (priority highest): Receiver Line Status Interrupt
@@ -93,12 +107,14 @@ inline void connect_uart_devices(UARTDevice& device1, UARTDevice& device2) {
 class UARTController final : public UARTDevice {
 public:
     // Non-FIFO mode is essentially FIFO-mode with capacity 1 (resembles the THR/RBR registers)
-    static constexpr u8 FIFO_CAPACITY = 16;
-    static constexpr PhysicalAddress MMIO_REG_BASE = 0xffff'ffff'0000'0000_pa;
+    static constexpr u8 MAX_FIFO_CAPACITY = 64; // 16750 allows either 16byte or 64byte FIFOs
+    static constexpr PhysicalAddress MMIO_REG_BASE = 0xff00'0000_pa;
     static constexpr u8 MAX_PENDING_INTERRUPTS = 8;
 
-    explicit UARTController(CPU* cpu);
+    UARTController(CPU* cpu, u8 id);
     ~UARTController() override;
+
+protected:
     void rx(char c) override;
 
 
@@ -108,24 +124,34 @@ private:
 
     u8 read_rbr();
     void write_thr(u8 value);
+    u8 read_ier() const;
     void write_ier(u8 value);
     u8 read_iir();
     void write_fcr(u8 value);
     u8 read_lsr();
 
     void update_data_ready_bit_and_rda_interrupt_if_necessary() {
+        bool rx_fifo_trigger_level_reached = m_rx_fifo.size() >= m_fcr.concrete.trigger_level();
+        // When auto-RST is enabled:
+        // When the receiver FIFO level reaches the trigger level, RTS is deasserted.
+        // NOTE: we also reassert RTS on clearing the RX-FIFO through FCR. (This deviates from spec, which says it's only updated on RBR read)
+        if (m_mcr.c.afe && m_mcr.c.rts)
+            set_rts(!rx_fifo_trigger_level_reached);
         m_lsr.concrete.dr = !m_rx_fifo.is_empty();
-        if (m_ier.is_rda_enabled() && m_rx_fifo.size() >= m_fcr.concrete.trigger_level())
+        if (m_ier.is_rda_enabled() && rx_fifo_trigger_level_reached)
             record_interrupt(Interrupts::RECEIVED_DATA_AVAILABLE);
-        if (m_ier.is_rda_enabled() && m_rx_fifo.size() < m_fcr.concrete.trigger_level())
+        else
             clear_interrupt(Interrupts::RECEIVED_DATA_AVAILABLE);
     }
     void update_thre_interrupt_if_necessary() {
+        m_lsr.concrete.thre = m_tx_fifo.is_empty();
         if (m_ier.is_thre_enabled() && m_tx_fifo.is_empty())
             record_interrupt(Interrupts::TRANSMITTER_HOLDING_REGISTER_EMPTY);
-        if (m_ier.is_thre_enabled() && m_tx_fifo.size() > 0)
+        else
             clear_interrupt(Interrupts::TRANSMITTER_HOLDING_REGISTER_EMPTY);
     }
+
+    [[nodiscard]] u8 fifo_capacity() const { return m_fcr.concrete.extended_fifo ? MAX_FIFO_CAPACITY : 16; }
 
     void loop();
 
@@ -138,19 +164,24 @@ private:
         bool operator==(Interrupt const& other) const { return number == other.number; }
     };
     struct Interrupts {
-        static constexpr Interrupt RECEIVER_LINE_STATUS = {0, 0b0110, 0b110};
-        static constexpr Interrupt RECEIVED_DATA_AVAILABLE = {1, 0b0100, 0b100};
-        static constexpr Interrupt CHARACTER_TIMEOUT_INDICATION = {2, 0b1100, 0b100};
-        static constexpr Interrupt TRANSMITTER_HOLDING_REGISTER_EMPTY = {3, 0b0010, 0b010};
-        static constexpr Interrupt MODEM_STATUS = {4, 0b0000, 0b000};
+        static constexpr Interrupt RECEIVER_LINE_STATUS = {0, 0b0110, 1};
+        static constexpr Interrupt RECEIVED_DATA_AVAILABLE = {1, 0b0100, 2};
+        static constexpr Interrupt CHARACTER_TIMEOUT_INDICATION = {2, 0b1100, 2};
+        static constexpr Interrupt TRANSMITTER_HOLDING_REGISTER_EMPTY = {3, 0b0010, 3};
+        static constexpr Interrupt MODEM_STATUS = {4, 0b0000, 4};
     };
+    static constexpr std::array<Interrupt, 5> SORTED_INTERRUPTS = [] {
+        std::array interrupts = {Interrupts::RECEIVER_LINE_STATUS, Interrupts::RECEIVED_DATA_AVAILABLE, Interrupts::CHARACTER_TIMEOUT_INDICATION,
+            Interrupts::TRANSMITTER_HOLDING_REGISTER_EMPTY, Interrupts::MODEM_STATUS};
+        constexpr auto cmp = [](const Interrupt& a, const Interrupt& b) {
+            return a.priority < b.priority;
+        };
+        std::sort(interrupts.begin(), interrupts.end(), cmp);
+        return interrupts;
+    }();
     void record_overrun_error();
     void record_interrupt(Interrupt interrupt);
     void clear_interrupt(Interrupt interrupt);
-    struct InterruptComparator {
-        bool operator()(Interrupt const& lhs, Interrupt const& rhs) const { return lhs.priority < rhs.priority; }
-    };
-    std::priority_queue<Interrupt, std::vector<Interrupt>, InterruptComparator> m_interrupt_queue;
     std::bitset<8> m_active_interrupt_map = 0;
 
 
@@ -161,22 +192,28 @@ private:
             u8 clear_rx_fifo : 1; // If this is 1, rx-fifo is cleared (this bit is self-clearing)
             u8 clear_tx_fifo : 1; // If this is 1, tx-fifo is cleared (this bit is self-clearing)
             u8 : 1; // we don't implement rxrdy/txrdy pins
-            u8 : 2; // reserved
+            u8 : 1; // reserved
+            /**
+            * When this bit is set 64-byte mode of operation is selected. When cleared, the 16-byte mode is
+            * selected. A write to FCR bit 5 is protected by setting the line control register (LCR) bit 7 = 1. LCR bit 7 needs
+            * to cleared for normal operation.
+            */
+            u8 extended_fifo : 1;
             u8 trigger_level_indicator : 2; // 0b00=1, 0b01=4, 0b10=8, 0b11=14,
 
             u8 trigger_level() const {
                 switch (trigger_level_indicator) {
                     case 0b00: return 1;
-                    case 0b01: return 4;
-                    case 0b10: return 8;
-                    case 0b11: return 14;
+                    case 0b01: return extended_fifo ? 16 : 4;
+                    case 0b10: return extended_fifo ? 32 : 8;
+                    case 0b11: return extended_fifo ? 56 : 14;
                     default: fail("invalid trigger level");
                 }
             }
         } concrete;
         u8 value;
     };
-    FCR m_fcr = {.value = 0b01000001};
+    FCR m_fcr = {.value = 0b00000001};
 
     // Interrupt-Enable-Register
     struct IER {
@@ -187,7 +224,7 @@ private:
         bool is_rls_enabled() const { return bits(value, 2, 2); } // Receiver Line Status
         bool is_ms_enabled() const { return bits(value, 3, 3); } // Modem status
     };
-    IER m_ier = {.value = 0b1111};
+    IER m_ier = {.value = 0b0000};
 
     union LSR {
         struct {
@@ -210,13 +247,73 @@ private:
             u8 pe : 1; // Parity Error indicator. Not implemented.
             u8 fe : 1; // Framing Error indicator. Not implemented.
             u8 bi : 1; // Break Interrupt indicator. Not implemented.
+            /**
+            * Transmitter Holding Register Empty (THRE) indicator. Bit 5 indicates that the UART is ready
+            * to accept a new character for transmission. The THRE bit is set to a logic 1 when a
+            * character is transferred from the Transmitter Holding Register into the Transmitter Shift Register. The bit is reset
+            * to logic 0 concurrently with the loading of the Transmitter Holding Register by the CPU. In the FIFO mode this
+            * bit is set when the XMIT FIFO is empty; it is cleared when at least 1 byte is written to the XMIT FIFO.
+            */
+            u8 thre : 1; // Transmitter Holding Register Empty indicator.
+            u8 : 1; // Transmitter empty indicator (set if both THR and TSR (Transmitter-Shift-Register) are empty) (not implemented)
         } concrete;
         u8 value;
     };
-    LSR m_lsr = {.value = 0x0};
+    LSR m_lsr = {.value = 0b1100000};
 
-    InplaceFIFO<u8, FIFO_CAPACITY> m_rx_fifo;
-    InplaceFIFO<u8, FIFO_CAPACITY> m_tx_fifo;
+    union LCR {
+        struct {
+            u8 : 2; // Serial Character Word Length (not implemented)
+            u8 : 1; // Number of Stop Bits Generated (not implemented)
+            u8 : 1; // Parity enable bit (not implemented)
+            u8 : 1; // Even parity select bit (not implemented)
+            u8 : 1; // Stick parity bit (not implemented)
+            u8 : 1; // Break control bit (not implemented)
+            /**
+            * This bit is the divisor latch access bit (DLAB). Bit 7 must be set to access the divisor latches of the
+            * baud generator during a read or write or access bit 5 of the FCR. Bit 7 must be cleared during a read or write
+            * to access the receiver buffer, the THR, or the IER.
+            */
+            u8 dlab : 1;
+        } c;
+        u8 value;
+    };
+    LCR m_lcr = {.value = 0b00000000};
+
+    union MCR {
+        struct {
+            /**
+            * When any of bits 0 through 3 is set, the associated output is forced low;
+            * a cleared bit forces the associated output high.
+            * (we don't implement these)
+            */
+            u8 dtr : 1; // This bit (DTR) controls the !DTR output.
+            u8 rts : 1; // This bit (RTS) controls !RTS output.
+            u8 out1 : 1; // This bit (OUT1) controls !OUT1 signal.
+            u8 out2 : 1; // This bit (OUT2) controls the !OUT2 signal.
+            u8 loop : 1; // This bit (LOOP) provides a local loop back feature for diagnostic testing of the ACE. (not implemented)
+            /**
+            * This bit (AFE) is the autoflow control enable. When bit 5 is set, the autoflow control,
+            * as described in the detailed description, is enabled.
+            * The receiver and transmitter interrupts are fully operational.
+            * The modem control interrupts are also operational, but the modem control interrupt sources are now the
+            * lower four bits of the MCR instead of the four modem control inputs. All interrupts are still controlled by the
+            * IER.
+            * The ACE flow can be configured by programming bits 1 and 5 of the MCR as shown in Table 8.
+            * MCR BIT 5(AFE) | MCR BIT 1(RTS) | ACE FLOW CONFIGURATION
+            * 1              | 1              | Auto-RTS and auto-CTS enabled (autoflow control enabled)
+            * 1              | 0              | Auto-CTS only enabled
+            * 0              | X              | Auto-RTS and auto-CTS disabled
+            * When bit 5 of the FCR is cleared, there is a 16-byte AFC. When bit 5 of the FCR is set, there is a 64-byte AFC.
+            */
+            u8 afe : 1;
+        } c;
+        u8 value;
+    };
+    MCR m_mcr = {.value = 0b00000000};
+
+    InplaceFIFO<u8, MAX_FIFO_CAPACITY> m_rx_fifo;
+    InplaceFIFO<u8, MAX_FIFO_CAPACITY> m_tx_fifo;
 
     std::chrono::time_point<std::chrono::steady_clock> m_last_cpu_read_time_point;
     std::chrono::time_point<std::chrono::steady_clock> m_last_char_received_time_point;

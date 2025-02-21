@@ -27,6 +27,7 @@ namespace CPUE {
 
 // We only support one fixed PAGE_SIZE. We don't support huge pages such as 2MB Pages (referenced directly from PDE).
 constexpr size_t PAGE_SIZE = 4_kb; // DO NOT CHANGE THIS
+constexpr u64 PAGE_OFFSET_MASK = PAGE_SIZE - 1;
 constexpr u8 VIRTUAL_ADDR_BITS = 48; // 4-Level paging enables up to 48bit VirtualAddress Space
 constexpr u64 VIRTUAL_ADDR_MASK = ((u64)1 << VIRTUAL_ADDR_BITS) - 1;
 constexpr u64 PAGE_NUMBER_MASK = (((u64)1 << (VIRTUAL_ADDR_BITS - 12)) - 1) << 12;
@@ -35,10 +36,10 @@ constexpr u64 MAXPHYADDR = 36;
 static_assert(MAXPHYADDR <= 36, "MAXPHYADDR must be <= 36");
 
 constexpr bool IS_PAGE_ALIGNED(u64 value) {
-    return ((value & ~PAGE_NUMBER_MASK) & VIRTUAL_ADDR_MASK) == 0;
+    return (value & PAGE_OFFSET_MASK) == 0;
 }
 constexpr u64 PAGE_ALIGN(u64 value) {
-    return value & PAGE_NUMBER_MASK;
+    return value & ~PAGE_OFFSET_MASK;
 }
 constexpr u64 PAGE_ALIGN_CEIL(u64 value) {
     return PAGE_ALIGN(CPUE_checked_uadd(value, PAGE_SIZE - 1));

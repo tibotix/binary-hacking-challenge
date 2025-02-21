@@ -16,6 +16,7 @@ public:
 
 private:
     void print_sys_info();
+    void enable_protected_mode();
     void setup_paging(u64& top);
     void setup_gdt(u64& top);
     void setup_idt(u64& top);

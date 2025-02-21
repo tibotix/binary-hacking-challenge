@@ -35,18 +35,15 @@ public:
     friend class NoKernel;
     friend class EmulatedKernel;
     friend class CustomKernel;
-    explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
-        reset();
-    }
+    explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart0(this, 0) { reset(); }
     CPU(CPU const&) = delete;
 
 public:
     enum ExecutionMode {
         REAL_MODE,
-        LEGACY_MODE,
         PROTECTED_MODE,
-        COMPATIBILITY_MODE,
-        LONG_MODE,
+        IA32e_COMPATIBILITY_MODE,
+        IA32e_64BIT_MODE,
     };
 
     enum State {
@@ -134,10 +131,10 @@ public:
         } c;
         u64 value;
 
-        u64 reserved_bits_ored() const { return c.__reserved1 || c.__reserved2; }
+        u64 reserved_bits_ored() const { return c.__reserved1 | c.__reserved2; }
 
         // // We have to do it this way cause of bit-field limitations/alignment issues
-        PCID pcid() const { return ((u16)c._pcid2 << 5) || c.PCD << 4 || c.PWT << 3 || c._pcid1; }
+        PCID pcid() const { return ((u16)c._pcid2 << 5) | c.PCD << 4 | c.PWT << 3 | c._pcid1; }
         void set_pcid(PCID pcid) {
             c._pcid1 = bits(pcid, 2, 0);
             c.PWT = bits(pcid, 3, 3);
@@ -180,7 +177,7 @@ public:
         } c;
         u64 value;
 
-        u64 reserved_bits_ored() const { return c.__reserved1 || c.__reserved2; }
+        u64 reserved_bits_ored() const { return c.__reserved1 | c.__reserved2; }
     };
     static_assert(sizeof(CR4) == 8);
 
@@ -223,7 +220,7 @@ public:
     }
     void assert_paging_enabled() const { CPUE_ASSERT(is_paging_enabled(), "paging not enabled"); }
     [[nodiscard]] ExecutionMode execution_mode() const;
-    void assert_in_long_mode() const { CPUE_ASSERT(execution_mode() == ExecutionMode::LONG_MODE, "not in long mode"); }
+    void assert_in_64bit_mode() const { CPUE_ASSERT(execution_mode() == ExecutionMode::IA32e_64BIT_MODE, "not in 64-bit mode"); }
 
     [[nodiscard]] State state() const { return m_state; }
 
@@ -235,6 +232,7 @@ public:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_insn(cs_insn const&);
 
     std::string dump_full_state() const;
+    std::string dump_stack();
 
     void reset();
 
@@ -295,6 +293,11 @@ public:
         CPUE_ASSERT(r == nullptr || r->type() == CONTROL_REGISTER, "creg called with non-control register.");
         return r;
     }
+    RegisterProxy* xmmreg(x86_reg reg) {
+        auto r = this->reg(reg);
+        CPUE_ASSERT(r == nullptr || r->type() == XMM_REGISTER, "xxmreg called with non-xmm register.");
+        return r;
+    }
 
 
     RFLAGS& rflags() { return m_rflags; }
@@ -309,7 +312,7 @@ public:
     MMU& mmu() { return m_mmu; }
     PIC& pic() { return m_pic; }
     ICU& icu() { return m_icu; }
-    UARTController& uart1() { return m_uart1; };
+    UARTController& uart0() { return m_uart0; };
 
 private:
     void fix_interrupt_ext_bit(Interrupt& i) const;
@@ -351,6 +354,9 @@ private:
     [[nodiscard]] InterruptRaisedOr<void> handle_nested_interrupt(Interrupt i);
     [[nodiscard]] InterruptRaisedOr<void> handle_interrupt(Interrupt i);
     // NOTE: as InterruptGateDescriptor and TrapGateDescriptor have the same layout, we simply choose one to receive
+    [[nodiscard]] InterruptRaisedOr<void> enter_interrupt_trap_gate(Interrupt const& i, InterruptGateDescriptor const& descriptor) {
+        return enter_interrupt_trap_gate(i, reinterpret_cast<TrapGateDescriptor const&>(descriptor));
+    }
     [[nodiscard]] InterruptRaisedOr<void> enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor);
     [[nodiscard]] InterruptRaisedOr<void> enter_task_gate(Interrupt const& i, TaskGateDescriptor const& task_gate_descriptor);
     [[nodiscard]] InterruptRaisedOr<void> enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn);
@@ -361,9 +367,12 @@ private:
 
     DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
 
-    void update_rflags(ArithmeticResult res) {
+    void update_rflags_cf_of(ArithmeticResult const& res) {
         m_rflags.c.CF = res.has_cf_set;
         m_rflags.c.OF = res.has_of_set;
+    }
+    void update_rflags(ArithmeticResult const& res) {
+        update_rflags_cf_of(res);
         update_rflags(res.value);
     }
     void update_rflags(SizedValue const& value) {
@@ -439,7 +448,7 @@ private:
     PIC m_pic;
     Disassembler m_disassembler;
 
-    UARTController m_uart1;
+    UARTController m_uart0;
 
     std::optional<Interrupt> m_interrupt_to_be_handled;
     State m_state;
@@ -650,6 +659,47 @@ private:
     ControlRegisterProxy m_cr14_reg = ControlRegisterProxy(&m_cr14_val, this, REG_ACCESS_NONE);
     ControlRegisterProxy m_cr15_reg = ControlRegisterProxy(&m_cr15_val, this, REG_ACCESS_NONE);
 
+    /**
+     * SSE Registers
+     */
+    // TODO: maybe make them float128
+    u128 m_xmm0_val = 0x0;
+    u128 m_xmm1_val = 0x0;
+    u128 m_xmm2_val = 0x0;
+    u128 m_xmm3_val = 0x0;
+    u128 m_xmm4_val = 0x0;
+    u128 m_xmm5_val = 0x0;
+    u128 m_xmm6_val = 0x0;
+    u128 m_xmm7_val = 0x0;
+    u128 m_xmm8_val = 0x0;
+    u128 m_xmm9_val = 0x0;
+    u128 m_xmm10_val = 0x0;
+    u128 m_xmm11_val = 0x0;
+    u128 m_xmm12_val = 0x0;
+    u128 m_xmm13_val = 0x0;
+    u128 m_xmm14_val = 0x0;
+    u128 m_xmm15_val = 0x0;
+    XMMRegisterProxy m_xmm0_reg = XMMRegisterProxy(&m_xmm0_val, this);
+    XMMRegisterProxy m_xmm1_reg = XMMRegisterProxy(&m_xmm1_val, this);
+    XMMRegisterProxy m_xmm2_reg = XMMRegisterProxy(&m_xmm2_val, this);
+    XMMRegisterProxy m_xmm3_reg = XMMRegisterProxy(&m_xmm3_val, this);
+    XMMRegisterProxy m_xmm4_reg = XMMRegisterProxy(&m_xmm4_val, this);
+    XMMRegisterProxy m_xmm5_reg = XMMRegisterProxy(&m_xmm5_val, this);
+    XMMRegisterProxy m_xmm6_reg = XMMRegisterProxy(&m_xmm6_val, this);
+    XMMRegisterProxy m_xmm7_reg = XMMRegisterProxy(&m_xmm7_val, this);
+    XMMRegisterProxy m_xmm8_reg = XMMRegisterProxy(&m_xmm8_val, this);
+    XMMRegisterProxy m_xmm9_reg = XMMRegisterProxy(&m_xmm9_val, this);
+    XMMRegisterProxy m_xmm10_reg = XMMRegisterProxy(&m_xmm10_val, this);
+    XMMRegisterProxy m_xmm11_reg = XMMRegisterProxy(&m_xmm11_val, this);
+    XMMRegisterProxy m_xmm12_reg = XMMRegisterProxy(&m_xmm12_val, this);
+    XMMRegisterProxy m_xmm13_reg = XMMRegisterProxy(&m_xmm13_val, this);
+    XMMRegisterProxy m_xmm14_reg = XMMRegisterProxy(&m_xmm14_val, this);
+    XMMRegisterProxy m_xmm15_reg = XMMRegisterProxy(&m_xmm15_val, this);
+    // TODO: MMX Registers
+    // TODO: MXCSR Register
+
+
+
 
     /**
      * MSRs (Model-Specific-Registers)
@@ -704,28 +754,46 @@ private:
     RegisterProxy* m_register_map[247] = {
         nullptr, &m_ah, &m_al, &m_ax, &m_bh, &m_bl, &m_bp, &m_bpl, &m_bx, &m_ch, &m_cl, &m_cs_reg, &m_cx, &m_dh, &m_di, &m_dil, &m_dl, &m_ds_reg, &m_dx, &m_eax, &m_ebp, &m_ebx,
         &m_ecx, &m_edi, &m_edx, nullptr, &m_eip, nullptr, &m_es_reg, &m_esi, &m_esp, nullptr, &m_fs_reg, &m_gs_reg, &m_ip, &m_rax, &m_rbp, &m_rbx, &m_rcx, &m_rdi, &m_rdx, &m_rip,
-        nullptr, &m_rsi, &m_rsp, &m_si, &m_sil, &m_sp, &m_spl, &m_ss_reg, &m_cr0_reg, &m_cr1_reg, &m_cr2_reg, &m_cr3_reg, &m_cr4_reg, &m_cr5_reg, &m_cr6_reg, &m_cr7_reg, &m_cr8_reg,
-        &m_cr9_reg, &m_cr10_reg, &m_cr11_reg, &m_cr12_reg, &m_cr13_reg, &m_cr14_reg, &m_cr15_reg, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, &m_rsi, &m_rsp, &m_si, &m_sil, &m_sp, &m_spl, &m_ss_reg, &m_cr0_reg, &m_cr1_reg, &m_cr2_reg, &m_cr3_reg, &m_cr4_reg, &m_cr5_reg, &m_cr6_reg, &m_cr7_reg,
+        &m_cr8_reg, &m_cr9_reg, &m_cr10_reg, &m_cr11_reg, &m_cr12_reg, &m_cr13_reg, &m_cr14_reg, &m_cr15_reg, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8, &m_r9, &m_r10, &m_r11, &m_r12, &m_r13, &m_r14, &m_r15,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8, &m_r9, &m_r10, &m_r11, &m_r12, &m_r13,
+        &m_r14, &m_r15, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_xmm0_reg, &m_xmm1_reg, &m_xmm2_reg, &m_xmm3_reg, &m_xmm4_reg, &m_xmm5_reg,
+        &m_xmm6_reg, &m_xmm7_reg, &m_xmm8_reg, &m_xmm9_reg, &m_xmm10_reg, &m_xmm11_reg, &m_xmm12_reg, &m_xmm13_reg, &m_xmm14_reg, &m_xmm15_reg, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8b, &m_r9b, &m_r10b, &m_r11b, &m_r12b, &m_r13b, &m_r14b, &m_r15b, &m_r8d, &m_r9d,
-        &m_r10d, &m_r11d, &m_r12d, &m_r13d, &m_r14d, &m_r15d, &m_r8w, &m_r9w, &m_r10w, &m_r11w, &m_r12w, &m_r13w, &m_r14w, &m_r15w, nullptr, nullptr, nullptr, nullptr,
+        &m_r8b, &m_r9b, &m_r10b, &m_r11b, &m_r12b, &m_r13b, &m_r14b, &m_r15b, &m_r8d, &m_r9d, &m_r10d, &m_r11d, &m_r12d, &m_r13d, &m_r14d, &m_r15d, &m_r8w, &m_r9w, &m_r10w,
+        &m_r11w, &m_r12w, &m_r13w, &m_r14w, &m_r15w, nullptr, nullptr, nullptr, nullptr,
         nullptr, // <-- mark the end of the list of registers
     };
 
 private:
+    enum RepPrefix {
+        REP_PREFIX_NONE,
+        REP_PREFIX_REP,
+        REP_PREFIX_REPE,
+        REP_PREFIX_REPNE,
+    };
+    template<typename Func>
+    requires std::is_same_v<std::invoke_result_t<Func>, InterruptRaisedOr<IPContinuationBehavior>>
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> do_string_op_and_handle_rep_prefixes(RepPrefix, cs_x86 const&, Func&&);
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ADD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_AND(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CALL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CLI(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CLD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CMP(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CMPXCHG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CWD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CDQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_CQO(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DEC(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DIV_IDIV(x86_insn const&, cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_DIV(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ENDBR64(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_HLT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IDIV(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IMUL(cs_x86 const&);
@@ -735,6 +803,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INT3(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INTO(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_INVLPG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRET_IRETD_IRETQ(x86_insn const&, cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRET(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_IRETQ(cs_x86 const&);
@@ -748,6 +817,7 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JLE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_JBE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LEA(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LEAVE(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_LGDT(cs_x86 const&);
@@ -763,6 +833,12 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSX(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSXD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVZX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVQ(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSB_MOVSW_MOVSD_MOVSQ(x86_insn const&, cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSW(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MUL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_NOP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_NOT(cs_x86 const&);
@@ -784,9 +860,23 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHLX(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SHR(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETcc(x86_insn const&, cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETNE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETL(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETG(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETGE(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SETB(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SIDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SLDT(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STI(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STC(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSB_STOSW_STOSD_STOSQ(x86_insn const&, cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSW(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SUB(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SWAPGS(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_TEST(cs_x86 const&);

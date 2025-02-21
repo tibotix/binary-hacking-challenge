@@ -78,10 +78,15 @@ auto CPU::paging_mode() const -> PagingMode {
 }
 
 auto CPU::execution_mode() const -> ExecutionMode {
-    if (efer_LMA() == 1)
-        return ExecutionMode::LONG_MODE;
-    TODO_NOFAIL("execution_mode");
-    return ExecutionMode::COMPATIBILITY_MODE;
+    if (cr0().c.PE == 0 && efer_LMA() == 0)
+        return ExecutionMode::REAL_MODE;
+    if (cr0().c.PE == 1 && efer_LMA() == 0)
+        return ExecutionMode::PROTECTED_MODE;
+    if (cr0().c.PE == 1 && cr4().c.PAE == 1 && efer_LMA() == 1 && m_cs.hidden.cached_descriptor.l == 0)
+        return ExecutionMode::IA32e_COMPATIBILITY_MODE;
+    if (cr0().c.PE == 1 && cr4().c.PAE == 1 && efer_LMA() == 1 && m_cs.hidden.cached_descriptor.l == 1)
+        return ExecutionMode::IA32e_64BIT_MODE;
+    fail("Ambiguous execution mode.");
 }
 
 
@@ -91,13 +96,18 @@ std::string CPU::dump_full_state() const {
     auto dump = [&ss](const char* msg, u64 value) -> void {
         ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << value << "\n";
     };
+    auto dump128 = [&ss](const char* msg, u128 value) -> void {
+        u64 high = value >> 64;
+        u64 low = value & 0xFFFFFFFFFFFFFFFF;
+        ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << high << "|" << low << "\n";
+    };
 
     dump("RAX", m_rax_val);
     dump("RBX", m_rbx_val);
     dump("RCX", m_rcx_val);
     dump("RDX", m_rdx_val);
-    dump("RSI", m_rsi_val);
     dump("RDI", m_rdi_val);
+    dump("RSI", m_rsi_val);
     dump("RBP", m_rbp_val);
     dump("RSP", m_rsp_val);
     dump("R8", m_r8_val);
@@ -110,13 +120,41 @@ std::string CPU::dump_full_state() const {
     dump("R15", m_r15_val);
     dump("RIP", m_rip_val);
     dump("RFLAGS", m_rflags.value);
-    dump("EFER", m_rflags.value);
+    dump("EFER", m_efer.value);
     dump("CS", m_cs.visible.segment_selector.value);
     dump("SS", m_ss.visible.segment_selector.value);
     dump("DS", m_ds.visible.segment_selector.value);
     dump("ES", m_es.visible.segment_selector.value);
     dump("FS", m_fs.visible.segment_selector.value);
     dump("GS", m_gs.visible.segment_selector.value);
+    dump128("XMM0", m_xmm0_val);
+    dump128("XMM1", m_xmm1_val);
+    dump128("XMM2", m_xmm2_val);
+    dump128("XMM3", m_xmm3_val);
+    dump128("XMM4", m_xmm4_val);
+    dump128("XMM5", m_xmm5_val);
+    dump128("XMM6", m_xmm6_val);
+    dump128("XMM7", m_xmm7_val);
+    dump128("XMM8", m_xmm8_val);
+    dump128("XMM9", m_xmm9_val);
+    dump128("XMM10", m_xmm10_val);
+    dump128("XMM11", m_xmm11_val);
+    dump128("XMM12", m_xmm12_val);
+    dump128("XMM13", m_xmm13_val);
+    dump128("XMM14", m_xmm14_val);
+    dump128("XMM15", m_xmm15_val);
+
+    return ss.str();
+}
+
+std::string CPU::dump_stack() {
+    std::stringstream ss;
+
+    for (u64 i = 0; i < 10; ++i) {
+        VirtualAddress addr = m_rsp_val + i * 8;
+        u64 val = m_mmu.mem_read64(addr).release_value();
+        ss << "[0x" << std::hex << std::setw(16) << std::setfill('0') << addr.addr << "]: 0x" << val << "\n";
+    }
 
     return ss.str();
 }
@@ -142,6 +180,7 @@ void CPU::interpreter_loop() {
                 m_rip_val = old_ip;
             }
             CPUE_TRACE("State: \n{}", dump_full_state());
+            CPUE_TRACE("Stack: \n{}", dump_stack());
         }
 
         // Handle interrupts
@@ -228,7 +267,7 @@ InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
 }
 
 InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
-    assert_in_long_mode();
+    assert_in_64bit_mode();
 
     // See chapter 7.12 or page 3290
     m_interrupt_to_be_handled = interrupt;
@@ -248,7 +287,7 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
     auto idt_descriptor = MAY_HAVE_RAISED(m_mmu.interrupt_vector_to_descriptor(interrupt.vector));
     switch (idt_descriptor.access.descriptor_type()) {
         case DescriptorType::TASK_GATE: MAY_HAVE_RAISED(enter_task_gate(interrupt, *idt_descriptor.to_task_gate_descriptor())); break;
-        case DescriptorType::INTERRUPT_GATE:
+        case DescriptorType::INTERRUPT_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_interrupt_gate_descriptor())); break;
         case DescriptorType::TRAP_GATE: MAY_HAVE_RAISED(enter_interrupt_trap_gate(interrupt, *idt_descriptor.to_trap_gate_descriptor())); break;
         // The following conditions cause general-protection exceptions to be generated:
         // Referencing an entry in the IDT (following an interrupt or exception) that is not an interrupt, trap, or task gate.
@@ -275,6 +314,7 @@ InterruptRaisedOr<void> CPU::handle_interrupt(Interrupt interrupt) {
 
 
 InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapGateDescriptor const& descriptor) {
+    CPUE_TRACE("enter_interrupt_trap_gate for ivec: {}", i.vector);
     ErrorCode error_code = {.standard = {
                                 .tbl = 1,
                                 .selector_index = i.vector,
@@ -316,11 +356,11 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     // In 64-bit mode:
     // The stack pointer (SS:RSP) is pushed unconditionally on interrupts. In legacy modes, this push is conditional
     // and based on a change in current privilege level(CPL).
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+    MAY_HAVE_RAISED(stack_push(old_ss.value));
     MAY_HAVE_RAISED(stack_push(old_sp));
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u64>(&m_rflags)));
+    MAY_HAVE_RAISED(stack_push(m_rflags.value));
 
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
+    MAY_HAVE_RAISED(stack_push(m_cs.visible.segment_selector.value));
     MAY_HAVE_RAISED(stack_push(m_rip_val));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
@@ -359,7 +399,7 @@ InterruptRaisedOr<void> CPU::enter_task_gate(Interrupt const& i, TaskGateDescrip
 }
 
 InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, CallGateDescriptor const& call_gate_descriptor, bool through_call_insn) {
-    assert_in_long_mode();
+    assert_in_64bit_mode();
 
     ErrorCode error_code = {.standard = {
                                 .tbl = (u8)(selector.c.table << 1),
@@ -401,7 +441,7 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
      */
     if (dest_is_conforming && dest_dpl < cpl()) {
         auto [old_ss, old_sp] = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
-        MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+        MAY_HAVE_RAISED(stack_push(old_ss.value));
         MAY_HAVE_RAISED(stack_push(old_sp));
     }
 
@@ -442,7 +482,7 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     auto new_sp_addr = VirtualAddress(m_tr.hidden.cached_descriptor.base() + (tss_sp_byte_offset * 8));
     TODO_NOFAIL("Check limit");
     auto new_sp = MAY_HAVE_RAISED(mmu().mem_read64(new_sp_addr, INTENTION_LOAD_TSS));
-    new_sp = (new_sp << 32) || new_sp & 0xFFFFFFFF; // switch endianness
+    new_sp = (new_sp << 32) | new_sp & 0xFFFFFFFF; // switch endianness
     //  3. Checks the stack-segment descriptor for the proper privileges and type and generates an invalid TSS (#TS)
     //     exception if violations are detected.
     // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
@@ -501,7 +541,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     auto const access_byte_vaddr = VirtualAddress(base) + (selector.c.index * 8) + offsetof(Descriptor, access);
     auto new_access_byte = descriptor.access;
     new_access_byte.c.accessed = 1;
-    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
+    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, new_access_byte.value));
 
     // The Segment Not Present exception occurs when trying to load a segment or gate which has its `Present` bit set to 0.
     // However, when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
@@ -601,6 +641,8 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 InterruptRaisedOr<void> CPU::stack_push(u64 value, TranslationIntention intention) {
     TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
+    if (m_state == STATE_HANDLE_INSTRUCTION && intention == INTENTION_UNKNOWN)
+        intention = INTENTION_HANDLE_INSTRUCTION;
     if (m_rsp_val < 8)
         return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
     m_rsp_val -= 8;
@@ -608,6 +650,8 @@ InterruptRaisedOr<void> CPU::stack_push(u64 value, TranslationIntention intentio
 }
 
 InterruptRaisedOr<u64> CPU::stack_pop(TranslationIntention intention) {
+    if (m_state == STATE_HANDLE_INSTRUCTION && intention == INTENTION_UNKNOWN)
+        intention = INTENTION_HANDLE_INSTRUCTION;
     auto value = MAY_HAVE_RAISED(mmu().mem_read64(stack_pointer(), intention));
     m_rsp_val += 8;
     return value;
@@ -632,7 +676,7 @@ InterruptRaisedOr<void> CPU::do_canonicality_check(VirtualAddress const& vaddr) 
 DescriptorTable CPU::descriptor_table_of_selector(SegmentSelector selector) const {
     switch (selector.c.table) {
         case 0: return m_gdtr;
-        case 1: return {m_ldtr.hidden.cached_descriptor.base(), m_ldtr.hidden.cached_descriptor.limit()};
+        case 1: return {m_ldtr.hidden.cached_descriptor.base(), static_cast<u16>(m_ldtr.hidden.cached_descriptor.limit())};
         default: fail();
     }
 }

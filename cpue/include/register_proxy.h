@@ -20,7 +20,7 @@ public:
     [[nodiscard]] SizedValue read(u64 const* value_ptr) const { return {(*value_ptr & m_bitmask) >> m_rshift, m_width}; }
     void write(u64* value_ptr, SizedValue const& svalue) {
         CPUE_ASSERT(svalue.byte_width() <= m_width, "Invalid width.");
-        u64 value = (svalue << m_rshift) & m_bitmask;
+        u64 value = (svalue.value() << m_rshift) & m_bitmask;
         *value_ptr = (*value_ptr & m_keep_bitmask) | value;
     }
 
@@ -73,7 +73,8 @@ enum RegisterType {
     SYSTEM_SEGMENT_REGISTER,
     CONTROL_REGISTER,
     DEBUG_REGISTER,
-    FLOAT_REGISTER,
+    XMM_REGISTER,
+    MMX_REGISTER,
     OTHER,
 };
 enum RegisterAccessFlags : u8 {
@@ -179,6 +180,26 @@ protected:
 private:
     ApplicationSegmentRegister* m_seg_ptr;
     SegmentRegisterAlias m_seg_alias;
+};
+
+
+/**
+ * SSE Extension
+ */
+
+class XMMRegisterProxy final : public RegisterProxy {
+public:
+    XMMRegisterProxy(u128* value_ptr, CPU* cpu, u8 flags = REG_ACCESS_READ | REG_ACCESS_WRITE, RegisterCallbacks const& callbacks = empty_callbacks)
+        : RegisterProxy(cpu, flags, ByteWidth::WIDTH_DQWORD, callbacks), m_value_ptr(value_ptr) {}
+
+    RegisterType type() const override { return XMM_REGISTER; }
+
+protected:
+    InterruptRaisedOr<SizedValue> do_read() const override;
+    InterruptRaisedOr<void> do_write(SizedValue const&) override;
+
+private:
+    u128* m_value_ptr;
 };
 
 

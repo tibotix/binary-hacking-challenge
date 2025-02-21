@@ -43,17 +43,60 @@ TEST_CASE("CPUE_checked_single_uadd", "[checked_arithmetic]") {
 
 
 TEST_CASE("CPUE_checked_single_umul", "[checked_arithmetic]") {
-    auto prod = CPUE_checked_single_umul<u8, u8>(127, 2);
-    REQUIRE(prod.has_cf_set == false);
-    REQUIRE(prod.has_of_set == true);
+    auto res = CPUE_checked_single_umul<u8, u8>(127, 2);
+    REQUIRE(res.has_cf_set == false);
+    REQUIRE(res.has_of_set == false);
 
-    prod = CPUE_checked_single_umul<u8, u8>(127, 10);
-    REQUIRE(prod.has_cf_set == true);
-    REQUIRE(prod.has_of_set == true);
+    res = CPUE_checked_single_umul<u8, u8>(127, 10);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == true);
 
-    prod = CPUE_checked_single_umul<u8, u8>(1, 2);
-    REQUIRE(prod.has_cf_set == false);
-    REQUIRE(prod.has_of_set == false);
+    res = CPUE_checked_single_umul<u8, u8>(1, 2);
+    REQUIRE(res.has_cf_set == false);
+    REQUIRE(res.has_of_set == false);
+
+    res = CPUE_checked_single_umul<u32, u32>(0xffffffff, 0xffffffff);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == true);
+
+    res = CPUE_checked_single_umul<u64, u64>(0xffffffff, 0xffffffff);
+    REQUIRE(res.has_cf_set == false);
+    REQUIRE(res.has_of_set == false);
+
+    res = CPUE_checked_single_umul<u64, u64>(0xffffffffffffffff, 0xffffffffffffffff);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == true);
+
+    res = CPUE_checked_single_umul<u64, u64>(0xffffffffffffffff, 2);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == true);
+
+    res = CPUE_checked_single_umul<u64, u64>(0xffffffffffffffff, 1);
+    REQUIRE(res.has_cf_set == false);
+    REQUIRE(res.has_of_set == false);
+}
+
+
+TEST_CASE("CPUE_checked_single_imul", "[checked_arithmetic]") {
+    auto res = CPUE_checked_single_imul<i8, i8>(-1, -1);
+    REQUIRE(res.value == 1);
+    REQUIRE(res.has_cf_set == false);
+    REQUIRE(res.has_of_set == false);
+
+    res = CPUE_checked_single_imul<i8, i8>(1, -1);
+    REQUIRE(res.value.as<i8>() == -1);
+    REQUIRE(res.has_cf_set == false);
+    REQUIRE(res.has_of_set == false);
+
+    res = CPUE_checked_single_imul<i8, i8>(-127, -2);
+    REQUIRE(res.value == 254);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == true);
+
+    res = CPUE_checked_single_imul<i16, i16>(-0xff, 0xff);
+    REQUIRE(res.value.as<i32>() == -0xfe01);
+    REQUIRE(res.has_cf_set == true);
+    REQUIRE(res.has_of_set == true);
 }
 
 TEST_CASE("CPUE_checked_single_usub", "[checked_arithmetic]") {
@@ -69,4 +112,3 @@ TEST_CASE("CPUE_checked_single_usub", "[checked_arithmetic]") {
     REQUIRE(res.has_cf_set == true);
     REQUIRE(res.has_of_set == false);
 }
-

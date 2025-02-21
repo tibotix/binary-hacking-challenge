@@ -14,11 +14,11 @@ void PIC::init_mmio_registers() {
     // EOI write trigger
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x0, {
                                                                    .width = ByteWidth::WIDTH_BYTE,
-                                                                   .read_func = [](void* data) -> BigEndian<u64> {
-                                                                       fail("Trying to read non-readable MMIO register");
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
+                                                                       return SizedValue(static_cast<u8>(0));
                                                                    },
                                                                    .write_func =
-                                                                       [](void* data, const BigEndian<u64> value) {
+                                                                       [](void* data, SizedValue const& value, u64) {
                                                                            auto* this_ = static_cast<PIC*>(data);
                                                                            this_->received_eoi();
                                                                        },
@@ -28,16 +28,16 @@ void PIC::init_mmio_registers() {
     // ICW4
     m_cpu->mmu().mmio().map_mmio_register(MMIO_REG_BASE + 0x1, {
                                                                    .width = ByteWidth::WIDTH_BYTE,
-                                                                   .read_func = [](void* data) -> BigEndian<u64> {
+                                                                   .read_func = [](void* data, u64) -> SizedValue {
                                                                        auto* this_ = static_cast<PIC*>(data);
                                                                        std::scoped_lock _(this_->m_mutex);
-                                                                       return this_->m_icw4.value;
+                                                                       return SizedValue(this_->m_icw4.value);
                                                                    },
                                                                    .write_func =
-                                                                       [](void* data, const BigEndian<u64> value) {
+                                                                       [](void* data, SizedValue const& value, u64) {
                                                                            auto* this_ = static_cast<PIC*>(data);
                                                                            std::scoped_lock _(this_->m_mutex);
-                                                                           this_->m_icw4.value = value.value;
+                                                                           this_->m_icw4.value = value.as<u8>();
                                                                        },
                                                                    .data = this,
                                                                });
@@ -70,9 +70,6 @@ void PIC::clear_irq_pin(PICConnectionHandle const& handle) {
 }
 
 void PIC::process_pending_irqs() {
-    // if any interrupt is currently in-service, don't request another
-    if (m_isr.any())
-        return;
     for (u8 i = 0; i < m_irr.size(); ++i) {
         // if pin is not requesting interrupt, continue
         if (m_irr[i] == 0)
@@ -80,6 +77,10 @@ void PIC::process_pending_irqs() {
         // if interrupt is masked, don't process it
         if (m_imr[i] == 1)
             continue;
+        // if interrupt is currently in-service, don't request the same twice
+        if (m_isr[i] == 1)
+            continue;
+        CPUE_TRACE("PIC: pin {} is requesting interrupt. Waiting for ICU to acknowledge", i);
         // NOTE: we do not implement priorities
         // we have an interrupt candidate -> send it to cpu and wait for acknowledgement
         Interrupt interrupt = {
@@ -101,6 +102,8 @@ void PIC::process_pending_irqs() {
 
 void PIC::received_eoi() {
     std::scoped_lock _(m_mutex);
+    CPUE_TRACE("Received EOI");
+    // TODO: don't reset all isr bits, just the one this EOI corresponds (or most recent raised intr)
     m_isr.reset();
 }
 
