@@ -5,6 +5,29 @@
 namespace CPUE {
 
 
+std::optional<u64> ELF::find_symbol_address(std::string const& name) {
+    lazy_load();
+
+    for (const auto& section : m_reader.sections) {
+        if (section->get_type() == ELFIO::SHT_SYMTAB || section->get_type() == ELFIO::SHT_DYNSYM) {
+            ELFIO::symbol_section_accessor symbols(m_reader, section.get());
+            std::string sym_name;
+            ELFIO::Elf64_Addr value;
+            ELFIO::Elf_Xword size;
+            u8 bind, type, other;
+            ELFIO::Elf_Half section_index;
+            for (auto i = 0; i < symbols.get_symbols_num(); ++i) {
+                if (symbols.get_symbol(i, sym_name, value, size, bind, type, section_index, other)) {
+                    if (sym_name == name)
+                        return value;
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+
 void ELF::lazy_load_regions() {
     lazy_load();
     if (m_regions_loaded)

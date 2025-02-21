@@ -26,7 +26,9 @@ void Emulator::start() {
 
     // start kernel (set rip, etc..)
     CPUE_TRACE("Starting kernel...");
-    m_kernel.start(cpu, m_binary.entry_point());
+    // TODO: start at real entry point if we have enough instructions+syscalls support.
+    auto user_binary_entry_point = m_binary.find_symbol_address("main").value_or(m_binary.entry_point());
+    m_kernel.start(cpu, user_binary_entry_point);
 
     // create VT100 terminal and start it if requested
     VT100 vt100;
