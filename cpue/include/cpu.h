@@ -293,6 +293,11 @@ public:
         CPUE_ASSERT(r == nullptr || r->type() == CONTROL_REGISTER, "creg called with non-control register.");
         return r;
     }
+    RegisterProxy* xmmreg(x86_reg reg) {
+        auto r = this->reg(reg);
+        CPUE_ASSERT(r == nullptr || r->type() == XMM_REGISTER, "xxmreg called with non-xmm register.");
+        return r;
+    }
 
 
     RFLAGS& rflags() { return m_rflags; }
@@ -654,6 +659,47 @@ private:
     ControlRegisterProxy m_cr14_reg = ControlRegisterProxy(&m_cr14_val, this, REG_ACCESS_NONE);
     ControlRegisterProxy m_cr15_reg = ControlRegisterProxy(&m_cr15_val, this, REG_ACCESS_NONE);
 
+    /**
+     * SSE Registers
+     */
+    // TODO: maybe make them float128
+    u128 m_xmm0_val = 0x0;
+    u128 m_xmm1_val = 0x0;
+    u128 m_xmm2_val = 0x0;
+    u128 m_xmm3_val = 0x0;
+    u128 m_xmm4_val = 0x0;
+    u128 m_xmm5_val = 0x0;
+    u128 m_xmm6_val = 0x0;
+    u128 m_xmm7_val = 0x0;
+    u128 m_xmm8_val = 0x0;
+    u128 m_xmm9_val = 0x0;
+    u128 m_xmm10_val = 0x0;
+    u128 m_xmm11_val = 0x0;
+    u128 m_xmm12_val = 0x0;
+    u128 m_xmm13_val = 0x0;
+    u128 m_xmm14_val = 0x0;
+    u128 m_xmm15_val = 0x0;
+    XMMRegisterProxy m_xmm0_reg = XMMRegisterProxy(&m_xmm0_val, this);
+    XMMRegisterProxy m_xmm1_reg = XMMRegisterProxy(&m_xmm1_val, this);
+    XMMRegisterProxy m_xmm2_reg = XMMRegisterProxy(&m_xmm2_val, this);
+    XMMRegisterProxy m_xmm3_reg = XMMRegisterProxy(&m_xmm3_val, this);
+    XMMRegisterProxy m_xmm4_reg = XMMRegisterProxy(&m_xmm4_val, this);
+    XMMRegisterProxy m_xmm5_reg = XMMRegisterProxy(&m_xmm5_val, this);
+    XMMRegisterProxy m_xmm6_reg = XMMRegisterProxy(&m_xmm6_val, this);
+    XMMRegisterProxy m_xmm7_reg = XMMRegisterProxy(&m_xmm7_val, this);
+    XMMRegisterProxy m_xmm8_reg = XMMRegisterProxy(&m_xmm8_val, this);
+    XMMRegisterProxy m_xmm9_reg = XMMRegisterProxy(&m_xmm9_val, this);
+    XMMRegisterProxy m_xmm10_reg = XMMRegisterProxy(&m_xmm10_val, this);
+    XMMRegisterProxy m_xmm11_reg = XMMRegisterProxy(&m_xmm11_val, this);
+    XMMRegisterProxy m_xmm12_reg = XMMRegisterProxy(&m_xmm12_val, this);
+    XMMRegisterProxy m_xmm13_reg = XMMRegisterProxy(&m_xmm13_val, this);
+    XMMRegisterProxy m_xmm14_reg = XMMRegisterProxy(&m_xmm14_val, this);
+    XMMRegisterProxy m_xmm15_reg = XMMRegisterProxy(&m_xmm15_val, this);
+    // TODO: MMX Registers
+    // TODO: MXCSR Register
+
+
+
 
     /**
      * MSRs (Model-Specific-Registers)
@@ -708,17 +754,18 @@ private:
     RegisterProxy* m_register_map[247] = {
         nullptr, &m_ah, &m_al, &m_ax, &m_bh, &m_bl, &m_bp, &m_bpl, &m_bx, &m_ch, &m_cl, &m_cs_reg, &m_cx, &m_dh, &m_di, &m_dil, &m_dl, &m_ds_reg, &m_dx, &m_eax, &m_ebp, &m_ebx,
         &m_ecx, &m_edi, &m_edx, nullptr, &m_eip, nullptr, &m_es_reg, &m_esi, &m_esp, nullptr, &m_fs_reg, &m_gs_reg, &m_ip, &m_rax, &m_rbp, &m_rbx, &m_rcx, &m_rdi, &m_rdx, &m_rip,
-        nullptr, &m_rsi, &m_rsp, &m_si, &m_sil, &m_sp, &m_spl, &m_ss_reg, &m_cr0_reg, &m_cr1_reg, &m_cr2_reg, &m_cr3_reg, &m_cr4_reg, &m_cr5_reg, &m_cr6_reg, &m_cr7_reg, &m_cr8_reg,
-        &m_cr9_reg, &m_cr10_reg, &m_cr11_reg, &m_cr12_reg, &m_cr13_reg, &m_cr14_reg, &m_cr15_reg, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, &m_rsi, &m_rsp, &m_si, &m_sil, &m_sp, &m_spl, &m_ss_reg, &m_cr0_reg, &m_cr1_reg, &m_cr2_reg, &m_cr3_reg, &m_cr4_reg, &m_cr5_reg, &m_cr6_reg, &m_cr7_reg,
+        &m_cr8_reg, &m_cr9_reg, &m_cr10_reg, &m_cr11_reg, &m_cr12_reg, &m_cr13_reg, &m_cr14_reg, &m_cr15_reg, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8, &m_r9, &m_r10, &m_r11, &m_r12, &m_r13, &m_r14, &m_r15,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8, &m_r9, &m_r10, &m_r11, &m_r12, &m_r13,
+        &m_r14, &m_r15, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_xmm0_reg, &m_xmm1_reg, &m_xmm2_reg, &m_xmm3_reg, &m_xmm4_reg, &m_xmm5_reg,
+        &m_xmm6_reg, &m_xmm7_reg, &m_xmm8_reg, &m_xmm9_reg, &m_xmm10_reg, &m_xmm11_reg, &m_xmm12_reg, &m_xmm13_reg, &m_xmm14_reg, &m_xmm15_reg, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &m_r8b, &m_r9b, &m_r10b, &m_r11b, &m_r12b, &m_r13b, &m_r14b, &m_r15b, &m_r8d, &m_r9d,
-        &m_r10d, &m_r11d, &m_r12d, &m_r13d, &m_r14d, &m_r15d, &m_r8w, &m_r9w, &m_r10w, &m_r11w, &m_r12w, &m_r13w, &m_r14w, &m_r15w, nullptr, nullptr, nullptr, nullptr,
+        &m_r8b, &m_r9b, &m_r10b, &m_r11b, &m_r12b, &m_r13b, &m_r14b, &m_r15b, &m_r8d, &m_r9d, &m_r10d, &m_r11d, &m_r12d, &m_r13d, &m_r14d, &m_r15d, &m_r8w, &m_r9w, &m_r10w,
+        &m_r11w, &m_r12w, &m_r13w, &m_r14w, &m_r15w, nullptr, nullptr, nullptr, nullptr,
         nullptr, // <-- mark the end of the list of registers
     };
 

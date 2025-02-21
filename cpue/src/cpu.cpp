@@ -96,6 +96,11 @@ std::string CPU::dump_full_state() const {
     auto dump = [&ss](const char* msg, u64 value) -> void {
         ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << value << "\n";
     };
+    auto dump128 = [&ss](const char* msg, u128 value) -> void {
+        u64 high = value >> 64;
+        u64 low = value & 0xFFFFFFFFFFFFFFFF;
+        ss << msg << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << high << "|" << low << "\n";
+    };
 
     dump("RAX", m_rax_val);
     dump("RBX", m_rbx_val);
@@ -122,6 +127,22 @@ std::string CPU::dump_full_state() const {
     dump("ES", m_es.visible.segment_selector.value);
     dump("FS", m_fs.visible.segment_selector.value);
     dump("GS", m_gs.visible.segment_selector.value);
+    dump128("XMM0", m_xmm0_val);
+    dump128("XMM1", m_xmm1_val);
+    dump128("XMM2", m_xmm2_val);
+    dump128("XMM3", m_xmm3_val);
+    dump128("XMM4", m_xmm4_val);
+    dump128("XMM5", m_xmm5_val);
+    dump128("XMM6", m_xmm6_val);
+    dump128("XMM7", m_xmm7_val);
+    dump128("XMM8", m_xmm8_val);
+    dump128("XMM9", m_xmm9_val);
+    dump128("XMM10", m_xmm10_val);
+    dump128("XMM11", m_xmm11_val);
+    dump128("XMM12", m_xmm12_val);
+    dump128("XMM13", m_xmm13_val);
+    dump128("XMM14", m_xmm14_val);
+    dump128("XMM15", m_xmm15_val);
 
     return ss.str();
 }

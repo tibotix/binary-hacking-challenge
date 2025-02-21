@@ -41,6 +41,19 @@ InterruptRaisedOr<void> ApplicationSegmentRegisterProxy::do_write(SizedValue con
 }
 
 
+/**
+ * SSE Extension:
+ */
+InterruptRaisedOr<SizedValue> XMMRegisterProxy::do_read() const {
+    return SizedValue(*m_value_ptr, ByteWidth::WIDTH_DQWORD);
+}
+InterruptRaisedOr<void> XMMRegisterProxy::do_write(SizedValue const& value) {
+    auto fill = *m_value_ptr & ~value.byte_width().bitmask();
+    *m_value_ptr = fill | value.value();
+    return {};
+}
+
+
 
 
 }
