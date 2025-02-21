@@ -3,12 +3,16 @@
 #include "common.h"
 #include "devices/vt100.h"
 #include "uefi.h"
+#include "logging.h"
 
 
 namespace CPUE {
 
 
 void Emulator::start() {
+    if (m_verbose)
+        Log::get_logger()->set_level(spdlog::level::trace);
+
     CPU cpu{m_available_pages};
 
     // configure long-mode and init kernel
