@@ -427,7 +427,7 @@ InterruptRaisedOr<D> MMU::get_descriptor_from_descriptor_table(VirtualAddress co
     auto* descriptor2 = paddr_ptr<Descriptor>(MAY_HAVE_RAISED(va_to_pa(table_base + ((descriptor_index + 1) * index_scale) + sizeof(Descriptor), ctx)));
     CPUE_TRACE("descriptor2: 0x{:x}", *(u64*)descriptor2);
     // this should be always 0
-    if (descriptor1->access.type_value() != 0)
+    if (descriptor2->access.type_value() != 0)
         return m_cpu->raise_interrupt(Exceptions::GP(error_code));
     D expanded_descriptor{};
     memcpy(&expanded_descriptor, descriptor1, sizeof(Descriptor));
