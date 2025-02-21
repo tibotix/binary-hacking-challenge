@@ -600,6 +600,8 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
 
 InterruptRaisedOr<void> CPU::stack_push(u64 value, TranslationIntention intention) {
     TODO_NOFAIL("maybe make general and do alignment checks (in MMU)");
+    if (m_state == STATE_HANDLE_INSTRUCTION && intention == INTENTION_UNKNOWN)
+        intention = INTENTION_HANDLE_INSTRUCTION;
     if (m_rsp_val < 8)
         return raise_integral_interrupt(Exceptions::SS(ZERO_ERROR_CODE_NOEXT));
     m_rsp_val -= 8;
@@ -607,6 +609,8 @@ InterruptRaisedOr<void> CPU::stack_push(u64 value, TranslationIntention intentio
 }
 
 InterruptRaisedOr<u64> CPU::stack_pop(TranslationIntention intention) {
+    if (m_state == STATE_HANDLE_INSTRUCTION && intention == INTENTION_UNKNOWN)
+        intention = INTENTION_HANDLE_INSTRUCTION;
     auto value = MAY_HAVE_RAISED(mmu().mem_read64(stack_pointer(), intention));
     m_rsp_val += 8;
     return value;
