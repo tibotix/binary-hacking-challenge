@@ -161,7 +161,7 @@ std::string CPU::dump_stack() {
 
 
 void CPU::interpreter_loop() {
-    u8 ip_increment = 0;
+    u64 old_ip = 0;
     for (;;) {
         m_state = STATE_FETCH_INSTRUCTION;
         if (auto int_or_insn = m_disassembler.next_insn(); !int_or_insn.raised()) {
@@ -169,15 +169,16 @@ void CPU::interpreter_loop() {
 
             auto insn = int_or_insn.release_value();
 
-            // by default, increment ip to next insn
-            // TODO: don't increment when handling FAULT_EXCEPTION
-            // TODO: refactor this
-            ip_increment = insn.size;
+            // save current ip
+            old_ip = m_rip_val;
+            // set ip to next insn
+            m_rip_val = m_rip_val + insn.size;
 
             auto res = handle_insn(insn);
-            // If this instruction executed successfully (without any interrupt), and instructs us to not increment ip, reset increment_ip.
-            if (!res.raised() && res.release_value() == DONT_INCREMENT_IP)
-                ip_increment = 0;
+            // If this instruction executed successfully (without any interrupt), and instructs us to reset ip, reset ip to the instruction that was handled.
+            if (!res.raised() && res.release_value() == RESET_IP) {
+                m_rip_val = old_ip;
+            }
             CPUE_TRACE("State: \n{}", dump_full_state());
             CPUE_TRACE("Stack: \n{}", dump_stack());
         }
@@ -214,11 +215,13 @@ void CPU::interpreter_loop() {
                 }
             }
 
+            // If handled interrupt is of type FAULT_EXCEPTION, reset next_ip to ip that raised this interrupt.
+            if (i.type == InterruptType::FAULT_EXCEPTION)
+                m_rip_val = old_ip;
+
             // It doesn't matter if this raises, because no matter what we always process all pending interrupts.
             (void)handle_interrupt(i);
         }
-
-        m_rip_val += ip_increment;
     }
 }
 
@@ -255,7 +258,10 @@ InterruptRaisedOr<void> CPU::handle_nested_interrupt(Interrupt interrupt) {
     switch (action) {
         case NIA_HANDLE_SERIALLY: return {};
         case NIA_GENERATE_DOUBLE_FAULT: return raise_interrupt(Exceptions::DF(ZERO_ERROR_CODE_NOEXT));
-        case NIA_SHUTDOWN: shutdown();
+        case NIA_SHUTDOWN: {
+            CPUE_WARN("Got a Triple-Fault -> shutting down...");
+            shutdown();
+        }
         default: fail();
     }
 }
