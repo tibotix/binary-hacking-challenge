@@ -55,7 +55,7 @@ void Loader::load_region(Region const& region, u64& top) {
 bool Loader::create_region_vas(Region const& region, u64& top, u64 (*initial_mapping_strategy)(u64)) {
     CPUE_ASSERT(IS_PAGE_ALIGNED(top), "top is not page aligned.");
 
-    CPUE_TRACE("create_region_vas for range: 0x{:x} - 0x{:x}", PAGE_ALIGN(region.base.addr), PAGE_ALIGN_CEIL(region.base.addr + region.size));
+    CPUE_TRACE("create_region_vas for range: 0x{:x} - 0x{:x} ({} pages)", PAGE_ALIGN(region.base.addr), PAGE_ALIGN_CEIL(region.base.addr + region.size), region.get_page_count());
 
     bool created_new_ptes = false;
 
