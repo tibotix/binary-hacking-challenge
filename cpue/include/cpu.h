@@ -724,6 +724,15 @@ private:
     };
 
 private:
+    enum RepPrefix {
+        REP_PREFIX_NONE,
+        REP_PREFIX_REP,
+        REP_PREFIX_REPE,
+        REP_PREFIX_REPNE,
+    };
+    template<typename Func>
+    requires std::is_same_v<std::invoke_result_t<Func>, InterruptRaisedOr<IPContinuationBehavior>>
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> do_string_op_and_handle_rep_prefixes(RepPrefix, cs_x86 const&, Func&&);
     [[nodiscard]] InterruptRaisedOr<void> do_privileged_instruction_check(u8 pl = 0);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_ADD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_AND(cs_x86 const&);
@@ -816,6 +825,11 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STI(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STC(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSB_STOSW_STOSD_STOSQ(x86_insn const&, cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSW(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_STOSQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SUB(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_SWAPGS(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_TEST(cs_x86 const&);

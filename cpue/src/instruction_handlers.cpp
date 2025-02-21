@@ -98,6 +98,10 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(STI)
         CASE(STC)
         CASE(STD)
+        CASE(STOSB)
+        CASE(STOSW)
+        CASE(STOSD)
+        CASE(STOSQ)
         CASE(SUB)
         CASE(SWAPGS)
         CASE(TEST)
@@ -118,7 +122,47 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
  * Helper Functions:
  */
 
+template<typename Func>
+requires std::is_same_v<std::invoke_result_t<Func>, InterruptRaisedOr<CPU::IPContinuationBehavior>> InterruptRaisedOr<CPU::IPContinuationBehavior>
+    CPU::do_string_op_and_handle_rep_prefixes(RepPrefix prefix, cs_x86 const& insn_detail, Func&& do_op) {
+    if (prefix == REP_PREFIX_NONE) {
+        return do_op();
+    }
 
+    // handle REP prefix case
+    auto should_terminate = [&]() -> bool {
+        switch (prefix) {
+            case REP_PREFIX_NONE:
+            case REP_PREFIX_REP: return false;
+            case REP_PREFIX_REPE: return m_rflags.c.ZF == 0;
+            case REP_PREFIX_REPNE: return m_rflags.c.ZF == 1;
+            default: return false;
+        }
+    };
+    // TODO: test this with golden file
+    auto count_reg_alias = [&]() -> x86_reg {
+        switch (insn_detail.addr_size) {
+            case 2: return X86_REG_CX;
+            case 4: return X86_REG_ECX;
+            case 8: return X86_REG_RCX;
+            default: fail();
+        }
+    }();
+    auto count_reg = reg(count_reg_alias);
+
+    auto ip_cont = CONTINUE_IP;
+    auto count = MAY_HAVE_RAISED(count_reg->read());
+    ;
+    while (count != 0x0) {
+        // TODO: Service pending interrupts (if any)
+        ip_cont = MAY_HAVE_RAISED(do_op());
+        MAY_HAVE_RAISED(count_reg->write(--count));
+        if (should_terminate())
+            break;
+    }
+
+    return ip_cont;
+}
 InterruptRaisedOr<void> CPU::do_privileged_instruction_check(u8 pl) {
     if (cpl() != pl)
         return raise_integral_interrupt(Exceptions::GP(ZERO_ERROR_CODE_NOEXT));
@@ -1113,6 +1157,40 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STC(cs_x86 const& ins
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STD(cs_x86 const& insn_detail) {
     m_rflags.c.DF = 1;
     return CONTINUE_IP;
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSB_STOSW_STOSD_STOSQ(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]); // this is populated by capstone
+    auto second_op = Operand(this, insn_detail.operands[0]); // this is populated by capstone
+    CPUE_ASSERT(first_op.operand().type == X86_OP_MEM, "STOS with non-memory operand.");
+
+    auto do_op = [&]() -> InterruptRaisedOr<IPContinuationBehavior> {
+        auto second_val = MAY_HAVE_RAISED(second_op.read());
+        MAY_HAVE_RAISED(first_op.write(second_val));
+
+        auto inc = first_op.operand().size * ((-2 * m_rflags.c.DF) + 1);
+
+        auto first_reg = gpreg(first_op.operand().mem.base);
+        auto first_reg_val = MAY_HAVE_RAISED(first_reg->read());
+        MAY_HAVE_RAISED(first_reg->write(first_reg_val + inc));
+
+        return CONTINUE_IP;
+    };
+
+    // STOS can only have REP prefix.
+    auto prefix = insn_detail.prefix[0] == X86_PREFIX_REP ? REP_PREFIX_REP : REP_PREFIX_NONE;
+    return do_string_op_and_handle_rep_prefixes(prefix, insn_detail, do_op);
+} //    Store String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSB(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSB, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSW(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSW, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSD(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSD, insn_detail);
+}
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STOSQ(cs_x86 const& insn_detail) {
+    return handle_STOSB_STOSW_STOSD_STOSQ(X86_INS_STOSQ, insn_detail);
 }
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
