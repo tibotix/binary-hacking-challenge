@@ -16,6 +16,12 @@ public:
         putchar(c);
         fflush(stdout);
     };
+    void disable_terminal_echo() {
+        m_echo = false;
+    }
+    void enable_terminal_echo() {
+        m_echo = true;
+    }
 
     void start_loop_thread() { m_thread = std::thread(&VT100::loop, this); }
     void stop_loop_thread() {
@@ -28,24 +34,20 @@ public:
     }
 
 private:
-    void disable_terminal_echo() const {
-        // Disable terminal buffering and echoing
-        struct termios t {};
-        tcgetattr(STDIN_FILENO, &t);
-        t.c_lflag &= ~ICANON;
-        t.c_lflag &= ~ECHO;
+    void change_terminal() {
+        tcgetattr(STDIN_FILENO, &old_tio);
+        termios t = old_tio;
+        auto flags = ICANON | (!m_echo ? ECHO : 0);
+        t.c_lflag &= ~flags;
+        t.c_cc[VMIN] = 1;
+        t.c_cc[VTIME] = 0;
         tcsetattr(STDIN_FILENO, TCSANOW, &t);
     }
-    void enable_terminal_echo() const {
-        // Enable terminal buffering and echoing
-        struct termios t {};
-        tcgetattr(STDIN_FILENO, &t);
-        t.c_lflag |= ICANON;
-        t.c_lflag |= ECHO;
-        tcsetattr(STDIN_FILENO, TCSANOW, &t);
+    void restore_terminal() {
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
     }
     void loop() {
-        disable_terminal_echo();
+        change_terminal();
 
         char c;
         while (({
@@ -56,11 +58,15 @@ private:
                 tx(c);
         }
 
-        enable_terminal_echo();
+        restore_terminal();
     }
+
+    termios old_tio;
+    bool m_echo = true;
     std::mutex m_mutex;
     bool m_should_stop = false;
     std::thread m_thread;
+    InplaceFIFO<char, TERM_FIFO_CAPACITY> m_fifo;
 };
 
 }
