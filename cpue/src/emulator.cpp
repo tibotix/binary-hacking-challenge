@@ -31,7 +31,7 @@ void Emulator::start() {
     // create VT100 terminal and start it if requested
     VT100 vt100;
     if (m_serial) {
-        connect_uart_devices(cpu.uart1(), vt100);
+        connect_uart_devices(cpu.uart0(), vt100);
         vt100.start_loop_thread();
     }
 

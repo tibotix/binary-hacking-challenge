@@ -35,9 +35,7 @@ public:
     friend class NoKernel;
     friend class EmulatedKernel;
     friend class CustomKernel;
-    explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart1(UARTController{this}) {
-        reset();
-    }
+    explicit CPU(size_t available_pages = 2) : m_icu(this), m_mmu(this, available_pages), m_pic(PIC{this}), m_disassembler(Disassembler{this}), m_uart0(this, 0) { reset(); }
     CPU(CPU const&) = delete;
 
 public:
@@ -308,7 +306,7 @@ public:
     MMU& mmu() { return m_mmu; }
     PIC& pic() { return m_pic; }
     ICU& icu() { return m_icu; }
-    UARTController& uart1() { return m_uart1; };
+    UARTController& uart0() { return m_uart0; };
 
 private:
     void fix_interrupt_ext_bit(Interrupt& i) const;
@@ -444,7 +442,7 @@ private:
     PIC m_pic;
     Disassembler m_disassembler;
 
-    UARTController m_uart1;
+    UARTController m_uart0;
 
     std::optional<Interrupt> m_interrupt_to_be_handled;
     State m_state;
