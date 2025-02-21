@@ -476,7 +476,7 @@ InterruptRaisedOr<std::pair<SegmentSelector, u64>> CPU::do_stack_switch(u8 targe
     auto new_sp_addr = VirtualAddress(m_tr.hidden.cached_descriptor.base() + (tss_sp_byte_offset * 8));
     TODO_NOFAIL("Check limit");
     auto new_sp = MAY_HAVE_RAISED(mmu().mem_read64(new_sp_addr, INTENTION_LOAD_TSS));
-    new_sp = (new_sp << 32) || new_sp & 0xFFFFFFFF; // switch endianness
+    new_sp = (new_sp << 32) | new_sp & 0xFFFFFFFF; // switch endianness
     //  3. Checks the stack-segment descriptor for the proper privileges and type and generates an invalid TSS (#TS)
     //     exception if violations are detected.
     // -> in 64-bit mode, we don't load a new SS and therefore also no stack-segment descriptor.
