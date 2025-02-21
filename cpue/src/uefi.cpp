@@ -5,11 +5,25 @@ namespace CPUE {
 
 
 void UEFI::prepare_long_mode(u64& top) {
+    print_sys_info();
+    enable_protected_mode();
     setup_paging(top);
     setup_gdt(top);
     setup_idt(top);
     setup_stack(top);
     reserve_scratch_space(top);
+}
+
+void UEFI::print_sys_info() {
+    CPUE_INFO("System Information:");
+    CPUE_INFO("Available RAM: 0x{:x}B ({}MB)", m_cpu->mmu().available_pages() * PAGE_SIZE, (m_cpu->mmu().available_pages() * PAGE_SIZE) / 1024 / 1024);
+}
+
+void UEFI::enable_protected_mode() {
+    // Enabled Protected Mode
+    auto cr0 = m_cpu->cr0();
+    cr0.c.PE = 1;
+    m_cpu->m_cr0_val = cr0.value;
 }
 
 void UEFI::setup_paging(u64& top) {
