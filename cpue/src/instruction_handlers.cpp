@@ -18,6 +18,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(CLI)
         CASE(CLD)
         CASE(CMP)
+        CASE(CMPXCHG)
         CASE(DEC)
         CASE(DIV)
         CASE(ENDBR64)
@@ -198,6 +199,35 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMP(cs_x86 const& ins
 
     return CONTINUE_IP;
 } //    Compare Two Operands
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMPXCHG(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+
+    auto accumulator_reg = [&]() {
+        switch (first_op.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AL;
+            case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+            default: fail();
+        }
+    }();
+    auto accumulator = reg(accumulator_reg);
+    auto accumulator_val = MAY_HAVE_RAISED(accumulator->read());
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto res = CPUE_checked_single_usub(accumulator_val, first_val);
+
+    update_rflags(res);
+
+    if (m_rflags.c.ZF) {
+        auto second_val = MAY_HAVE_RAISED(second_op.read());
+        MAY_HAVE_RAISED(first_op.write(second_val));
+    } else {
+        MAY_HAVE_RAISED(accumulator->write(first_val));
+    }
+
+    return CONTINUE_IP;
+} //    Compare and Exchange
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_DEC(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
 
