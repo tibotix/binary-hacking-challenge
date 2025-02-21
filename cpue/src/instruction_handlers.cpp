@@ -16,6 +16,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(AND)
         CASE(CALL)
         CASE(CLI)
+        CASE(CLD)
         CASE(CMP)
         CASE(DEC)
         CASE(DIV)
@@ -83,6 +84,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(SIDT)
         CASE(SLDT)
         CASE(STI)
+        CASE(STD)
         CASE(SUB)
         CASE(SWAPGS)
         CASE(TEST)
@@ -191,6 +193,10 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CLI(cs_x86 const& ins
     }
     return CONTINUE_IP;
 } //    Clear Interrupt Flag
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CLD(cs_x86 const& insn_detail) {
+    m_rflags.c.DF = 0;
+    return CONTINUE_IP;
+} //    Clear Direction Flag
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMP(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
@@ -858,6 +864,10 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STI(cs_x86 const& ins
     }
     return CONTINUE_IP;
 } //	Set Interrupt Flag
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_STC(cs_x86 const& insn_detail) {
+    m_rflags.c.CF = 1;
+    return CONTINUE_IP;
+}
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SUB(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
