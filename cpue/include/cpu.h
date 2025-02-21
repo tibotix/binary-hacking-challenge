@@ -363,9 +363,12 @@ private:
 
     DescriptorTable descriptor_table_of_selector(SegmentSelector selector) const;
 
-    void update_rflags(ArithmeticResult res) {
+    void update_rflags_cf_of(ArithmeticResult const& res) {
         m_rflags.c.CF = res.has_cf_set;
         m_rflags.c.OF = res.has_of_set;
+    }
+    void update_rflags(ArithmeticResult const& res) {
+        update_rflags_cf_of(res);
         update_rflags(res.value);
     }
     void update_rflags(SizedValue const& value) {
@@ -767,6 +770,11 @@ private:
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSX(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSXD(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVZX(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSB_MOVSW_MOVSD_MOVSQ(x86_insn const&, cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSB(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSW(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSD(cs_x86 const&);
+    [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MOVSQ(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_MUL(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_NOP(cs_x86 const&);
     [[nodiscard]] InterruptRaisedOr<IPContinuationBehavior> handle_NOT(cs_x86 const&);

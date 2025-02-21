@@ -55,6 +55,11 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
         CASE(MOVSX)
         CASE(MOVSXD)
         CASE(MOVZX)
+        CASE(MOVQ)
+        CASE(MOVSB)
+        CASE(MOVSW)
+        CASE(MOVSD)
+        CASE(MOVSQ)
         CASE(MUL)
         CASE(NOP)
         CASE(NOT)
@@ -271,19 +276,70 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IDIV(cs_x86 const& in
     return handle_DIV_IDIV(X86_INS_IDIV, insn_detail);
 } //	Signed Divide
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_IMUL(cs_x86 const& insn_detail) {
-    if (insn_detail.op_count == 1) {
-        TODO();
-    }
-    if (insn_detail.op_count == 2) {
-        // With this form the destination operand (the first operand) is multiplied by the source operand (second operand). The destination operand is a general-purpose register and the source operand is an immediate value, a general-purpose register, or a memory location. The intermediate product (twice the size of the input operand) is truncated and stored in the destination operand location.
+    auto first_op = Operand(this, insn_detail.operands[0]);
 
-        // When an immediate value is used as an operand, it is sign-extended to the length of the destination operand format.
+    auto lower_dest = [&]() -> x86_reg {
+        if (insn_detail.op_count == 1) {
+            switch (first_op.byte_width()) {
+                case ByteWidth::WIDTH_BYTE: return X86_REG_AX;
+                case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+                case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+                case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+                default: fail();
+            }
+        } else {
+            return first_op.operand().reg;
+        }
+    }();
+    auto lower_dest_reg = reg(lower_dest);
+    auto upper_dest = [&]() -> x86_reg {
+        if (insn_detail.op_count == 1) {
+            switch (first_op.byte_width()) {
+                case ByteWidth::WIDTH_BYTE: return X86_REG_INVALID;
+                case ByteWidth::WIDTH_WORD: return X86_REG_DX;
+                case ByteWidth::WIDTH_DWORD: return X86_REG_EDX;
+                case ByteWidth::WIDTH_QWORD: return X86_REG_RDX;
+                default: fail();
+            }
+        } else {
+            return X86_REG_INVALID;
+        }
+    }();
+    auto upper_dest_reg = reg(upper_dest);
 
-        TODO();
+    auto first_val = MAY_HAVE_RAISED(first_op.read());
+    auto second_val = insn_detail.op_count > 1 ? MAY_HAVE_RAISED(Operand(this, insn_detail.operands[1]).read()) : SizedValue(0);
+    // When an immediate value is used as an operand, it is sign-extended to the length of the destination operand format.
+    auto third_val = insn_detail.op_count > 2 ? MAY_HAVE_RAISED(Operand(this, insn_detail.operands[2]).read()).sign_extended_to_width(lower_dest_reg->byte_width()) : SizedValue(0);
+
+    auto factor1 = [&]() -> SizedValue {
+        switch (insn_detail.op_count) {
+            case 1: return {m_rax_val, first_op.byte_width()};
+            case 2: return first_val;
+            case 3: return second_val;
+            default: fail();
+        }
+    }();
+    auto factor2 = [&]() -> SizedValue {
+        switch (insn_detail.op_count) {
+            case 1: return first_val;
+            case 2: return second_val;
+            case 3: return third_val;
+            default: fail();
+        }
+    }();
+
+    auto res = CPUE_checked_single_imul(factor1, factor2);
+
+    if (upper_dest == X86_REG_INVALID) {
+        MAY_HAVE_RAISED(lower_dest_reg->write(res.value.truncated_to_width(lower_dest_reg->byte_width())));
+    } else {
+        MAY_HAVE_RAISED(lower_dest_reg->write(res.value.lower_half()));
+        MAY_HAVE_RAISED(upper_dest_reg->write(res.value.upper_half()));
     }
-    if (insn_detail.op_count == 3) {
-        TODO();
-    }
+
+    update_rflags_cf_of(res);
+    return CONTINUE_IP;
 } //	Signed Multiply
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_INC(cs_x86 const& insn_detail) {
     TODO();
@@ -537,22 +593,87 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVZX(cs_x86 const& i
 
     return CONTINUE_IP;
 } //	Move With Zero-Extend
-InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MUL(cs_x86 const& insn_detail) {
-    // TODO: fix this
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVQ(cs_x86 const& insn_detail) {
     auto first_op = Operand(this, insn_detail.operands[0]);
     auto second_op = Operand(this, insn_detail.operands[1]);
 
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).zero_extended_or_truncated_to_width(first_op.byte_width());
+
+    MAY_HAVE_RAISED(first_op.write(second_val));
+    return CONTINUE_IP;
+} //    Move Quadword
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSB_MOVSW_MOVSD_MOVSQ(x86_insn const& insn, cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
+    auto second_op = Operand(this, insn_detail.operands[1]);
+    CPUE_ASSERT(first_op.operand().type == X86_OP_MEM && second_op.operand().type == X86_OP_MEM, "MOVS with non-memory operands.");
+    CPUE_ASSERT(first_op.operand().size == second_op.operand().size, "MOVS with mismatching memory operand sizes.");
+
+    auto do_op = [&]() -> InterruptRaisedOr<IPContinuationBehavior> {
+        auto second_val = MAY_HAVE_RAISED(second_op.read());
+        MAY_HAVE_RAISED(first_op.write(second_val));
+
+        auto inc = first_op.operand().size * ((-2 * m_rflags.c.DF) + 1);
+
+        auto first_reg = gpreg(first_op.operand().mem.base);
+        auto first_reg_val = MAY_HAVE_RAISED(first_reg->read());
+        MAY_HAVE_RAISED(first_reg->write(first_reg_val + inc));
+
+        auto second_reg = gpreg(second_op.operand().mem.base);
+        auto second_reg_val = MAY_HAVE_RAISED(second_reg->read());
+        MAY_HAVE_RAISED(second_reg->write(second_reg_val + inc));
+        return CONTINUE_IP;
+    };
+
+    // MOVS can only have REP prefix.
+    auto prefix = insn_detail.prefix[0] == X86_PREFIX_REP ? REP_PREFIX_REP : REP_PREFIX_NONE;
+    return do_string_op_and_handle_rep_prefixes(prefix, insn_detail, do_op);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSB(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSB, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSW(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSW, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSD(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSD, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSQ(cs_x86 const& insn_detail) {
+    return handle_MOVSB_MOVSW_MOVSD_MOVSQ(X86_INS_MOVSQ, insn_detail);
+} //     Move Data From String to String
+InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MUL(cs_x86 const& insn_detail) {
+    auto first_op = Operand(this, insn_detail.operands[0]);
     auto first_val = MAY_HAVE_RAISED(first_op.read());
-    auto second_val = MAY_HAVE_RAISED(second_op.read());
-    if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.byte_width());
-    auto res = CPUE_checked_single_umul(first_val, second_val);
 
-    TODO("handle_MUL split registers to make 128bits");
+    auto lower_dest_reg = [&]() -> x86_reg {
+        switch (first_val.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_AX;
+            case ByteWidth::WIDTH_WORD: return X86_REG_AX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EAX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RAX;
+            default: fail();
+        }
+    }();
+    auto upper_dest_reg = [&]() -> x86_reg {
+        switch (first_val.byte_width()) {
+            case ByteWidth::WIDTH_BYTE: return X86_REG_INVALID;
+            case ByteWidth::WIDTH_WORD: return X86_REG_DX;
+            case ByteWidth::WIDTH_DWORD: return X86_REG_EDX;
+            case ByteWidth::WIDTH_QWORD: return X86_REG_RDX;
+            default: fail();
+        }
+    }();
 
-    update_rflags(res);
-    MAY_HAVE_RAISED(first_op.write(res.value));
+    auto factor = SizedValue(m_rax_val, first_val.byte_width());
+    auto res = CPUE_checked_single_umul(first_val, factor);
 
+    if (upper_dest_reg == X86_REG_INVALID) {
+        MAY_HAVE_RAISED(reg(lower_dest_reg)->write(res.value));
+    } else {
+        MAY_HAVE_RAISED(reg(lower_dest_reg)->write(res.value.lower_half()));
+        MAY_HAVE_RAISED(reg(upper_dest_reg)->write(res.value.upper_half()));
+    }
+
+    update_rflags_cf_of(res);
     return CONTINUE_IP;
 } //	Unsigned Multiply
 InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_NOP(cs_x86 const& insn_detail) {
