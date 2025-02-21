@@ -114,28 +114,6 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_insn(cs_insn const& i
  * Helper Functions:
  */
 
-template<unsigned_integral R, unsigned_integral T>
-requires(sizeof(R) >= sizeof(T)) constexpr R zero_extend(T value) {
-    return value;
-}
-static SizedValue zero_extend(SizedValue value, ByteWidth width) {
-    return {value.value(), width};
-}
-template<unsigned_integral R, unsigned_integral T>
-requires(sizeof(R) >= sizeof(T)) constexpr R sign_extend(T value) {
-    if (sizeof(T) * 8 >= 64)
-        return value;
-    if (sign_bit(value))
-        return (static_cast<R>(-1) << sizeof(T) * 8) | value;
-    return value;
-}
-static SizedValue sign_extend(SizedValue const& value, ByteWidth width) {
-    if (value.byte_width() >= ByteWidth::WIDTH_QWORD)
-        return value;
-    if (value.sign_bit())
-        return {(width.bitmask() << value.bit_width()) | value.value(), width};
-    return value;
-}
 
 InterruptRaisedOr<void> CPU::do_privileged_instruction_check(u8 pl) {
     if (cpl() != pl)
@@ -155,7 +133,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_ADD(cs_x86 const& ins
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.byte_width());
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
     auto res = CPUE_checked_single_uadd(first_val, second_val);
 
     update_rflags(res);
@@ -168,7 +146,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_AND(cs_x86 const& ins
     auto second_op = Operand(this, insn_detail.operands[1]);
 
     auto first_val = MAY_HAVE_RAISED(first_op.read());
-    auto second_val = sign_extend(MAY_HAVE_RAISED(second_op.read()), first_val.byte_width());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_val.byte_width());
 
     auto anded_value = first_val & second_val;
     MAY_HAVE_RAISED(first_op.write(anded_value));
@@ -213,7 +191,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_CMP(cs_x86 const& ins
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.byte_width());
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
     auto res = CPUE_checked_single_usub(first_val, second_val);
 
     update_rflags(res);
@@ -588,7 +566,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOV(cs_x86 const& ins
     auto second_val = MAY_HAVE_RAISED(second_op.read());
 
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_op.byte_width());
+        second_val = second_val.sign_extended_to_width(first_op.byte_width());
 
     MAY_HAVE_RAISED(first_op.write(second_val));
 
@@ -601,7 +579,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVSX(cs_x86 const& i
     auto first_op = Operand(this, insn_detail.operands[0]); // Destination
     auto second_op = Operand(this, insn_detail.operands[1]); // Source
 
-    auto second_val = sign_extend(MAY_HAVE_RAISED(second_op.read()), first_op.byte_width());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_op.byte_width());
 
     MAY_HAVE_RAISED(first_op.write(second_val));
 
@@ -614,7 +592,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_MOVZX(cs_x86 const& i
     auto first_op = Operand(this, insn_detail.operands[0]); // Destination
     auto second_op = Operand(this, insn_detail.operands[1]); // Source
 
-    auto second_val = zero_extend(MAY_HAVE_RAISED(second_op.read()), first_op.byte_width());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).zero_extended_to_width(first_op.byte_width());
 
     MAY_HAVE_RAISED(first_op.write(second_val));
 
@@ -721,7 +699,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_OR(cs_x86 const& insn
     auto second_op = Operand(this, insn_detail.operands[1]);
 
     auto first_val = MAY_HAVE_RAISED(first_op.read());
-    auto second_val = sign_extend(MAY_HAVE_RAISED(second_op.read()), first_val.byte_width());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_val.byte_width());
 
     auto ored_value = first_val | second_val;
     MAY_HAVE_RAISED(first_op.write(ored_value));
@@ -930,7 +908,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_SUB(cs_x86 const& ins
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.byte_width());
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
     auto res = CPUE_checked_single_usub(first_val, second_val);
 
     update_rflags(res);
@@ -947,7 +925,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_TEST(cs_x86 const& in
     auto second_op = Operand(this, insn_detail.operands[1]);
 
     auto first_val = MAY_HAVE_RAISED(first_op.read());
-    auto second_val = sign_extend(MAY_HAVE_RAISED(second_op.read()), first_val.byte_width());
+    auto second_val = MAY_HAVE_RAISED(second_op.read()).sign_extended_to_width(first_val.byte_width());
 
     auto anded_value = first_val & second_val;
 
@@ -978,7 +956,7 @@ InterruptRaisedOr<CPU::IPContinuationBehavior> CPU::handle_XOR(cs_x86 const& ins
     auto first_val = MAY_HAVE_RAISED(first_op.read());
     auto second_val = MAY_HAVE_RAISED(second_op.read());
     if (second_op.operand().type == X86_OP_IMM)
-        second_val = sign_extend(second_val, first_val.byte_width());
+        second_val = second_val.sign_extended_to_width(first_val.byte_width());
 
     auto xored_value = first_val ^ second_val;
 
