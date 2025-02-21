@@ -350,11 +350,11 @@ InterruptRaisedOr<void> CPU::enter_interrupt_trap_gate(Interrupt const& i, TrapG
     // In 64-bit mode:
     // The stack pointer (SS:RSP) is pushed unconditionally on interrupts. In legacy modes, this push is conditional
     // and based on a change in current privilege level(CPL).
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+    MAY_HAVE_RAISED(stack_push(old_ss.value));
     MAY_HAVE_RAISED(stack_push(old_sp));
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u64>(&m_rflags)));
+    MAY_HAVE_RAISED(stack_push(m_rflags.value));
 
-    MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&m_cs.visible.segment_selector)));
+    MAY_HAVE_RAISED(stack_push(m_cs.visible.segment_selector.value));
     MAY_HAVE_RAISED(stack_push(m_rip_val));
     // Load the segment selector for the new code segment and the new instruction pointer from the call gate into
     // the CS and RIP registers, respectively, and begin execution of the called procedure.
@@ -435,7 +435,7 @@ InterruptRaisedOr<void> CPU::enter_call_gate(SegmentSelector const& selector, Ca
      */
     if (dest_is_conforming && dest_dpl < cpl()) {
         auto [old_ss, old_sp] = MAY_HAVE_RAISED(do_stack_switch(dest_dpl));
-        MAY_HAVE_RAISED(stack_push(raw_bytes<u16>(&old_ss)));
+        MAY_HAVE_RAISED(stack_push(old_ss.value));
         MAY_HAVE_RAISED(stack_push(old_sp));
     }
 
@@ -535,7 +535,7 @@ InterruptRaisedOr<void> CPU::load_segment_register(SegmentRegisterAlias alias, S
     auto const access_byte_vaddr = VirtualAddress(base) + (selector.c.index * 8) + offsetof(Descriptor, access);
     auto new_access_byte = descriptor.access;
     new_access_byte.c.accessed = 1;
-    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, raw_bytes<u8>(&new_access_byte)));
+    MAY_HAVE_RAISED(mmu().mem_write8(access_byte_vaddr, new_access_byte.value));
 
     // The Segment Not Present exception occurs when trying to load a segment or gate which has its `Present` bit set to 0.
     // However, when loading a stack-segment selector which references a descriptor which is not present, a Stack-Segment Fault occurs.
