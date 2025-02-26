@@ -1,0 +1,138 @@
+diff --git a/Makefile b/Makefile
+index f3bf54e..43307fb 100644
+--- a/Makefile
++++ b/Makefile
+@@ -5,10 +5,11 @@ VERSION := $(or ${GITHUB_REF},${GITHUB_REF},"unreleased-git")
+ 
+ all: lighthouse game-cpm game-spectrum
+ 
++CC=gcc
+ 
+ # Build the C version
+ lighthouse: c/handlers.c c/inventory.c c/items.c c/main.c c/world.c c/util.c c/globals.h
+-	gcc  -o lighthouse -Os -Wall -Wextra -Werror c/handlers.c c/inventory.c c/items.c c/main.c c/world.c c/util.c
++	$(CC)  -o lighthouse -Os -Wall -Wextra -Werror c/handlers.c c/inventory.c c/items.c c/main.c c/world.c c/util.c
+ 
+ 
+ # Clean our generated output
+diff --git a/c/handlers.c b/c/handlers.c
+index 64c0051..08dfe7c 100644
+--- a/c/handlers.c
++++ b/c/handlers.c
+@@ -387,7 +387,7 @@ void examine_fn(char *input)
+                 printf("You see nothing special.\n");
+             }
+ 
+-            free(itm);
++            // free(itm);
+             return;
+         }
+     }
+@@ -417,14 +417,14 @@ void examine_fn(char *input)
+                     printf("You see nothing special.\n");
+                 }
+ 
+-                free(itm);
++                // free(itm);
+                 return;
+             }
+         }
+     }
+ 
+     printf("It doesn't look like that item is present, or in your inventory!\n");
+-    free(itm);
++    // free(itm);
+     return;
+ 
+ }
+@@ -476,7 +476,7 @@ void get_fn(char *input)
+                 printf("You cannot take that!\n");
+             }
+ 
+-            free(itm);
++            // free(itm);
+             return;
+         }
+     }
+@@ -523,12 +523,12 @@ void drop_fn(char *input)
+                 printf("You cannot drop that!\n");
+             }
+ 
+-            free(itm);
++            // free(itm);
+             return;
+         }
+     }
+ 
+-    free(itm);
++    // free(itm);
+     printf("You're not carrying that!\n");
+ }
+ 
+@@ -608,7 +608,7 @@ void use_fn(char *input)
+                 printf("Nothing happens\n");
+             }
+ 
+-            free(itm);
++            // free(itm);
+             return;
+         }
+     }
+@@ -638,13 +638,13 @@ void use_fn(char *input)
+                     printf("Nothing happens\n");
+                 }
+ 
+-                free(itm);
++                // free(itm);
+                 return;
+             }
+         }
+     }
+ 
+     printf("It doesn't look like that item is present, or in your inventory!\n");
+-    free(itm);
++    // free(itm);
+     return;
+ }
+diff --git a/c/main.c b/c/main.c
+index c12bf8d..447b1d9 100644
+--- a/c/main.c
++++ b/c/main.c
+@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
+     UNUSED(argc);
+     UNUSED(argv);
+ 
+-    srand(time(NULL));
++    srand(0);
+     char line[1024];
+ 
+     // all rooms are empty
+diff --git a/c/util.c b/c/util.c
+index 994a5f0..b0488da 100644
+--- a/c/util.c
++++ b/c/util.c
+@@ -12,10 +12,11 @@
+ //   CALL RYDER
+ //   DROP CAKE
+ //
++static char obj_space[0x100];
+ char *object_from_input(char *input)
+ {
+ 
+-    char seps[]   = " \t";
++    char seps[] = " \t";
+     char *token;
+     char *obj = NULL;
+ 
+@@ -24,10 +25,7 @@ char *object_from_input(char *input)
+ 
+     while (token != NULL)
+     {
+-        if (obj)
+-            free(obj);
+-
+-        obj = strdup(token);
++        obj = strncpy(obj_space, token, sizeof(obj_space) - 1);
+ 
+         /* Get next token: */
+         token = strtok(NULL, seps);
