@@ -8,7 +8,7 @@ git clone https://github.com/tibotix/binary-hacking-challenge.git
 cd binary-hacking-challenge
 git submodule update --init --recursive
 mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=1 ..
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=1 .. # -DENABLE_TRACE=1 to enable tracing
 make -j8
 ```
 
