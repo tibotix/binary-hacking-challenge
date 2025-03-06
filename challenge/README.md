@@ -9,9 +9,3 @@ docker run -d --rm -p1024:1024 cpue
 # to get shell insight running container
 docker exec -it <container_id> /bin/bash
 ```
-
-# Running:
-
-```sh
-python3 exploit.py build/exploit
-```
